@@ -12,6 +12,8 @@ current code before you dispatch it — a closed ticket can still be open in the
 reverse also happens. The review's dependency line ("no third-party dependencies") was false; the
 app links the `firebase-ios-sdk` package. See `docs/agents/doc-audit-2026-09.md`.
 
+**Issue numbers, 2026-10-07:** the tracker moved to `bckizildemir/Purrtine`. Old open issues CatCareCalendar#17–#21 are now Purrtine [#1](https://github.com/bckizildemir/Purrtine/issues/1)–[#5](https://github.com/bckizildemir/Purrtine/issues/5), same order. CatCareCalendar#12–#16 were closed and stay in the old private repo. Bare numbers in the prose below are the old CatCareCalendar numbers.
+
 ## What happened
 
 Steps 1–2 of `/improve-codebase-architecture` were run: explore, then present candidates as a report.
@@ -32,7 +34,7 @@ conclusions are in the report, and any claim you need to re-verify is one `grep`
 
 | | |
 | --- | --- |
-| **GitHub issues #12–#21** | **The source of truth for the work.** Native blocking edges; each issue links to its candidate in the report. Query with `gh issue list --state open`. |
+| **GitHub issues** (old #17–#21 = Purrtine #1–#5) | **The source of truth for the work.** Native blocking edges; each issue links to its candidate in the report. Query with `gh issue list --state open`. |
 | [`docs/architecture-review.md`](./architecture-review.md) | The report. Seven candidates, before/after diagrams, `path:line` evidence, top recommendation. |
 | `.scratch/architecture-review/` | Local working notes from the original session — the HTML form of the report, the ticket drafts, the publishing record. **Gitignored**, so it exists only on the machine that ran the review. Nothing there is needed to do the work; the HTML is kept only because its hand-built diagrams (cross-sections, mass diagrams, depth bars) are richer than the tables they became in Markdown. |
 
@@ -40,16 +42,16 @@ conclusions are in the report, and any claim you need to re-verify is one `grep`
 
 | Issue | Label | Blocked by |
 | --- | --- | --- |
-| [#12](https://github.com/bckizildemir/CatCareCalendar/issues/12) Bulk task edit reconciles reminders | `ready-for-agent` | — |
-| [#13](https://github.com/bckizildemir/CatCareCalendar/issues/13) Renaming a cat refreshes its reminder text | `ready-for-agent` | — |
-| [#14](https://github.com/bckizildemir/CatCareCalendar/issues/14) Reassigning a caregiver actually saves | `ready-for-agent` | — |
-| [#15](https://github.com/bckizildemir/CatCareCalendar/issues/15) Delete the dead code the architecture review surfaced | `ready-for-agent` | — |
-| [#16](https://github.com/bckizildemir/CatCareCalendar/issues/16) Deepen: the care-task mutation seam | `ready-for-human` | #12, #13 |
-| [#17](https://github.com/bckizildemir/CatCareCalendar/issues/17) Deepen: the recurrence rule as a module | `ready-for-human` | — |
-| [#18](https://github.com/bckizildemir/CatCareCalendar/issues/18) Deepen: the task form draft | `ready-for-human` | #14, #15 |
-| [#19](https://github.com/bckizildemir/CatCareCalendar/issues/19) Deepen: one understood intent for the Task Assistant | `ready-for-human` | — |
-| [#20](https://github.com/bckizildemir/CatCareCalendar/issues/20) Deepen: inline the shallow presentation modules, consolidate the date predicates | `ready-for-human` | #17 |
-| [#21](https://github.com/bckizildemir/CatCareCalendar/issues/21) Deepen: the launch sequence as one interface | `ready-for-human` | — |
+| CatCareCalendar#12 Bulk task edit reconciles reminders | `ready-for-agent` | — |
+| CatCareCalendar#13 Renaming a cat refreshes its reminder text | `ready-for-agent` | — |
+| CatCareCalendar#14 Reassigning a caregiver actually saves | `ready-for-agent` | — |
+| CatCareCalendar#15 Delete the dead code the architecture review surfaced | `ready-for-agent` | — |
+| CatCareCalendar#16 Deepen: the care-task mutation seam | `ready-for-human` | CatCareCalendar#12, #13 |
+| [#1](https://github.com/bckizildemir/Purrtine/issues/1) Deepen: the recurrence rule as a module | `ready-for-human` | — |
+| [#2](https://github.com/bckizildemir/Purrtine/issues/2) Deepen: the task form draft | `ready-for-human` | CatCareCalendar#14, #15 |
+| [#3](https://github.com/bckizildemir/Purrtine/issues/3) Deepen: one understood intent for the Task Assistant | `ready-for-human` | — |
+| [#4](https://github.com/bckizildemir/Purrtine/issues/4) Deepen: inline the shallow presentation modules, consolidate the date predicates | `ready-for-human` | [#1](https://github.com/bckizildemir/Purrtine/issues/1) |
+| [#5](https://github.com/bckizildemir/Purrtine/issues/5) Deepen: the launch sequence as one interface | `ready-for-human` | — |
 
 At the time of writing the frontier — issues with no open blockers — was **#12, #13, #14, #15, #17,
 #19, #21**, of which #12–#15 are agent-ready. **This table goes stale; the tracker does not.** For the

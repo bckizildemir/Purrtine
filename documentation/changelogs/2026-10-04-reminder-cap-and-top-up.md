@@ -55,6 +55,6 @@ is still computed before the selection.
 
 ## Out of scope
 
-- Telling the caregiver to open the app before the 60 reminders run out (#94).
+- Telling the caregiver to open the app before the 60 reminders run out ([#11](https://github.com/bckizildemir/Purrtine/issues/11), old CatCareCalendar#94).
 - The per-series caps and the 12-month scheduling horizon.
 - Onboarding still saves each starter task through the writer, so it runs three small full resyncs.

@@ -6,7 +6,7 @@ date: 2026-09-28
 # Keep the app's own recurrence engine instead of Foundation's `Calendar.RecurrenceRule`
 
 Foundation ships `Calendar.RecurrenceRule` from iOS 18, inside this app's deployment target (18.4).
-The recurrence rule module ([#17](https://github.com/bckizildemir/CatCareCalendar/issues/17)) still
+The recurrence rule module ([#1](https://github.com/bckizildemir/Purrtine/issues/1)) still
 wraps the app's own engine (today in `Models/CareTask.swift`). That engine carries tested fixes for
 time zones where a day or a week has no local midnight or a wall time does not exist (America/Nuuk,
 America/Scoresbysund, Australia/Lord_Howe, Asia/Beirut and others). Nobody has measured Foundation's

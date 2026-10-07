@@ -292,4 +292,4 @@ read by Claude Code at all; TTB carried an empty `.agents/` as a leftover until 
 ## 9. Related documents in this repo
 
 - `docs/swift-skill-recheck-handoff.md` — the follow-up pass over the five highest-churn files. **Closed.** It ran on 2026-08-14 on branch `worktree-fix-taskaddview-review`; the outcome is in `docs/swift-skill-recheck-summary.md`, which reached `main` (checked 2026-09-08 — all five recheck documents are on `main`).
-- `docs/architecture-review-handoff.md` — issues #16 and #17 build on those same files, and need a design conversation first.
+- `docs/architecture-review-handoff.md` — issues CatCareCalendar#16 and Purrtine [#1](https://github.com/bckizildemir/Purrtine/issues/1) build on those same files, and need a design conversation first.
