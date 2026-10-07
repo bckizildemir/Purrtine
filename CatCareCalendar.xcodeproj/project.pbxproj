@@ -1,0 +1,652 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		65DFDE42E156E1DFACADCC11 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0F757DCB2D5DAD87005A67B0 /* FirebaseCore */; };
+		7643A160CA2FCCE7CB3AA72B /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 71EB29C2A10FCFB9FCA462B1 /* FirebaseAuth */; };
+		78AC69E28D86E4947D6A0046 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 1AD730D9ABEE914BEEDE5A26 /* FirebaseAppCheck */; };
+		FA0A983C04C670662B7545FE /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = CB694477F1DBD4783A079017 /* FirebaseFunctions */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7AD58BE02DEF864D008F5057 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7A1546FE2DEE59AD00C0DBC4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A1547052DEE59AD00C0DBC4;
+			remoteInfo = CatCareCalendar;
+		};
+		7B1000072F11000100AAA001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7A1546FE2DEE59AD00C0DBC4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A1547052DEE59AD00C0DBC4;
+			remoteInfo = CatCareCalendar;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		6C9BCE4B2F27800100C0FFEE /* CatCareCalendar.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = CatCareCalendar.xctestplan; sourceTree = "<group>"; };
+		7A1547062DEE59AD00C0DBC4 /* CatCareCalendar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatCareCalendar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A982E602DF0FF06009D7409 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		7AD58BDB2DEF864D008F5057 /* CatCareCalendarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatCareCalendarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B1000012F11000100AAA001 /* CatCareCalendarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatCareCalendarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		7A1547082DEE59AD00C0DBC4 /* CatCareCalendar */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CatCareCalendar;
+			sourceTree = "<group>";
+		};
+		7AD58BDA2DEF864D008F5057 /* CatCareCalendarTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CatCareCalendarTests;
+			sourceTree = "<group>";
+		};
+		7B1000022F11000100AAA001 /* CatCareCalendarUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CatCareCalendarUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7A1547032DEE59AD00C0DBC4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				65DFDE42E156E1DFACADCC11 /* FirebaseCore in Frameworks */,
+				7643A160CA2FCCE7CB3AA72B /* FirebaseAuth in Frameworks */,
+				FA0A983C04C670662B7545FE /* FirebaseFunctions in Frameworks */,
+				78AC69E28D86E4947D6A0046 /* FirebaseAppCheck in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7AD58BDC2DEF864D008F5057 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B1000032F11000100AAA001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7A1546FD2DEE59AD00C0DBC4 = {
+			isa = PBXGroup;
+			children = (
+				6C9BCE4B2F27800100C0FFEE /* CatCareCalendar.xctestplan */,
+				7A1547082DEE59AD00C0DBC4 /* CatCareCalendar */,
+				7AD58BDA2DEF864D008F5057 /* CatCareCalendarTests */,
+				7B1000022F11000100AAA001 /* CatCareCalendarUITests */,
+				7A982E5F2DF0FF06009D7409 /* Frameworks */,
+				7A1547072DEE59AD00C0DBC4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7A1547072DEE59AD00C0DBC4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7A1547062DEE59AD00C0DBC4 /* CatCareCalendar.app */,
+				7AD58BDB2DEF864D008F5057 /* CatCareCalendarTests.xctest */,
+				7B1000012F11000100AAA001 /* CatCareCalendarUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7A982E5F2DF0FF06009D7409 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7A982E602DF0FF06009D7409 /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7A1547052DEE59AD00C0DBC4 /* CatCareCalendar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A1547112DEE59AF00C0DBC4 /* Build configuration list for PBXNativeTarget "CatCareCalendar" */;
+			buildPhases = (
+				7A1547022DEE59AD00C0DBC4 /* Sources */,
+				7A1547032DEE59AD00C0DBC4 /* Frameworks */,
+				7A1547042DEE59AD00C0DBC4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7A1547082DEE59AD00C0DBC4 /* CatCareCalendar */,
+			);
+			name = CatCareCalendar;
+			packageProductDependencies = (
+				0F757DCB2D5DAD87005A67B0 /* FirebaseCore */,
+				71EB29C2A10FCFB9FCA462B1 /* FirebaseAuth */,
+				CB694477F1DBD4783A079017 /* FirebaseFunctions */,
+				1AD730D9ABEE914BEEDE5A26 /* FirebaseAppCheck */,
+			);
+			productName = CatCareCalendar;
+			productReference = 7A1547062DEE59AD00C0DBC4 /* CatCareCalendar.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7AD58BDD2DEF864D008F5057 /* CatCareCalendarTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7AD58BE22DEF864D008F5057 /* Build configuration list for PBXNativeTarget "CatCareCalendarTests" */;
+			buildPhases = (
+				7AD58BDF2DEF864D008F5057 /* Sources */,
+				7AD58BDC2DEF864D008F5057 /* Frameworks */,
+				7AD58BDE2DEF864D008F5057 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7AD58BE12DEF864D008F5057 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7AD58BDA2DEF864D008F5057 /* CatCareCalendarTests */,
+			);
+			name = CatCareCalendarTests;
+			productName = CatCareCalendarTests;
+			productReference = 7AD58BDB2DEF864D008F5057 /* CatCareCalendarTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7B1000042F11000100AAA001 /* CatCareCalendarUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7B10000B2F11000100AAA001 /* Build configuration list for PBXNativeTarget "CatCareCalendarUITests" */;
+			buildPhases = (
+				7B1000062F11000100AAA001 /* Sources */,
+				7B1000032F11000100AAA001 /* Frameworks */,
+				7B1000052F11000100AAA001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7B1000082F11000100AAA001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7B1000022F11000100AAA001 /* CatCareCalendarUITests */,
+			);
+			name = CatCareCalendarUITests;
+			productName = CatCareCalendarUITests;
+			productReference = 7B1000012F11000100AAA001 /* CatCareCalendarUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7A1546FE2DEE59AD00C0DBC4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
+				TargetAttributes = {
+					7A1547052DEE59AD00C0DBC4 = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					7AD58BDD2DEF864D008F5057 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 7A1547052DEE59AD00C0DBC4;
+					};
+					7B1000042F11000100AAA001 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 7A1547052DEE59AD00C0DBC4;
+					};
+				};
+			};
+			buildConfigurationList = 7A1547012DEE59AD00C0DBC4 /* Build configuration list for PBXProject "CatCareCalendar" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				tr,
+			);
+			mainGroup = 7A1546FD2DEE59AD00C0DBC4;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7A1547072DEE59AD00C0DBC4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7A1547052DEE59AD00C0DBC4 /* CatCareCalendar */,
+				7AD58BDD2DEF864D008F5057 /* CatCareCalendarTests */,
+				7B1000042F11000100AAA001 /* CatCareCalendarUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7A1547042DEE59AD00C0DBC4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7AD58BDE2DEF864D008F5057 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B1000052F11000100AAA001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7A1547022DEE59AD00C0DBC4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7AD58BDF2DEF864D008F5057 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B1000062F11000100AAA001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7AD58BE12DEF864D008F5057 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A1547052DEE59AD00C0DBC4 /* CatCareCalendar */;
+			targetProxy = 7AD58BE02DEF864D008F5057 /* PBXContainerItemProxy */;
+		};
+		7B1000082F11000100AAA001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A1547052DEE59AD00C0DBC4 /* CatCareCalendar */;
+			targetProxy = 7B1000072F11000100AAA001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		7A15470F2DEE59AF00C0DBC4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 9JWA5T52C2;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		7A1547102DEE59AF00C0DBC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 9JWA5T52C2;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		7A1547122DEE59AF00C0DBC4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CatCareCalendar needs camera access to take photos of your cats. These photos are stored only on your device.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to capture your voice for the task assistant.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to understand voice commands for completing your cat care tasks.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7A1547132DEE59AF00C0DBC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CatCareCalendar needs camera access to take photos of your cats. These photos are stored only on your device.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to capture your voice for the task assistant.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to understand voice commands for completing your cat care tasks.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		7AD58BE32DEF864D008F5057 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendarTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CatCareCalendar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CatCareCalendar";
+			};
+			name = Debug;
+		};
+		7AD58BE42DEF864D008F5057 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendarTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CatCareCalendar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CatCareCalendar";
+			};
+			name = Release;
+		};
+		7B1000092F11000100AAA001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendarUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CatCareCalendar;
+			};
+			name = Debug;
+		};
+		7B10000A2F11000100AAA001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = A355549DDD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.berkecankizildemir.CatCareCalendarUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CatCareCalendar;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7A1547012DEE59AD00C0DBC4 /* Build configuration list for PBXProject "CatCareCalendar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A15470F2DEE59AF00C0DBC4 /* Debug */,
+				7A1547102DEE59AF00C0DBC4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7A1547112DEE59AF00C0DBC4 /* Build configuration list for PBXNativeTarget "CatCareCalendar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A1547122DEE59AF00C0DBC4 /* Debug */,
+				7A1547132DEE59AF00C0DBC4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7AD58BE22DEF864D008F5057 /* Build configuration list for PBXNativeTarget "CatCareCalendarTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7AD58BE32DEF864D008F5057 /* Debug */,
+				7AD58BE42DEF864D008F5057 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7B10000B2F11000100AAA001 /* Build configuration list for PBXNativeTarget "CatCareCalendarUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7B1000092F11000100AAA001 /* Debug */,
+				7B10000A2F11000100AAA001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.7.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0F757DCB2D5DAD87005A67B0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		1AD730D9ABEE914BEEDE5A26 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		71EB29C2A10FCFB9FCA462B1 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		CB694477F1DBD4783A079017 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1C39E2355FB5970DF348E945 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 7A1546FE2DEE59AD00C0DBC4 /* Project object */;
+}

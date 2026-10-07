@@ -1,0 +1,45 @@
+{
+  "configurations" : [
+    {
+      "id" : "A7D0BC7E-84E0-4ED0-83F2-95095AB3616B",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : true,
+    "environmentVariableEntries" : [
+      {
+        "key" : "CATCARE_UNIT_TESTING",
+        "value" : "1"
+      }
+    ],
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:CatCareCalendar.xcodeproj",
+      "identifier" : "7A1547052DEE59AD00C0DBC4",
+      "name" : "CatCareCalendar"
+    },
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:CatCareCalendar.xcodeproj",
+        "identifier" : "7AD58BDD2DEF864D008F5057",
+        "name" : "CatCareCalendarTests"
+      }
+    },
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:CatCareCalendar.xcodeproj",
+        "identifier" : "7B1000042F11000100AAA001",
+        "name" : "CatCareCalendarUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

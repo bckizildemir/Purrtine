@@ -1,0 +1,120 @@
+name: CI
+
+# Every job runs only on a public repo, where GitHub-hosted runners are free.
+# On a private repo macOS minutes are billed, so the jobs skip themselves there.
+# A run whose jobs all skip still shows as "success": while the repo is private,
+# CI proves nothing. Test locally instead: `Scripts/xcb.sh test` and
+# `cd functions && npm test`. After the flip, check the job conclusions, not the run's.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Build, unit tests, coverage, Release build
+    if: ${{ !github.event.repository.private }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      MINIMUM_LINE_COVERAGE: "17.5"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ci-spm
+          key: spm-${{ hashFiles('CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      # No GoogleService-Info.plist in the repo: the app builds and runs with the cloud tier off.
+      - name: Run unit tests with coverage
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          echo "Simulator: $UDID"
+          mkdir -p TestResults
+          xcodebuild test \
+            -project CatCareCalendar.xcodeproj \
+            -scheme CatCareCalendar \
+            -testPlan CatCareCalendar \
+            -destination "id=$UDID" \
+            -skip-testing:CatCareCalendarUITests \
+            -resultBundlePath TestResults/CatCareCalendar.xcresult \
+            -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            > test.log 2>&1 || { grep -E 'error:|failed|Failing tests' test.log | head -80; exit 1; }
+          grep -E 'Executed|Test run with|TEST SUCCEEDED' test.log | tail -n 5
+
+      - name: Enforce app coverage floor
+        run: |
+          bash Scripts/check_coverage.sh \
+            TestResults/CatCareCalendar.xcresult \
+            "${MINIMUM_LINE_COVERAGE}"
+
+      # The archive for TestFlight builds Release for a device. Debug-only code (#if DEBUG) that
+      # Release code still calls compiles in the steps above and fails only here.
+      - name: Build Release for device
+        run: |
+          xcodebuild build \
+            -project CatCareCalendar.xcodeproj \
+            -scheme CatCareCalendar \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            > release.log 2>&1 || { grep -E 'error:' release.log | head -50; exit 1; }
+          tail -n 3 release.log
+
+      - name: Upload test results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-results
+          path: |
+            TestResults/CatCareCalendar.xcresult
+            test.log
+            release.log
+          if-no-files-found: ignore
+
+  functions:
+    name: Cloud Function tests
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

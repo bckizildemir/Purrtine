@@ -1,0 +1,70 @@
+# Xcode
+DerivedData/
+build/
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+
+# Track the resolved vendor SDK versions so every checkout pins the same
+# ones (see CLAUDE.md ### Dependencies). Git cannot re-include a file inside
+# an excluded directory with a single "!" line, so each parent directory on
+# the path has to be un-excluded too.
+!CatCareCalendar.xcodeproj/project.xcworkspace/
+!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/
+!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# SwiftPM
+.build/
+
+# CocoaPods (not used, but common)
+Pods/
+
+# Carthage (not used, but common)
+Carthage/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Firebase / GoogleService-Info.plist
+GoogleService-Info.plist
+functions/node_modules/
+
+# Other
+*.xcuserstate
+*.moved-aside
+*.xcuserdatad
+*.swp
+*.lock
+*.tmp
+*.orig
+*.DS_Store
+
+# Personal settings
+*.personal.xcconfig
+*.local.xcconfig
+ 
+# Logs
+Logs/
+*.log
+.clang_module_cache/
+
+# Agent scratch (working notes, not tracked)
+.scratch/
+
+# Local editor build-server config (absolute local paths)
+buildServer.json
+
+# Only Claude Code agent config ships in this repo (CLAUDE.md, AGENTS.md, .claude/)
+.windsurf/
+.windsurfrules
+.cursor/
+.cursorrules
+.kilo/
+.kilocode/
+.codex/
+.vscode/
+GEMINI.md

@@ -1,0 +1,133 @@
+// StrictConcurrency.xcconfig
+//
+// Measured settings for the staged Swift 6 concurrency migration.
+// Full measurements, diagnostic categories and rationale:
+//   docs/swift6-concurrency-assessment.md
+//
+// This file changes NOTHING until a target's build configuration is pointed at
+// it (Xcode: project navigator > target > Info > Configurations > Based on
+// Configuration File). It is committed unwired on purpose, so that the first
+// commit of this migration touches no target settings and therefore cannot
+// conflict with an in-flight branch's project.pbxproj.
+//
+// Measured on Apple Swift 6.4 (swiftlang-6.4.0.20.104) / Xcode 27.0 (27A5194q),
+// against arm64-apple-ios18.4-simulator, Debug configuration.
+//
+// HARD CONSTRAINT: never set these on the `xcodebuild` command line for this
+// project. A command-line setting also applies to the SwiftPM package targets,
+// and SWIFT_STRICT_CONCURRENCY=complete crashes the Swift compiler while it
+// builds the vendor SDK's FirebaseAuth target. These settings must stay scoped
+// to this project's own targets.
+
+
+// ---------------------------------------------------------------------------
+// Stage 1 - UI test target (CatCareCalendarUITests)
+// ---------------------------------------------------------------------------
+// Verified: ** TEST BUILD SUCCEEDED **, 1145 warnings -> 6.
+// 1144 of those 1145 warnings came from one file,
+// CatCareCalendarUITests/CriticalFlowsUITests.swift, because XCUIApplication is
+// main-actor-isolated while XCTest methods are nonisolated.
+//
+// Apply to the UI test target ONLY. Do not apply to CatCareCalendarTests: that
+// Swift Testing suite already produces zero warnings under `complete`, and
+// forcing main-actor isolation on it would serialise a suite that currently
+// runs in parallel, for no diagnostic benefit.
+//
+//   SWIFT_STRICT_CONCURRENCY = complete
+//   SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+//
+// 5 override-isolation warnings remain after this, all in CriticalFlowsUITests:
+// init(), init(invocation:), init(selector:), setUpWithError(),
+// tearDownWithError(). Each needs its isolation reconciled with the nonisolated
+// XCTestCase declaration it overrides.
+
+
+// ---------------------------------------------------------------------------
+// Stage 3 - app target, warning mode
+// ---------------------------------------------------------------------------
+// Measured: 19 warnings in 14 files, full coverage (163 of 167 app files), and
+// 0 errors ONCE the toolchain bug at Views/NotificationSettingsView.swift:64
+// is worked around.
+//
+// CORRECTION (verified by building it): line 64 is the trailing
+// .settingsCardRowStyle() of `statusSection`, NOT the `notificationTogglesSection`
+// declaration three lines below it. Extracting notificationTogglesSection alone
+// does not clear the error - it only moves the reported line. `statusSection` is
+// the expression that has to move into its own View struct. Both sections were
+// extracted in the end (NotificationPermissionSection and
+// NotificationTogglesSection), and the app target then built with 0 errors.
+//
+// Re-measured after that extraction on the same toolchain: 19 warnings in 13
+// files, 169 of 169 app files, identical across two clean builds. The file count
+// is 13 rather than 14 because the Views/Cat/EnhancedCatCardView.swift
+// `import SwiftData` defect was fixed at the same time.
+//
+// Until the extraction lands, this setting FAILS the build on that one compiler
+// defect ("failed to produce diagnostic for expression").
+//
+//   SWIFT_STRICT_CONCURRENCY = complete
+//
+// SWIFT_STRICT_CONCURRENCY = targeted is deliberately not offered: it was
+// measured and produces the same single warning as the baseline. It buys
+// nothing here.
+
+
+// ---------------------------------------------------------------------------
+// Stage 5 - app target, default actor isolation (DECIDE ON EVIDENCE, NOT NOW)
+// ---------------------------------------------------------------------------
+// Measured cheaper up front than plain `complete`: 15 warnings in 9 files
+// against 19 in 14, at equal full coverage. It removes the static-singleton and
+// main-actor-UIKit categories outright.
+//
+// It is not a free win. It moves the cost into the SwiftData @Model types -
+// 9 warnings across Models/Cat.swift, Models/CareTask.swift and
+// Models/TaskAssistantViewModel.swift - which is the part of this local-first
+// codebase that most deserves care. Re-measure before choosing.
+//
+//   SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+//   SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT = YES
+//
+// RE-MEASURED 2026-09-09, against this branch's finished state rather than the
+// pre-stage-4 baseline. Isolation default only; the NonisolatedNonsending flag
+// was NOT set, so this is not comparable with the 15/9 figure above.
+//   Baseline, `complete` alone:            0 warnings from repository files.
+//   With SWIFT_DEFAULT_ACTOR_ISOLATION:   21 warnings in 9 files.
+// So the setting adds 21 warnings to a clean branch. 8 of the 21 sit in the two
+// files that hold all five @Model types (Models/Cat.swift, Models/CareTask.swift).
+// Recommendation on this evidence: do not adopt it. It relocates the cost into
+// the SwiftData models, which is the least safe place in a local-first app to
+// take on new isolation debt. Full breakdown: the stage 5 section of
+// docs/swift6-concurrency-assessment.md.
+
+
+// ---------------------------------------------------------------------------
+// Stage 6 - language mode, LAST
+// ---------------------------------------------------------------------------
+// Flip this only once stage 3 reports 0 warnings. NOT MET as of 2026-09-09: a clean
+// build reports 0 warnings from repository files but 2 `#Predicate` macro-expansion warnings, both
+// "this is an error in the Swift 6 language mode". See the stage 6 section of
+// docs/swift6-concurrency-assessment.md. Count macro diagnostics separately from path-scoped ones. It does NOT raise the minimum
+// iOS version: 10 builds against iOS 18.4 produced zero availability
+// diagnostics in any stage. iOS 18 remains the minimum.
+//
+//   SWIFT_VERSION = 6.0
+//
+// Keep these three Swift 6.2-era APIs out of the app target while iOS 18 is the
+// minimum - each was probed and each carries an iOS 26.0 floor:
+//   Task.immediate, InlineArray, withTaskPriorityEscalationHandler
+// These were probed and ARE available on iOS 18.4:
+//   Synchronization.Mutex, Synchronization.Atomic, isolated deinit, Task(name:)
+
+
+// ---------------------------------------------------------------------------
+// Measurement aid, not a shipping setting
+// ---------------------------------------------------------------------------
+// Intended to raise how far a build gets before the module stops. Measured: it
+// helps a WARNING-mode build (it took the main-actor warning stage from 143 to
+// the full 163 of 167 files) but it does NOT help error mode - Swift 6 mode fell
+// from 142 files to 103 with the flag. Error mode never reached more than 142,
+// against 163 in warning mode, and its coverage was not reproducible between
+// runs. That gap is the reason this migration measures in warning mode and flips
+// the language mode once, at the end.
+//
+//   OTHER_SWIFT_FLAGS = $(inherited) -continue-building-after-errors
