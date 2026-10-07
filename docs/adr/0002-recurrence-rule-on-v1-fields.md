@@ -5,7 +5,7 @@ date: 2026-09-28
 
 # The recurrence rule stays on the V1 stored fields
 
-The recurrence rule ([#17](https://github.com/bckizildemir/CatCareCalendar/issues/17)) round-trips
+The recurrence rule ([#1](https://github.com/bckizildemir/Purrtine/issues/1)) round-trips
 between the stored `CareTaskSchedule` fields and the form's `RepeatConfiguration` without a new
 schema version. The old mapping was lossy for three frequencies. Two of them are recovered from
 fields V1 already stores; the third is made lossless by definition instead of by a new stored case.

@@ -13,6 +13,7 @@
 > - **Issues #12, #13, #14 and #15 are now closed.** The report's "agent-ready" framing and the
 >   handoff's frontier table describe July's state. #16–#21 are still open. Check the tracker, and
 >   check the code, before you start any of them.
+> - **Issue numbers, 2026-10-07:** the tracker moved to `bckizildemir/Purrtine`. Old open issues CatCareCalendar#17–#21 are now Purrtine [#1](https://github.com/bckizildemir/Purrtine/issues/1)–[#5](https://github.com/bckizildemir/Purrtine/issues/5), same order. CatCareCalendar#12–#16 were closed and stay in the old private repo. Bare numbers in the prose below are the old CatCareCalendar numbers.
 > - Line counts and line numbers quoted below have drifted. Measured 2026-09-08:
 >   `TaskAddView.swift` is 663 lines (the report says 1477), `TaskEditView.swift` 792 (781),
 >   `CareTask.swift` 749, `NotificationManager.swift` 762. Re-measure before quoting.
@@ -31,7 +32,7 @@ grilling loop) was not run — this was an unattended pass, and no interface has
 The review was **read-only**: no code was modified, and no build, test or simulator run was performed.
 Every claim below is static evidence with a `path:line` citation. Verify before acting on any of it.
 
-Tracked as issues [#12–#21](https://github.com/bckizildemir/CatCareCalendar/issues?q=is%3Aissue+label%3Aready-for-agent%2Cready-for-human).
+Tracked as issues CatCareCalendar#12–#21. The open ones moved to [Purrtine #1–#5](https://github.com/bckizildemir/Purrtine/issues?q=is%3Aissue+label%3Aready-for-human).
 
 ## Vocabulary
 
@@ -56,25 +57,25 @@ replacing it.
 
 | # | Candidate | Strength | Issue |
 | --- | --- | --- | --- |
-| 1 | [The care-task mutation seam](#1--the-care-task-mutation-seam) | **Strong** | [#16](https://github.com/bckizildemir/CatCareCalendar/issues/16) |
-| 2 | [The recurrence rule as a module](#2--the-recurrence-rule-as-a-module) | **Strong** | [#17](https://github.com/bckizildemir/CatCareCalendar/issues/17) |
-| 3 | [The task form draft](#3--the-task-form-draft) | **Strong** | [#18](https://github.com/bckizildemir/CatCareCalendar/issues/18) |
-| 4 | [One understood intent for the Task Assistant](#4--one-understood-intent-for-the-task-assistant) | Worth exploring | [#19](https://github.com/bckizildemir/CatCareCalendar/issues/19) |
-| 5 | [The presentation family: two deep, three shallow](#5--the-presentation-family-two-deep-three-shallow) | Worth exploring | [#20](https://github.com/bckizildemir/CatCareCalendar/issues/20) |
-| 6 | [The launch sequence as one interface](#6--the-launch-sequence-as-one-interface) | Worth exploring | [#21](https://github.com/bckizildemir/CatCareCalendar/issues/21) |
+| 1 | [The care-task mutation seam](#1--the-care-task-mutation-seam) | **Strong** | CatCareCalendar#16 |
+| 2 | [The recurrence rule as a module](#2--the-recurrence-rule-as-a-module) | **Strong** | [#1](https://github.com/bckizildemir/Purrtine/issues/1) |
+| 3 | [The task form draft](#3--the-task-form-draft) | **Strong** | [#2](https://github.com/bckizildemir/Purrtine/issues/2) |
+| 4 | [One understood intent for the Task Assistant](#4--one-understood-intent-for-the-task-assistant) | Worth exploring | [#3](https://github.com/bckizildemir/Purrtine/issues/3) |
+| 5 | [The presentation family: two deep, three shallow](#5--the-presentation-family-two-deep-three-shallow) | Worth exploring | [#4](https://github.com/bckizildemir/Purrtine/issues/4) |
+| 6 | [The launch sequence as one interface](#6--the-launch-sequence-as-one-interface) | Worth exploring | [#5](https://github.com/bckizildemir/Purrtine/issues/5) |
 | 7 | [One-shot navigation as a value, not six flags](#7--one-shot-navigation-as-a-value-not-six-flags) | Speculative | not ticketed |
 
 Four defects surfaced along the way were split out as directly actionable work:
-[#12](https://github.com/bckizildemir/CatCareCalendar/issues/12) bulk edit reminders,
-[#13](https://github.com/bckizildemir/CatCareCalendar/issues/13) cat rename,
-[#14](https://github.com/bckizildemir/CatCareCalendar/issues/14) caregiver reassignment,
-[#15](https://github.com/bckizildemir/CatCareCalendar/issues/15) dead code.
+CatCareCalendar#12 bulk edit reminders,
+CatCareCalendar#13 cat rename,
+CatCareCalendar#14 caregiver reassignment,
+CatCareCalendar#15 dead code.
 
 ---
 
 ## 1 · The care-task mutation seam
 
-**Strong** · in-process · locality · issue [#16](https://github.com/bckizildemir/CatCareCalendar/issues/16)
+**Strong** · in-process · locality · issue CatCareCalendar#16
 
 Every write to a care task must also resync its reminders. Nothing enforces that.
 
@@ -155,18 +156,18 @@ match the store when it returns.
 > `CatCareCalendarApp.swift:48`, settings changes only.
 
 > [!IMPORTANT]
-> **Correction — verified 31 July 2026 while building [#12](https://github.com/bckizildemir/CatCareCalendar/issues/12).**
+> **Correction — verified 31 July 2026 while building CatCareCalendar#12.**
 > Every code-level claim above checks out, and all five bulk defects were reproduced as failing tests
 > before being fixed. But the framing that candidate 1 is "already shipping wrong behaviour" does not
 > hold for the bulk-edit half of it: **`BulkTaskEditView` has no production entry point.** Its only
 > references are its own declaration and its own `#Preview` — no view presents it, and there is no
 > multi-select mode anywhere in the app. No cat owner can currently reach the screen, so none of the
 > five bulk defects can be triggered today. They were latent, not live. The cat-rename leak
-> ([#13](https://github.com/bckizildemir/CatCareCalendar/issues/13)) is reachable and remains the
+> (CatCareCalendar#13) is reachable and remains the
 > candidate's live defect.
 >
 > This also puts candidate 1 in tension with candidate 3's dead-code sweep
-> ([#15](https://github.com/bckizildemir/CatCareCalendar/issues/15)): by that ticket's own rule —
+> (CatCareCalendar#15): by that ticket's own rule —
 > delete what no caller reaches — `BulkTaskEditView` qualifies. Whether the screen gets wired up or
 > deleted is a product call that #15 should make explicitly rather than by omission.
 >
@@ -181,7 +182,7 @@ match the store when it returns.
 
 ## 2 · The recurrence rule as a module
 
-**Strong** · local-substitutable · seam placement · issue [#17](https://github.com/bckizildemir/CatCareCalendar/issues/17)
+**Strong** · local-substitutable · seam placement · issue [#1](https://github.com/bckizildemir/Purrtine/issues/1)
 
 The domain has no name for "the rule that says when this task comes round again". It is currently
 spread across `CareTaskSchedule`, a UI-only `RepeatConfiguration`, and a 15-field notification DTO.
@@ -261,7 +262,7 @@ absorbs time-folding, horizon and per-frequency budgets, with the calendar injec
 
 ## 3 · The task form draft
 
-**Strong** · in-process · testability · issue [#18](https://github.com/bckizildemir/CatCareCalendar/issues/18)
+**Strong** · in-process · testability · issue [#2](https://github.com/bckizildemir/Purrtine/issues/2)
 
 `TaskFormDraft` is the seam between the form and the store — but it covers half the form, so the other
 half is duplicated across two views and one of its fields is never persisted at all.
@@ -329,7 +330,7 @@ validates it, resolves it, and commits it — leaving the views with pickers and
 
 ## 4 · One understood intent for the Task Assistant
 
-**Worth exploring** · ports & adapters · issue [#19](https://github.com/bckizildemir/CatCareCalendar/issues/19)
+**Worth exploring** · ports & adapters · issue [#3](https://github.com/bckizildemir/Purrtine/issues/3)
 
 The **Task Assistant** re-encodes the same complete / postpone / open triple in four parallel enums,
 switched over 19 times.
@@ -413,7 +414,7 @@ typed outcome the view can read instead of the message list.
 
 ## 5 · The presentation family: two deep, three shallow
 
-**Worth exploring** · in-process · deletion test · issue [#20](https://github.com/bckizildemir/CatCareCalendar/issues/20)
+**Worth exploring** · in-process · deletion test · issue [#4](https://github.com/bckizildemir/Purrtine/issues/4)
 
 `CLAUDE.md` calls these the seam business-logic tests target. Two of the five are genuinely deep. Three
 are pure functions extracted for testability, and the decisions stayed in the views.
@@ -513,7 +514,7 @@ predicates the views keep re-implementing down into one deep module.
 
 ## 6 · The launch sequence as one interface
 
-**Worth exploring** · in-process · issue [#21](https://github.com/bckizildemir/CatCareCalendar/issues/21)
+**Worth exploring** · in-process · issue [#5](https://github.com/bckizildemir/Purrtine/issues/5)
 
 The app entry point orchestrates 11 collaborators in an order nothing enforces, and the one ordering
 constraint that matters fails silently when violated.
@@ -638,7 +639,7 @@ takes, so a route sets one field and consumption is the reset.
 
 ## Top recommendation
 
-### [1 · The care-task mutation seam](#1--the-care-task-mutation-seam) — issue [#16](https://github.com/bckizildemir/CatCareCalendar/issues/16)
+### [1 · The care-task mutation seam](#1--the-care-task-mutation-seam) — issue CatCareCalendar#16
 
 It is the only candidate where the missing depth is already shipping wrong behaviour: five bulk
 operations and every cat rename leave reminders pointing at stale times, stale names, and deleted
@@ -659,9 +660,9 @@ by risk: the duplication is loud and static, whereas 1 and 2 are quiet and produ
 
 ### Suggested order of work
 
-1. **[#12](https://github.com/bckizildemir/CatCareCalendar/issues/12), [#13](https://github.com/bckizildemir/CatCareCalendar/issues/13)** — the two shippable defects behind candidate 1. No design needed.
-2. **[#16](https://github.com/bckizildemir/CatCareCalendar/issues/16)** — the mutation module, once those are green. Grill the interface first.
-3. **[#17](https://github.com/bckizildemir/CatCareCalendar/issues/17)** — the recurrence rule. Independent of the above; can run in parallel.
+1. **CatCareCalendar#12, CatCareCalendar#13** — the two shippable defects behind candidate 1. No design needed.
+2. **CatCareCalendar#16** — the mutation module, once those are green. Grill the interface first.
+3. **[#1](https://github.com/bckizildemir/Purrtine/issues/1)** — the recurrence rule. Independent of the above; can run in parallel.
 4. Everything else on the frontier.
 
 Issues **#16–#21 are deepenings, not implementations.** A chosen deepening belongs in `/grill-with-docs`

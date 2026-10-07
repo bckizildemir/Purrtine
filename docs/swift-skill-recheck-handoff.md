@@ -65,10 +65,10 @@ That routing was verified against these exact files on 2026-08-14 — it is what
 
 These five files were chosen because the architecture review builds on them:
 
-- **#16** (care-task mutation seam) — top recommendation. Touches files 1, 2, 3, 5.
-- **#17** (recurrence rule) — second. Touches file 2.
+- **CatCareCalendar#16** (care-task mutation seam) — top recommendation. Touches files 1, 2, 3, 5.
+- **[#1](https://github.com/bckizildemir/Purrtine/issues/1)** (recurrence rule, old CatCareCalendar#17) — second. Touches file 2.
 
-Both are *deepenings*, and per `docs/architecture-review-handoff.md` they need a design conversation before any Swift is written. This review pass is useful input to that conversation, not a substitute for it. **#28** and **#33** are build-ready now if you want code work instead.
+Both are *deepenings*, and per `docs/architecture-review-handoff.md` they need a design conversation before any Swift is written. This review pass is useful input to that conversation, not a substitute for it. **CatCareCalendar#28** and **CatCareCalendar#33** are build-ready now if you want code work instead.
 
 ## Known limits of the new setup
 
