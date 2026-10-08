@@ -761,6 +761,20 @@ final class NotificationManager:
     func scheduleDebugNotification(_ request: UNNotificationRequest) async throws {
         try await notificationCenter.add(request)
     }
+
+    /// Delivered notifications for the debug Notification History screen, read through the
+    /// injected client so the view never touches `UNUserNotificationCenter` itself.
+    func deliveredNotificationsForHistory() async -> [DeliveredNotificationSnapshot] {
+        await notificationCenter.deliveredNotificationSnapshots()
+    }
+
+    /// Pending ad-hoc test notifications (`userInfo["testNotification"] == true`) for the debug
+    /// Notification History screen; care-task reminders and snoozes are left out.
+    func pendingTestNotificationRequests() async -> [UNNotificationRequest] {
+        await notificationCenter.pendingNotificationRequests().filter { request in
+            request.content.userInfo["testNotification"] as? Bool == true
+        }
+    }
     #endif
 
     private var badgeNumber: NSNumber? {
