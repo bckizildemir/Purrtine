@@ -58,6 +58,13 @@ nonisolated final class PhotoManager: Sendable {
         )
     }
 
+    /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores. `nil` when
+    /// the data cannot be decoded.
+    @concurrent
+    static func preparedJPEGData(from data: Data) async -> Data? {
+        downsampledJPEGData(from: data, maxPixelSize: photoMaxPixelSize)
+    }
+
     // MARK: - Directory Management
 
     private func createPhotosDirectoryIfNeeded() {
