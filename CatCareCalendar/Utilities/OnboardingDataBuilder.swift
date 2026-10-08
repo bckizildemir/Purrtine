@@ -11,7 +11,7 @@ struct OnboardingDataBuilder {
     let taskWriter: any CareTaskWriting
     var now: () -> Date = Date.init
     var savePhoto: (Data, UUID) -> String? = { data, catID in
-        PhotoManager.shared.savePhoto(data, for: catID)
+        try? PhotoManager.shared.savePhoto(data, for: catID)
     }
 
     /// Throws `CareTaskRemindersOutOfSyncError` when the cat and every starter task were saved but

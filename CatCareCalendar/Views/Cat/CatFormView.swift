@@ -513,10 +513,10 @@ struct CatFormView: View {
         let capturedImage = formData.capturedImage
         return await Task.detached {
             if let photoData {
-                return PhotoManager.shared.savePhoto(photoData, for: catId)
+                return try? PhotoManager.shared.savePhoto(photoData, for: catId)
             }
             if let capturedImage {
-                return PhotoManager.shared.saveUIImage(capturedImage, for: catId)
+                return try? PhotoManager.shared.saveUIImage(capturedImage, for: catId)
             }
             return nil
         }.value
