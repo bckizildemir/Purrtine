@@ -70,7 +70,8 @@ A count below that carries its own date was measured on that date; the others we
   Read the source before you assume otherwise.
 - Route all local notification scheduling through `NotificationManager`. Treat any direct
   `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified
-  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`: every
-  match is under `Utilities/`. The DEBUG Notification History screen reads through
+  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which
+  prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes
+  `.current()` as a default argument). The DEBUG Notification History screen reads through
   `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and
   `pendingTestNotificationRequests()` (#8).

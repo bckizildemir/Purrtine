@@ -37,12 +37,14 @@ nonisolated struct DeliveredNotificationSnapshot: Equatable, Identifiable, Senda
         body: String = "",
         date: Date = .distantPast
     ) {
-        self.identifier = identifier
-        self.taskId = (userInfo["taskId"] as? String).flatMap(UUID.init(uuidString:))
-        self.isTestNotification = userInfo["testNotification"] as? Bool == true
-        self.title = title
-        self.body = body
-        self.date = date
+        self.init(
+            identifier: identifier,
+            taskId: (userInfo["taskId"] as? String).flatMap(UUID.init(uuidString:)),
+            isTestNotification: userInfo["testNotification"] as? Bool == true,
+            title: title,
+            body: body,
+            date: date
+        )
     }
 }
 
