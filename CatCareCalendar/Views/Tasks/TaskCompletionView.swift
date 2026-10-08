@@ -81,7 +81,11 @@ struct TaskCompletionView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    completeButton
+                    if submission.isSaving {
+                        SheetSavingIndicator()
+                    } else {
+                        completeButton
+                    }
                 }
             }
         }
@@ -335,7 +339,7 @@ var cancelButton: some View {
 }
 
 var completeButton: some View {
-    SheetConfirmButton(isInProgress: submission.isSaving, action: submitCompletion)
+    SheetConfirmButton(action: submitCompletion)
         .disabled(isLoadingPhotos || selectedCaregiver == nil || selectedCats.isEmpty)
     }
 }
