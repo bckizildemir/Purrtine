@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 
 /// Turns the onboarding answers into the first cat and its starter tasks.
@@ -10,16 +11,24 @@ import SwiftData
 struct OnboardingDataBuilder {
     let taskWriter: any CareTaskWriting
     var now: () -> Date = Date.init
-    var savePhoto: (Data, UUID) -> String? = { data, catID in
-        try? PhotoManager.shared.savePhoto(data, for: catID)
+    var savePhoto: (Data, UUID) async throws -> String = { data, catID in
+        try await PhotoManager.shared.save(.data(data), for: catID)
     }
+    var deletePhoto: (String) -> Void = { PhotoManager.shared.deletePhoto(at: $0) }
+    var saveContext: (ModelContext) throws -> Void = { try $0.save() }
+
+    private let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "Onboarding")
 
     /// Throws `CareTaskRemindersOutOfSyncError` when the cat and every starter task were saved but
     /// the reminders of some tasks could not be scheduled. A `CancellationError` passes through
     /// unwrapped and may arrive after the commit, so the data can stand then too. Any other error
     /// comes from the one commit and means nothing was saved: the cat and its tasks are taken back
-    /// out of the context as well, so a later save cannot commit them without reminders. Stale
-    /// reminders stay stale until the task is next written or a notification setting changes.
+    /// out of the context as well, so a later save cannot commit them without reminders, and the
+    /// photo written for this attempt is deleted. Stale reminders stay stale until the task is next
+    /// written or a notification setting changes.
+    ///
+    /// The photo is optional: when it cannot be written, the failure is logged and the cat is saved
+    /// without it. The caregiver can add one later in Edit Cat.
     @discardableResult
     func createCatAndTasks(
         from tempData: TempCatData,
@@ -32,16 +41,20 @@ struct OnboardingDataBuilder {
         }
 
         let cat = makeCat(from: tempData)
-
-        if let photoData = tempData.photoData,
-           let savedPath = savePhoto(photoData, cat.id) {
-            cat.photoURLs = [savedPath]
+        let photoPath = await savedPhotoPath(tempData.photoData, for: cat.id)
+        if let photoPath {
+            cat.photoURLs = [photoPath]
         }
 
         modelContext.insert(cat)
         let tasks = makeTasks(for: cat, selectedTasks: selectedTasks, in: modelContext)
         guard tasks.isEmpty == false else {
-            try modelContext.save()
+            do {
+                try saveContext(modelContext)
+            } catch {
+                unstage(cat, [], photoPath: photoPath, in: modelContext)
+                throw error
+            }
             return cat
         }
 
@@ -50,8 +63,18 @@ struct OnboardingDataBuilder {
         for task in tasks {
             modelContext.insert(task)
         }
-        try await saveTasks(tasks, of: cat, in: modelContext)
+        try await saveTasks(tasks, of: cat, photoPath: photoPath, in: modelContext)
         return cat
+    }
+
+    private func savedPhotoPath(_ photoData: Data?, for catId: UUID) async -> String? {
+        guard let photoData else { return nil }
+        do {
+            return try await savePhoto(photoData, catId)
+        } catch {
+            logger.error("Onboarding cat saved without its photo: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     /// The first write commits the cat and every task; a failure there is "not saved", so the rest
@@ -60,7 +83,12 @@ struct OnboardingDataBuilder {
     /// Every later write only resyncs, so any failure from one of them leaves its task saved with
     /// stale reminders. Those writes all run even after one fails: stopping early would only leave
     /// the remaining tasks without reminders too.
-    private func saveTasks(_ tasks: [CareTask], of cat: Cat, in modelContext: ModelContext) async throws {
+    private func saveTasks(
+        _ tasks: [CareTask],
+        of cat: Cat,
+        photoPath: String?,
+        in modelContext: ModelContext
+    ) async throws {
         var staleTaskIds: [UUID] = []
         var firstStaleError: (any Error)?
 
@@ -73,7 +101,7 @@ struct OnboardingDataBuilder {
             } catch let error as CancellationError {
                 throw error
             } catch where index == 0 {
-                unstage(cat, tasks, in: modelContext)
+                unstage(cat, tasks, photoPath: photoPath, in: modelContext)
                 throw error
             } catch {
                 staleTaskIds.append(task.id)
@@ -86,13 +114,16 @@ struct OnboardingDataBuilder {
         }
     }
 
-    /// Deletes whatever of the onboarding data is still staged, schedules first. Nothing of it was
-    /// committed, so this only takes it back out of the context.
-    private func unstage(_ cat: Cat, _ tasks: [CareTask], in modelContext: ModelContext) {
+    /// Deletes whatever of the onboarding data is still staged, schedules first, and the photo file
+    /// written for it. Nothing of it was committed, so this only takes it back out of the context.
+    private func unstage(_ cat: Cat, _ tasks: [CareTask], photoPath: String?, in modelContext: ModelContext) {
         let stagedIds = Set(modelContext.insertedModelsArray.map(\.persistentModelID))
         let models: [any PersistentModel] = tasks.flatMap(\.schedules) + tasks + [cat]
         for model in models where stagedIds.contains(model.persistentModelID) {
             modelContext.delete(model)
+        }
+        if let photoPath {
+            deletePhoto(photoPath)
         }
     }
 

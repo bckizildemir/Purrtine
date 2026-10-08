@@ -123,6 +123,18 @@ nonisolated final class PhotoManager: Sendable {
         return try writeJPEG(jpeg, for: catId)
     }
 
+    /// Saves `photo` off the caller's actor: the decode, the encode and the disk write must not
+    /// block the main actor.
+    @concurrent
+    func save(_ photo: PendingCatPhoto, for catId: UUID) async throws -> String {
+        switch photo {
+        case .data(let data):
+            try savePhoto(data, for: catId)
+        case .image(let image):
+            try saveUIImage(image, for: catId)
+        }
+    }
+
     /// Creates the photos folder first: it is made once at launch, and a folder removed since then
     /// would otherwise fail every write.
     private func writeJPEG(_ data: Data, for catId: UUID) throws -> String {
