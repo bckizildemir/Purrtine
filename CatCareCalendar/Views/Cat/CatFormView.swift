@@ -128,7 +128,7 @@ struct CatFormView: View {
                     }) {
                         Text(.onboardingFirstCatContinue)
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(isSaveEnabled ? .white : .gray)
+                            .foregroundStyle(isSaveEnabled ? .white : .gray)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(
@@ -524,7 +524,12 @@ struct CatFormView: View {
         let photoChange = formData.editPhotoChange(hasChangedPhoto: hasChangedPhoto, includingPhoto: includingPhoto)
 
         do {
-            try await CatFormSaver().update(cat, with: formData.detailsForEditedCat, photo: photoChange, in: modelContext)
+            try await CatFormSaver().update(
+                cat,
+                with: formData.detailsForEditedCat,
+                photo: photoChange,
+                in: modelContext
+            )
             // Pending reminders carry the cat names they were scheduled with, so the rename only
             // reaches them through a reschedule. Refreshed unconditionally rather than gated on a
             // name comparison: this wiring is the one part of the fix a unit test cannot reach, and

@@ -72,7 +72,9 @@ struct OnboardingDataBuilder {
         do {
             return try await savePhoto(photoData, catId)
         } catch {
-            logger.error("Onboarding cat saved without its photo: \(String(describing: error), privacy: .public)")
+            logger.error(
+                "Onboarding cat saved without its photo: \(String(describing: error), privacy: .public)"
+            )
             return nil
         }
     }

@@ -130,6 +130,24 @@ struct PhotoManagerTests {
     }
 
     @Test
+    func aDirectoryThatCannotBeWrittenToThrowsWriteFailed() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let fileManager = FileManager.default
+        try fileManager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: fixture.directory.path)
+        defer { try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.directory.path) }
+
+        let error = try #require(throws: PhotoSaveError.self) {
+            try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+        }
+
+        guard case .writeFailed = error else {
+            Issue.record("Expected writeFailed, got \(error)")
+            return
+        }
+    }
+
+    @Test
     func aMissingPhotosDirectoryIsCreatedAgainBeforeTheWrite() throws {
         let fixture = try makeFixture()
         defer { fixture.cleanup() }

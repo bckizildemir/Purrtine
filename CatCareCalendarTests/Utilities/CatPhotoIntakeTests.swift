@@ -31,7 +31,8 @@ struct CatPhotoIntakeTests {
     @Test
     func aDecodablePhotoIsReadyAsAJPEGWithinThePixelLimit() async throws {
         let size = CGSize(width: 2_600, height: 1_300)
-        let png = try #require(UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1))).image { context in
+        let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))
+        let png = try #require(renderer.image { context in
             UIColor.systemOrange.setFill()
             context.fill(CGRect(origin: .zero, size: size))
         }.pngData())
