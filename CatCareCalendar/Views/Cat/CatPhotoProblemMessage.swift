@@ -38,7 +38,11 @@ struct CatPhotoProblemMessage: View {
         }
         .accessibilityElement(children: .contain)
         .task(id: problem) {
-            AccessibilityNotification.Announcement(String(localized: message)).post()
+            // High priority: the message often appears while the photo picker is closing, and the
+            // focus change that follows would cut off a default-priority announcement.
+            var announcement = AttributedString(String(localized: message))
+            announcement.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(announcement).post()
         }
     }
 

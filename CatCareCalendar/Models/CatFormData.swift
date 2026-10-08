@@ -98,6 +98,16 @@ extension CatFormData {
         return nil
     }
 
+    /// What Edit Cat does with the cat's current photo. `includingPhoto: false` is the "Save without
+    /// photo" choice after a failed write: the other edits are saved and the current photo stays.
+    func editPhotoChange(hasChangedPhoto: Bool, includingPhoto: Bool) -> CatFormSaver.PhotoChange {
+        guard hasChangedPhoto, includingPhoto else { return .keep }
+        if let pendingPhoto {
+            return .replace(pendingPhoto)
+        }
+        return .remove
+    }
+
     /// The fields of a new cat, as Add Cat has always saved them.
     var detailsForNewCat: CatDetails {
         let trimmedBreed = breed.trimmingCharacters(in: .whitespacesAndNewlines)

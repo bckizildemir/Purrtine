@@ -198,7 +198,7 @@ struct CatFormView: View {
         .onChange(of: formData.capturedImage) { _, newValue in
             if newValue != nil {
                 formData.photoData = nil // Clear photo data when camera image is captured
-                formData.photoProblem = nil
+                discardPhotoPick()
                 hasChangedPhoto = true
             }
         }
@@ -420,7 +420,7 @@ struct CatFormView: View {
         Button(action: {
             formData.photoData = nil
             formData.capturedImage = nil
-            formData.photoProblem = nil
+            discardPhotoPick()
             hasChangedPhoto = true
             formData.showingPhotoOptions = false
         }) {
@@ -434,6 +434,14 @@ struct CatFormView: View {
     }
 
     // MARK: - Actions
+    /// Forgets the photo-library pick, so a load still running for it is dropped when it ends
+    /// instead of overwriting the photo the caregiver chose since.
+    private func discardPhotoPick() {
+        formData.selectedPhoto = nil
+        formData.isLoadingPhoto = false
+        formData.photoProblem = nil
+    }
+
     /// Loads and downsamples a photo-library pick. Save and Continue stay disabled until it ends.
     /// A failed pick keeps the photo the form already had and shows why under the photo circle.
     private func loadSelectedPhoto(_ item: PhotosPickerItem?) {
@@ -513,14 +521,7 @@ struct CatFormView: View {
     }
 
     private func saveExistingCat(_ cat: Cat, includingPhoto: Bool) async {
-        let photoChange: CatFormSaver.PhotoChange
-        if hasChangedPhoto == false || includingPhoto == false {
-            photoChange = .keep
-        } else if let pendingPhoto = formData.pendingPhoto {
-            photoChange = .replace(pendingPhoto)
-        } else {
-            photoChange = .remove
-        }
+        let photoChange = formData.editPhotoChange(hasChangedPhoto: hasChangedPhoto, includingPhoto: includingPhoto)
 
         do {
             try await CatFormSaver().update(cat, with: formData.detailsForEditedCat, photo: photoChange, in: modelContext)

@@ -3152,13 +3152,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The photo couldn't be saved on this iPhone. You can try again, or save the other details without it."
+            "value" : "The photo couldn't be saved on this device. You can try again, or save the other details without it."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fotoğraf bu iPhone'a kaydedilemedi. Tekrar deneyebilir ya da diğer bilgileri fotoğrafsız kaydedebilirsin."
+            "value" : "Fotoğraf bu cihaza kaydedilemedi. Tekrar deneyebilir ya da diğer bilgileri fotoğrafsız kaydedebilirsin."
           }
         }
       }

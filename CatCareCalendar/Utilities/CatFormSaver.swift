@@ -13,7 +13,7 @@ import SwiftData
 @MainActor
 struct CatFormSaver {
     /// What an edit does with the cat's current photo.
-    enum PhotoChange {
+    enum PhotoChange: Equatable {
         case keep
         case remove
         case replace(PendingCatPhoto)

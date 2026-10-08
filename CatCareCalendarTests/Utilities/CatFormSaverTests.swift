@@ -32,6 +32,23 @@ struct CatFormSaverTests {
         #expect(context.hasChanges == false)
     }
 
+    /// "Save without photo" in Add Cat.
+    @Test
+    func addWithoutAPhotoWritesNoFile() async throws {
+        let context = container.mainContext
+        var photoWrites = 0
+        let sut = CatFormSaver(savePhoto: { _, _ in
+            photoWrites += 1
+            return "new.jpg"
+        })
+
+        let cat = try await sut.add(details, photo: nil, in: context)
+
+        #expect(photoWrites == 0)
+        #expect(cat.photoURLs.isEmpty)
+        #expect(try context.fetch(FetchDescriptor<Cat>()).count == 1)
+    }
+
     /// The form stays open on this error, so nothing may be left staged for a retry to duplicate.
     @Test
     func aFailedPhotoWriteInAddStagesNothing() async throws {
