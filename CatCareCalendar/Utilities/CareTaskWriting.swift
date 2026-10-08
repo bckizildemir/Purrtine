@@ -13,8 +13,9 @@ import SwiftData
 ///   cannot commit it; changes the caller staged before the call, such as form edits to an existing
 ///   task, stay pending. A task that was never committed counts as the verb's own and is removed.
 ///   The one exception is `delete`: its staged delete cannot be undone, so a later save commits it.
-///   The verb drops the task's snoozes at once, and the save that later commits the delete runs one
-///   full resync, so the task's reminders still go (#7).
+///   The verb drops the task's snoozes at once, and a later explicit `save()` that commits the
+///   delete runs one full resync, so the task's reminders still go (#7). Whether an autosave that
+///   commits it does the same is unverified; see `CareTaskWriter`.
 /// - `CareTaskRemindersOutOfSyncError` means the write committed but the reminders could not be
 ///   brought in line. The data edit stands; only the reminders are stale.
 ///

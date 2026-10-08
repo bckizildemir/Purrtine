@@ -240,7 +240,8 @@ struct CareTaskWriterTests {
     }
 
     /// A failed delete cannot be undone — see `CareTaskWriter.delete` — so it stays staged. What the
-    /// test pins is that nothing else is lost: no resync runs and the unrelated change stays.
+    /// test pins is that nothing else is lost: the failure itself runs no resync, and the unrelated
+    /// change stays. The save at the end lands the delete, so the test awaits its follow-up resync.
     @Test
     func aFailedCommitOfADeleteLeavesItStagedAndKeepsUnrelatedPendingChanges() async throws {
         let cat = Cat(name: "Mochi")
@@ -248,16 +249,20 @@ struct CareTaskWriterTests {
         let (task, _) = makeTask(title: "Feed Mochi", cats: [cat])
         try await sut.save(task, in: context)
         cat.name = "Miso"
+        let writer = failingWriter()
 
         await #expect(throws: SaveFailure.self) {
-            try await failingWriter().delete(task, in: context)
+            try await writer.delete(task, in: context)
         }
 
         #expect(context.deletedModelsArray.contains { $0.persistentModelID == task.persistentModelID })
         #expect(spy.resyncAttemptCount == 1)
         #expect(cat.hasChanges)
         try context.save()
+        await writer.pendingFollowUp?.value
         #expect(try context.fetch(FetchDescriptor<Cat>()).map(\.name) == ["Miso"])
+        // The first save's resync, then the follow-up for the landed delete.
+        #expect(spy.resyncAttemptCount == 2)
     }
 
     /// The user asked for the task to go, so its snoozes go at once, even if the commit failed.
@@ -266,11 +271,16 @@ struct CareTaskWriterTests {
         let (task, _) = makeTask(title: "Feed Mochi")
         try await sut.save(task, in: context)
 
+        let writer = failingWriter()
+
         await #expect(throws: SaveFailure.self) {
-            try await failingWriter().delete(task, in: context)
+            try await writer.delete(task, in: context)
         }
 
         #expect(spy.cancelledSnoozeTaskIds == [task.id])
+        // Lands the delete, so the watch stops observing before the test ends.
+        try context.save()
+        await writer.pendingFollowUp?.value
     }
 
     /// A failed delete stays staged, so some later save commits it. That save, whoever makes it, must
@@ -305,6 +315,7 @@ struct CareTaskWriterTests {
         try context.save()
         await writer.pendingFollowUp?.value
 
+        // The first save's resync and the one follow-up; the second save adds nothing.
         #expect(spy.resyncAttemptCount == 2)
     }
 
@@ -321,7 +332,24 @@ struct CareTaskWriterTests {
         try context.save()
 
         #expect(writer.pendingFollowUp == nil)
+        // One resync each for the save and the delete verbs; the plain save adds nothing.
         #expect(spy.resyncAttemptCount == 2)
+    }
+
+    /// A task that was never committed has no delete to land: no later save posts its identifier,
+    /// so a watch for it would observe until the process ends.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/7", id: 7))
+    func aFailedDeleteOfANeverSavedTaskLeavesNothingToWatch() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        context.insert(task)
+        let writer = failingWriter()
+        _ = try? await writer.delete(task, in: context)
+
+        try context.save()
+
+        #expect(writer.pendingFollowUp == nil)
+        #expect(spy.cancelledSnoozeTaskIds == [task.id])
+        #expect(spy.resyncAttemptCount == 0)
     }
 
     // MARK: - snooze
