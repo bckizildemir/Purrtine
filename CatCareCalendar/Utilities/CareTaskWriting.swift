@@ -12,7 +12,9 @@ import SwiftData
 ///   written. What the verb itself staged is taken back out of the context too, so a later save
 ///   cannot commit it; changes the caller staged before the call, such as form edits to an existing
 ///   task, stay pending. A task that was never committed counts as the verb's own and is removed.
-///   The one gap is `delete`: its staged delete cannot be undone, so a later save commits it.
+///   The one exception is `delete`: its staged delete cannot be undone, so a later save commits it.
+///   The verb drops the task's snoozes at once, and the save that later commits the delete runs one
+///   full resync, so the task's reminders still go (#7).
 /// - `CareTaskRemindersOutOfSyncError` means the write committed but the reminders could not be
 ///   brought in line. The data edit stands; only the reminders are stale.
 ///
@@ -26,7 +28,8 @@ protocol CareTaskWriting {
     /// duplicate.
     func save(_ task: CareTask, in context: ModelContext) async throws
 
-    /// Deletes `task`, commits, and resyncs the reminders, which drops the task's.
+    /// Deletes `task`, commits, and resyncs the reminders, which drops the task's. A failed commit
+    /// still drops the task's snoozes; see the type's note on failures.
     func delete(_ task: CareTask, in context: ModelContext) async throws
 
     /// Records a completion of `task`, commits, and resyncs the reminders. Delivered reminders for

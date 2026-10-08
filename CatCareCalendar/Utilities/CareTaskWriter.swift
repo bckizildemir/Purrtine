@@ -2,6 +2,7 @@ import Foundation
 import os
 import SwiftData
 import SwiftUI
+import Synchronization
 
 /// The production `CareTaskWriting`. It owns the commit and the one scheduler call per write, in that
 /// order: change → `save()` → full resync.
@@ -30,6 +31,14 @@ final class CareTaskWriter: CareTaskWriting {
         self.saveContext = saveContext
     }
 
+    /// One watch per context that still holds a failed delete. See `delete`.
+    private var stagedDeleteWatches: [StagedDeleteWatch] = []
+
+    /// The follow-up resync a save most recently started for a failed delete, so a test can await it.
+    var pendingFollowUp: Task<Void, Never>? {
+        stagedDeleteWatches.last?.latestFollowUp.withLock { $0 }
+    }
+
     func save(_ task: CareTask, in context: ModelContext) async throws {
         // Decided before the insert: once inserted, every task looks staged.
         let isNew = task.modelContext == nil || isStaged(task, in: context)
@@ -45,14 +54,22 @@ final class CareTaskWriter: CareTaskWriting {
 
     func delete(_ task: CareTask, in context: ModelContext) async throws {
         let taskId = task.id
-        // No undo: a failed commit leaves the delete staged, and the next save commits it without a
-        // resync, so the task's pending reminders stay until the next full resync. Re-inserting the
-        // task does not restore it: SwiftData drops the task from `Cat.tasks` and its completions
+        let modelId = task.persistentModelID
+        // No undo: a failed commit leaves the delete staged, and a later save commits it. Re-inserting
+        // the task does not restore it: SwiftData drops the task from `Cat.tasks` and its completions
         // from `Caregiver.completions`, and neither survives a re-insert and relink (measured
-        // 2026-09-24). Completing the delete the user asked for is the lesser harm.
-        try commit(in: context) {
-            context.delete(task)
-        } undo: {}
+        // 2026-09-24). Completing the delete the user asked for is the lesser harm, so a failure
+        // arms a watch that resyncs once the delete lands, and drops the task's snoozes at once (#7).
+        do {
+            try commit(in: context) {
+                context.delete(task)
+            } undo: {}
+        } catch {
+            // Armed before the await, so a save that runs during it cannot slip past the watch.
+            watchForStagedDelete(of: modelId, in: context)
+            await scheduler.cancelSnoozedNotifications(forTaskId: taskId)
+            throw error
+        }
         await scheduler.cancelSnoozedNotifications(forTaskId: taskId)
         try await resyncReminders(for: [taskId])
     }
@@ -145,6 +162,19 @@ final class CareTaskWriter: CareTaskWriting {
         context.delete(task)
     }
 
+    /// Adds `modelId` to the context's watch, or starts one. A watch that has seen all its deletes land
+    /// has stopped observing and is dropped here.
+    private func watchForStagedDelete(of modelId: PersistentIdentifier, in context: ModelContext) {
+        stagedDeleteWatches.removeAll(where: \.isFinished)
+        if let watch = stagedDeleteWatches.first(where: { $0.context === context }) {
+            watch.pendingIds.insert(modelId)
+        } else {
+            stagedDeleteWatches.append(
+                StagedDeleteWatch(watching: context, for: modelId, scheduler: scheduler, logger: logger)
+            )
+        }
+    }
+
     // MARK: - Resync
 
     /// Brings every pending reminder in line with the store the verb just committed to. `taskIds`
@@ -200,6 +230,74 @@ final class CareTaskWriter: CareTaskWriting {
             activeSchedule?.isActive = wasActiveScheduleActive
             task.status = status
             task.updatedAt = updatedAt
+        }
+    }
+
+    /// Waits for the save that commits a failed delete, whoever makes it, then runs one full resync,
+    /// so the deleted task stops reminding (#7). One save that lands several pending deletes resyncs
+    /// once. When that save is itself a writer verb, the verb resyncs too; the second pass is accepted.
+    ///
+    /// Lifetime: `NotificationCenter` keeps the observer block, and the block keeps the watch and its
+    /// scheduler, until the last pending delete lands. The watch therefore outlives the writer that
+    /// armed it, such as a Tasks view model's own writer. A delete that never lands (the app quits
+    /// first) keeps the watch until the process ends.
+    ///
+    /// Autosave: the watch reacts to `ModelContext.didSave`, which an explicit `save()` posts. Whether
+    /// an autosave of the main context posts it is unverified: in the unit-test host, autosave did not
+    /// commit a staged delete within 10 seconds (2026-10-08), so the check proved nothing either way.
+    private final class StagedDeleteWatch {
+        private(set) weak var context: ModelContext?
+        var pendingIds: Set<PersistentIdentifier>
+        /// The newest follow-up task. Written from the observer block, which runs on whatever thread
+        /// saved, so it sits behind a lock rather than on the main actor.
+        nonisolated let latestFollowUp = Mutex<Task<Void, Never>?>(nil)
+        private let scheduler: any TaskNotificationScheduling
+        private let logger: Logger
+        private var observer: (any NSObjectProtocol)?
+
+        var isFinished: Bool { observer == nil }
+
+        init(
+            watching context: ModelContext,
+            for modelId: PersistentIdentifier,
+            scheduler: any TaskNotificationScheduling,
+            logger: Logger
+        ) {
+            self.context = context
+            pendingIds = [modelId]
+            self.scheduler = scheduler
+            self.logger = logger
+            // `@Sendable` keeps the block nonisolated: a save may post from another thread, where a
+            // main-actor block would trap. It copies the IDs out, then hops to the main actor.
+            observer = NotificationCenter.default.addObserver(
+                forName: ModelContext.didSave,
+                object: context,
+                queue: nil
+            ) { @Sendable [self] notification in
+                let deletedIds = notification.userInfo?[ModelContext.NotificationKey.deletedIdentifiers.rawValue]
+                    as? [PersistentIdentifier] ?? []
+                let followUp = Task { @MainActor in
+                    await self.resyncIfLanded(deletedIds)
+                }
+                latestFollowUp.withLock { $0 = followUp }
+            }
+        }
+
+        private func resyncIfLanded(_ deletedIds: [PersistentIdentifier]) async {
+            let pendingCount = pendingIds.count
+            pendingIds.subtract(deletedIds)
+            guard pendingIds.count < pendingCount else { return }
+            if pendingIds.isEmpty, let observer {
+                NotificationCenter.default.removeObserver(observer)
+                self.observer = nil
+            }
+            do {
+                try await scheduler.resyncAllCareTaskReminders()
+            } catch is CancellationError {
+                // The next resync rebuilds the reminders from the store.
+            } catch {
+                logger.error("Resync after a staged delete landed failed: \(error.localizedDescription)")
+            }
         }
     }
 }
