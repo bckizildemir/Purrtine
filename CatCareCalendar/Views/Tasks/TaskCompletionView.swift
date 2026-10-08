@@ -8,8 +8,11 @@ struct TaskCompletionView: View {
     let completedForDate: Date?
     let initialNotes: String?
     let initialSelectedCats: [Cat]
-    let onComplete: ([Cat], Caregiver?, String?, [UIImage]?, Date?) -> Void
-    
+    /// Saves the completion. Throws only when nothing was saved; the sheet then stays open with the
+    /// user's input. The caller closes the sheet on success.
+    let onComplete: @MainActor ([Cat], Caregiver?, String?, [UIImage]?, Date?) async throws -> Void
+
+    @State private var submission = TaskCompletionSubmission()
     @State private var selectedCats: Set<Cat> = []
     @State private var selectedCaregiver: Caregiver?
     @State private var notes: String = ""
@@ -51,7 +54,7 @@ struct TaskCompletionView: View {
         completedForDate: Date?,
         initialNotes: String? = nil,
         initialSelectedCats: [Cat] = [],
-        onComplete: @escaping ([Cat], Caregiver?, String?, [UIImage]?, Date?) -> Void
+        onComplete: @escaping @MainActor ([Cat], Caregiver?, String?, [UIImage]?, Date?) async throws -> Void
     ) {
         self.task = task
         self.completedForDate = completedForDate
@@ -82,7 +85,7 @@ struct TaskCompletionView: View {
                 }
             }
         }
-        .interactiveDismissDisabled(hasUnsavedChanges)
+        .interactiveDismissDisabled(hasUnsavedChanges || submission.isSaving)
         .onAppear {
             preselectCats()
             preselectDefaultCaregiver()
@@ -134,7 +137,10 @@ struct TaskCompletionView: View {
         } message: {
             Text(.catAddCameraPermissionMessage)
         }
-        .disabled(isLoadingPhotos)
+        .alert(String(localized: .errorDataSave), isPresented: $submission.isShowingFailure) { } message: {
+            Text(submission.failureMessage)
+        }
+        .disabled(isLoadingPhotos || submission.isSaving)
     }
 }
 
@@ -329,17 +335,27 @@ var cancelButton: some View {
 }
 
 var completeButton: some View {
-    SheetConfirmButton {
-        let photosToSend = selectedImages.isEmpty ? nil : selectedImages
-        onComplete(Array(selectedCats), selectedCaregiver, notes.isEmpty ? nil : notes, photosToSend, completedForDate)
-        dismiss()
-    }
+    SheetConfirmButton(isInProgress: submission.isSaving, action: submitCompletion)
         .disabled(isLoadingPhotos || selectedCaregiver == nil || selectedCats.isEmpty)
     }
 }
 
 // MARK: - Helper Methods
 private extension TaskCompletionView {
+    func submitCompletion() {
+        let cats = Array(selectedCats)
+        let caregiver = selectedCaregiver
+        let notesToSend = notes.isEmpty ? nil : notes
+        let photosToSend = selectedImages.isEmpty ? nil : selectedImages
+        // Unstructured on purpose: the sheet closes on success, and the save must not be cancelled
+        // with it. The commit is synchronous, so a late cancellation already counts as saved.
+        Task {
+            await submission.submit {
+                try await onComplete(cats, caregiver, notesToSend, photosToSend, completedForDate)
+            }
+        }
+    }
+
     func preselectCats() {
         if !initialSelectedCats.isEmpty {
             selectedCats = Set(initialSelectedCats)

@@ -56,13 +56,18 @@ struct SheetDismissButton: View {
 
 /// Reminders-style filled checkmark confirm button for sheet toolbars.
 /// Pair with `ToolbarItem(placement: .confirmationAction)`; disable via `.disabled(...)`.
+/// While `isInProgress` is true it shows an activity indicator in place of the checkmark.
 struct SheetConfirmButton: View {
+    var isInProgress = false
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
-        if #available(iOS 26.0, *) {
+        if isInProgress {
+            ProgressView()
+                .accessibilityLabel(String(localized: .sheetSaving))
+        } else if #available(iOS 26.0, *) {
             Button(role: .confirm, action: action)
         } else {
             Button(action: action) {

@@ -48,17 +48,15 @@ struct TaskAssistantChatView: View {
                 initialNotes: request.initialNotes,
                 initialSelectedCats: request.initialSelectedCats
             ) { selectedCats, selectedCaregiver, notes, photos, completedForDate in
-                Task {
-                    await viewModel.completeDetailedTask(
-                        task: request.task,
-                        selectedCats: selectedCats,
-                        selectedCaregiver: selectedCaregiver,
-                        notes: notes,
-                        photos: photos,
-                        completedForDate: completedForDate,
-                        in: modelContext
-                    )
-                }
+                try await viewModel.completeDetailedTask(
+                    task: request.task,
+                    selectedCats: selectedCats,
+                    selectedCaregiver: selectedCaregiver,
+                    notes: notes,
+                    photos: photos,
+                    completedForDate: completedForDate,
+                    in: modelContext
+                )
             }
         }
         .onDisappear(perform: viewModel.stopDictation)

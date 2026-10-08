@@ -104,6 +104,71 @@ struct TaskManagementViewModelTests {
     }
 
     @Test
+    func failedSheetCompletionKeepsTheSheetOpenAndRecordsNothing() async throws {
+        let fixture = try makeCompletionFixture()
+        let sut = TaskManagementViewModel(taskWriter: CareTaskWriter(scheduler: NotificationSchedulerSpy()))
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+
+        // No caregiver exists and none is chosen, so the completion cannot be recorded.
+        await #expect(throws: TaskActionError.caregiverUnavailable) {
+            try await sut.submitCompletion(of: fixture.task, by: nil, with: "Done")
+        }
+
+        #expect(sut.taskCompletionRequest?.task === fixture.task)
+        #expect(fixture.task.completions.isEmpty)
+    }
+
+    /// The completion committed, so the sheet must close; offering a retry would record it twice.
+    @Test
+    func sheetCompletionWithStaleRemindersClosesTheSheet() async throws {
+        let fixture = try makeCompletionFixture()
+        let caregiver = Caregiver(name: "Primary", role: .primary)
+        fixture.context.insert(caregiver)
+        try fixture.context.save()
+        let scheduler = NotificationSchedulerSpy()
+        scheduler.resyncError = .forcedFailure
+        let sut = TaskManagementViewModel(taskWriter: CareTaskWriter(scheduler: scheduler))
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+
+        try await sut.submitCompletion(of: fixture.task, by: caregiver)
+
+        #expect(sut.taskCompletionRequest == nil)
+        #expect(fixture.task.completions.count == 1)
+    }
+
+    @Test
+    func cancelledSheetCompletionStillClosesTheSheet() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = CancellationError()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+
+        try await sut.submitCompletion(of: fixture.task, by: nil)
+
+        #expect(sut.taskCompletionRequest == nil)
+        #expect(spy.completions.count == 1)
+    }
+
+    @Test
+    func sheetCompletionWithoutAStoreKeepsTheSheetOpen() async throws {
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        let task = CareTask(title: "Feed")
+        sut.presentTaskCompletion(task, completedForDate: nil)
+
+        await #expect(throws: (any Error).self) {
+            try await sut.submitCompletion(of: task, by: nil)
+        }
+
+        #expect(sut.taskCompletionRequest?.task === task)
+        #expect(spy.completions.isEmpty)
+    }
+
+    @Test
     func awaitedDeletionHandsTheTaskToTheWriterAndDropsItFromTheList() async throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
@@ -156,5 +221,18 @@ struct TaskManagementViewModelTests {
         #expect(duplicateSchedule.scheduledDate == expectedStart)
         #expect(duplicateSchedule.endDate == expectedEnd)
         #expect(spy.savedTasks.map(\.id) == [duplicate.id])
+    }
+
+    private func makeCompletionFixture() throws -> (container: ModelContainer, context: ModelContext, task: CareTask) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let task = CareTask(title: "Feed")
+        let schedule = CareTaskSchedule(scheduledDate: Date(), frequency: .once)
+        schedule.task = task
+        task.schedules = [schedule]
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task)
     }
 }
