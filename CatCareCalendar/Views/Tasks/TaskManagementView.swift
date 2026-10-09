@@ -103,15 +103,14 @@ struct TaskManagementView: View {
     .sheet(item: $viewModel.taskCompletionRequest) { request in
       TaskCompletionView(task: request.task, completedForDate: request.completedForDate) {
         selectedCats, selectedCaregiver, notes, photos, completedForDate in
-        viewModel.completeCareTask(
-          request.task,
+        try await viewModel.submitCompletion(
+          of: request.task,
           for: selectedCats,
           by: selectedCaregiver,
           completedForDate: completedForDate,
           with: notes,
           photos: photos
         )
-        viewModel.dismissTaskCompletion()
         haptics.impact(.medium)
       }
     }

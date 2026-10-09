@@ -510,7 +510,8 @@ final class TaskAssistantViewModel {
                 return .none
             }
 
-            await complete(
+            // A failure is already in the chat; this path has no sheet to keep open.
+            try? await complete(
                 task,
                 with: CareTaskCompletionInput(cats: selectedCats, completedForDate: completedForDate, notes: notes),
                 in: context
@@ -557,7 +558,7 @@ final class TaskAssistantViewModel {
         photos: [UIImage]?,
         completedForDate: Date?,
         in context: ModelContext
-    ) async {
+    ) async throws {
         isProcessing = true
         defer { isProcessing = false }
 
@@ -572,7 +573,7 @@ final class TaskAssistantViewModel {
             }.value
         }
 
-        let didComplete = await complete(
+        try await complete(
             task,
             with: CareTaskCompletionInput(
                 cats: selectedCats,
@@ -583,22 +584,21 @@ final class TaskAssistantViewModel {
             ),
             in: context
         )
-        if didComplete {
-            taskCompletionRequest = nil
-        }
+        taskCompletionRequest = nil
     }
 
     /// Completes `task` through the writer and reports the outcome into the chat.
     ///
-    /// - Returns: `true` when the completion committed, including when only its reminders failed.
-    ///   A committed completion must not look unsuccessful, or the user retries and records it twice,
-    ///   so a reminder failure is reported after the success message rather than instead of it.
-    @discardableResult
+    /// A committed completion returns normally, including when only its reminders failed. A committed
+    /// completion must not look unsuccessful, or the user retries and records it twice, so a reminder
+    /// failure is reported after the success message rather than instead of it.
+    ///
+    /// - Throws: the error when nothing was saved, after the failure message is in the chat.
     private func complete(
         _ task: CareTask,
         with input: CareTaskCompletionInput,
         in context: ModelContext
-    ) async -> Bool {
+    ) async throws {
         let taskTitle = task.title
         var hasStaleReminders = false
         do {
@@ -616,7 +616,7 @@ final class TaskAssistantViewModel {
                     style: .failure
                 )
             )
-            return false
+            throw error
         }
 
         messages.append(
@@ -634,7 +634,6 @@ final class TaskAssistantViewModel {
                 )
             )
         }
-        return true
     }
 
     func startDictation() async {

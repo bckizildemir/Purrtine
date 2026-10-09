@@ -194,6 +194,39 @@ struct TaskAssistantViewModelTests {
         #expect(sut.messages.last?.text == TaskActionError.caregiverUnavailable.localizedDescription)
     }
 
+    /// The completion sheet stays open on a failed save, so the request must survive and the sheet
+    /// must learn that nothing was saved.
+    @Test
+    func failedDetailedCompletionKeepsTheRequestAndReportsTheFailure() async throws {
+        let fixture = try makeFixture()
+        let context = fixture.container.mainContext
+        let sut = TaskAssistantViewModel()
+        sut.taskCompletionRequest = TaskAssistantCompletionRequest(
+            task: fixture.task,
+            completedForDate: nil,
+            initialNotes: nil,
+            initialSelectedCats: []
+        )
+
+        // No caregiver exists and none is chosen, so the completion cannot be recorded.
+        await #expect(throws: TaskActionError.caregiverUnavailable) {
+            try await sut.completeDetailedTask(
+                task: fixture.task,
+                selectedCats: [],
+                selectedCaregiver: nil,
+                notes: "Ate half",
+                photos: nil,
+                completedForDate: nil,
+                in: context
+            )
+        }
+
+        #expect(sut.taskCompletionRequest?.task === fixture.task)
+        #expect(fixture.task.completions.isEmpty)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.isProcessing == false)
+    }
+
     /// A committed completion must not read as a failure, or the user completes it twice. The
     /// reminder failure follows the success message instead of replacing it.
     @Test
@@ -213,7 +246,7 @@ struct TaskAssistantViewModelTests {
             initialSelectedCats: []
         )
 
-        await sut.completeDetailedTask(
+        try await sut.completeDetailedTask(
             task: fixture.task,
             selectedCats: [],
             selectedCaregiver: caregiver,

@@ -4285,6 +4285,23 @@
         }
       }
     },
+    "error.data_save.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your changes were not saved. Try again."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Değişiklikleriniz kaydedilmedi. Tekrar deneyin."
+          }
+        }
+      }
+    },
     "error.file_not_found" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10211,6 +10228,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kaydet"
+          }
+        }
+      }
+    },
+    "sheet.saving" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydediliyor…"
           }
         }
       }
