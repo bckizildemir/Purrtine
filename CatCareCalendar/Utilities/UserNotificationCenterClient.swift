@@ -44,7 +44,10 @@ final class SystemUserNotificationCenterClient: UserNotificationCenterClient {
                     returning: notifications.map { notification in
                         DeliveredNotificationSnapshot(
                             identifier: notification.request.identifier,
-                            userInfo: notification.request.content.userInfo
+                            userInfo: notification.request.content.userInfo,
+                            title: notification.request.content.title,
+                            body: notification.request.content.body,
+                            date: notification.date
                         )
                     }
                 )
