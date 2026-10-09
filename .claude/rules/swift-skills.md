@@ -69,7 +69,9 @@ A count below that carries its own date was measured on that date; the others we
   the explicit `@MainActor` annotation too, which restates the default rather than overriding it.
   Read the source before you assume otherwise.
 - Route all local notification scheduling through `NotificationManager`. Treat any direct
-  `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. Two remain, verified
-  2026-09-24 with `git grep -n 'UNUserNotificationCenter.current()'`: both are reads in
-  `Views/Settings/SettingsDebugViews.swift` (delivered and pending notifications in the DEBUG
-  history screen). The file's direct `add(_:)` is gone; the two reads are still open.
+  `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified
+  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which
+  prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes
+  `.current()` as a default argument). The DEBUG Notification History screen reads through
+  `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and
+  `pendingTestNotificationRequests()` (#8).
