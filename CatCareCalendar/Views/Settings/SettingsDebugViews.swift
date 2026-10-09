@@ -107,7 +107,8 @@ struct DeveloperToolsView: View {
 }
 
 struct NotificationHistoryView: View {
-    @State private var deliveredNotifications: [DeliveredNotificationDisplay] = []
+    @Environment(\.notificationManager) private var notificationManager
+    @State private var deliveredNotifications: [DeliveredNotificationSnapshot] = []
     @State private var pendingTestNotifications: [UNNotificationRequest] = []
     @State private var pendingTaskNotifications: [DebugPendingNotification] = []
 
@@ -191,18 +192,7 @@ struct NotificationHistoryView: View {
     }
 
     private func loadDeliveredNotifications() async {
-        let center = UNUserNotificationCenter.current()
-        let notifications = await withCheckedContinuation { (continuation: CheckedContinuation<[DeliveredNotificationDisplay], Never>) in
-            center.getDeliveredNotifications { delivered in
-                // Map inside the callback: UNNotification is not Sendable, so the
-                // display values have to be built before they leave this thread.
-                continuation.resume(returning: delivered.map(DeliveredNotificationDisplay.init))
-            }
-        }
-
-        await MainActor.run {
-            deliveredNotifications = notifications
-        }
+        deliveredNotifications = await notificationManager.deliveredNotificationsForHistory()
     }
 
     #if DEBUG
@@ -215,33 +205,9 @@ struct NotificationHistoryView: View {
     }
 
     private func loadPendingTestNotifications() async {
-        let center = UNUserNotificationCenter.current()
-        let pendingRequests = await center.pendingNotificationRequests()
-        let testNotifications = pendingRequests.filter { request in
-            request.content.userInfo["testNotification"] as? Bool == true
-        }
-
-        await MainActor.run {
-            pendingTestNotifications = testNotifications
-        }
+        pendingTestNotifications = await notificationManager.pendingTestNotificationRequests()
     }
     #endif
-}
-
-/// The three fields the delivered-notification list needs, pulled off
-/// `UNNotification` while still on the notification centre's callback thread.
-nonisolated struct DeliveredNotificationDisplay: Identifiable, Sendable {
-    let id: String
-    let title: String
-    let body: String
-    let date: Date
-
-    init(_ notification: UNNotification) {
-        self.id = notification.request.identifier
-        self.title = notification.request.content.title
-        self.body = notification.request.content.body
-        self.date = notification.date
-    }
 }
 
 struct NotificationHistoryRow: View {

@@ -56,6 +56,7 @@ struct SheetDismissButton: View {
 
 /// Reminders-style filled checkmark confirm button for sheet toolbars.
 /// Pair with `ToolbarItem(placement: .confirmationAction)`; disable via `.disabled(...)`.
+/// While the confirmed action runs, show `SheetSavingIndicator` in its place.
 struct SheetConfirmButton: View {
     let action: () -> Void
 
@@ -75,5 +76,16 @@ struct SheetConfirmButton: View {
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: .actionSave))
         }
+    }
+}
+
+/// Activity indicator that takes the place of `SheetConfirmButton` while a sheet saves.
+///
+/// A separate view rather than a state of `SheetConfirmButton`, so sheets that never show progress
+/// keep that button's view structure unchanged.
+struct SheetSavingIndicator: View {
+    var body: some View {
+        ProgressView()
+            .accessibilityLabel(String(localized: .sheetSaving))
     }
 }

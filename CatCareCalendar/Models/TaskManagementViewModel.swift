@@ -142,6 +142,41 @@ final class TaskManagementViewModel {
         refreshTasks()
     }
 
+    /// The view model has no store yet, so nothing can be saved.
+    struct StoreUnavailableError: Error {}
+
+    /// Saves a completion from the completion sheet and closes the sheet once the completion committed.
+    ///
+    /// Throws only when nothing was saved, so the sheet stays open with the user's input.
+    func submitCompletion(
+        of task: CareTask,
+        for cats: [Cat] = [],
+        by caregiver: Caregiver?,
+        completedForDate: Date? = nil,
+        with notes: String? = nil,
+        photos: [UIImage]? = nil
+    ) async throws {
+        // `completeCareTaskAndWait` returns quietly without a store; here that would close the sheet
+        // with nothing saved.
+        guard modelContext != nil else { throw StoreUnavailableError() }
+        do {
+            try await completeCareTaskAndWait(
+                task,
+                for: cats,
+                by: caregiver,
+                completedForDate: completedForDate,
+                with: notes,
+                photos: photos
+            )
+        } catch is CancellationError {
+            // The completion committed, and the next resync rebuilds the reminders from the store.
+        } catch let error as CareTaskRemindersOutOfSyncError {
+            // The completion committed. A retry would record it twice, so the sheet still closes.
+            print("❌ Failed to update reminders after completing '\(task.title)': \(error.underlyingError)")
+        }
+        dismissTaskCompletion()
+    }
+
     @discardableResult
     func deleteCareTask(_ task: CareTask) -> Task<Void, Never> {
         Task { @MainActor in
