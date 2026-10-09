@@ -295,6 +295,80 @@ struct OnboardingDataBuilderTests {
         #expect(error.underlyingError is SaveFailure)
     }
 
+    // MARK: - Photo
+
+    /// The photo is optional: a failed write must not stop onboarding, so the cat and its starter
+    /// tasks are saved without it.
+    @Test
+    func aFailedPhotoSaveStillSavesTheCatAndItsTasksWithoutAPhoto() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        CaregiverBootstrapper.ensureDefaultCaregiverExists(in: context)
+        let sut = OnboardingDataBuilder(
+            taskWriter: CareTaskWriter(scheduler: scheduler),
+            savePhoto: { _, _ in throw PhotoSaveError.writeFailed(SaveFailure()) }
+        )
+        var tempData = TempCatData()
+        tempData.name = "Luna"
+        tempData.photoData = Data("photo".utf8)
+
+        let cat = try #require(
+            try await sut.createCatAndTasks(from: tempData, selectedTasks: [.feeding], in: context)
+        )
+
+        #expect(cat.photoURLs.isEmpty)
+        #expect(try context.fetch(FetchDescriptor<Cat>()).map(\.name) == ["Luna"])
+        #expect(try context.fetch(FetchDescriptor<CareTask>()).count == 1)
+    }
+
+    /// Nothing was saved, so the photo written for this attempt is not kept either.
+    @Test
+    func aFailedFirstCommitDeletesThePhotoItWrote() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        CaregiverBootstrapper.ensureDefaultCaregiverExists(in: context)
+        try context.save()
+        var deletedPhotos: [String] = []
+        let sut = OnboardingDataBuilder(
+            taskWriter: CareTaskWriter(scheduler: scheduler, saveContext: { _ in throw SaveFailure() }),
+            savePhoto: { _, _ in "written.jpg" },
+            deletePhoto: { deletedPhotos.append($0) }
+        )
+        var tempData = TempCatData()
+        tempData.name = "Luna"
+        tempData.photoData = Data("photo".utf8)
+
+        await #expect(throws: SaveFailure.self) {
+            _ = try await sut.createCatAndTasks(from: tempData, selectedTasks: [.feeding], in: context)
+        }
+
+        #expect(deletedPhotos == ["written.jpg"])
+    }
+
+    /// With no starter task the cat is committed on its own; a failure there is "not saved" too.
+    @Test
+    func aFailedCommitWithoutStarterTasksUnstagesTheCatAndDeletesItsPhoto() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        var deletedPhotos: [String] = []
+        let sut = OnboardingDataBuilder(
+            taskWriter: CareTaskWriter(scheduler: scheduler),
+            savePhoto: { _, _ in "written.jpg" },
+            deletePhoto: { deletedPhotos.append($0) },
+            saveContext: { _ in throw SaveFailure() }
+        )
+        var tempData = TempCatData()
+        tempData.name = "Luna"
+        tempData.photoData = Data("photo".utf8)
+
+        await #expect(throws: SaveFailure.self) {
+            _ = try await sut.createCatAndTasks(from: tempData, selectedTasks: [], in: context)
+        }
+
+        #expect(context.insertedModelsArray.isEmpty)
+        #expect(deletedPhotos == ["written.jpg"])
+    }
+
     private func makeSUT(now: @escaping () -> Date = Date.init) -> OnboardingDataBuilder {
         OnboardingDataBuilder(taskWriter: CareTaskWriter(scheduler: scheduler), now: now)
     }

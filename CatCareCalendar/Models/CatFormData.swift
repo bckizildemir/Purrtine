@@ -36,10 +36,22 @@ struct CatFormData {
     var showingPhotoOptions = false
     var showingCamera = false
     var showingCameraPermissionAlert = false
+    /// True while a photo-library pick loads; the form cannot be saved until it ends.
+    var isLoadingPhoto = false
+    /// Why the last picked photo was not used, shown under the photo circle.
+    var photoProblem: PhotoProblem?
+    var showingPhotoNotSavedAlert = false
 
     // MARK: - UI State
     var showingAdvancedSection = false
     var isLoading = false
+
+    enum PhotoProblem: Equatable {
+        /// The photo did not load, for example an iCloud-only photo while offline. It can be retried.
+        case loadFailed
+        /// The photo loaded but cannot be decoded.
+        case unusable
+    }
 
     // MARK: - Focus State
     enum Field: Hashable {
@@ -73,6 +85,63 @@ extension CatFormData {
     /// Whether any photo is currently selected or captured
     var hasPhoto: Bool {
         photoData != nil || capturedImage != nil
+    }
+
+    /// The selected or captured photo, not written to disk yet.
+    var pendingPhoto: PendingCatPhoto? {
+        if let photoData {
+            return .data(photoData)
+        }
+        if let capturedImage {
+            return .image(capturedImage)
+        }
+        return nil
+    }
+
+    /// What Edit Cat does with the cat's current photo. `includingPhoto: false` is the "Save without
+    /// photo" choice after a failed write: the other edits are saved and the current photo stays.
+    func editPhotoChange(hasChangedPhoto: Bool, includingPhoto: Bool) -> CatFormSaver.PhotoChange {
+        guard hasChangedPhoto, includingPhoto else { return .keep }
+        if let pendingPhoto {
+            return .replace(pendingPhoto)
+        }
+        return .remove
+    }
+
+    /// The fields of a new cat, as Add Cat has always saved them.
+    var detailsForNewCat: CatDetails {
+        let trimmedBreed = breed.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = medicalNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let conditions = trimmedNotes.isEmpty ? [] :
+            medicalConditions.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        return CatDetails(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            gender: gender,
+            age: AgeUtils.months(from: ageValue, unit: ageUnit),
+            breed: trimmedBreed.isEmpty ? nil : trimmedBreed,
+            weight: weightValue,
+            weightUnit: weightUnit,
+            medicalNotes: trimmedNotes.isEmpty ? nil : trimmedNotes,
+            medicalConditions: conditions
+        )
+    }
+
+    /// The fields of an edited cat, as Edit Cat has always saved them.
+    var detailsForEditedCat: CatDetails {
+        CatDetails(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            gender: gender,
+            age: AgeUtils.months(from: AgeUtils.validateAge(ageValue), unit: ageUnit),
+            breed: breed.isEmpty ? nil : breed,
+            weight: weightValue,
+            weightUnit: weightUnit,
+            medicalNotes: medicalNotes.isEmpty ? nil : medicalNotes,
+            medicalConditions: medicalConditions
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
     }
 
     /// Whether there are changes compared to an existing cat (for edit mode)

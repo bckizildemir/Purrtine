@@ -81,7 +81,7 @@ struct PhotoManagerTests {
         defer { fixture.cleanup() }
         let data = try makeImageData()
 
-        let stored = try #require(fixture.sut.savePhoto(data, for: catId))
+        let stored = try fixture.sut.savePhoto(data, for: catId)
         let expected = "cat_\(catId.uuidString)_\(generatedId.uuidString).jpg"
         let savedURL = fixture.directory.appending(path: expected)
 
@@ -95,12 +95,67 @@ struct PhotoManagerTests {
     }
 
     @Test
-    func invalidImageDataIsNotSaved() throws {
+    func invalidImageDataThrowsUnreadableImageAndWritesNothing() throws {
         let fixture = try makeFixture()
         defer { fixture.cleanup() }
 
-        #expect(fixture.sut.savePhoto(Data("not an image".utf8), for: UUID()) == nil)
+        let error = try #require(throws: PhotoSaveError.self) {
+            try fixture.sut.savePhoto(Data("not an image".utf8), for: UUID())
+        }
+
+        guard case .unreadableImage = error else {
+            Issue.record("Expected unreadableImage, got \(error)")
+            return
+        }
         #expect(fixture.sut.getStorageInfo().totalPhotos == 0)
+    }
+
+    @Test
+    func aDirectoryThatCannotBeCreatedThrowsWriteFailed() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        // A regular file where the photos folder should be: neither the folder nor the photo can be written.
+        let blocker = fixture.directory.appending(path: "blocker")
+        try Data([1]).write(to: blocker)
+        let sut = PhotoManager(photosDirectory: blocker)
+
+        let error = try #require(throws: PhotoSaveError.self) {
+            try sut.savePhoto(try makeImageData(), for: UUID())
+        }
+
+        guard case .writeFailed = error else {
+            Issue.record("Expected writeFailed, got \(error)")
+            return
+        }
+    }
+
+    @Test
+    func aDirectoryThatCannotBeWrittenToThrowsWriteFailed() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let fileManager = FileManager.default
+        try fileManager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: fixture.directory.path)
+        defer { try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.directory.path) }
+
+        let error = try #require(throws: PhotoSaveError.self) {
+            try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+        }
+
+        guard case .writeFailed = error else {
+            Issue.record("Expected writeFailed, got \(error)")
+            return
+        }
+    }
+
+    @Test
+    func aMissingPhotosDirectoryIsCreatedAgainBeforeTheWrite() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        try FileManager.default.removeItem(at: fixture.directory)
+
+        let stored = try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+
+        #expect(fixture.sut.getPhotoURL(from: stored) != nil)
     }
 
     @Test
@@ -114,9 +169,7 @@ struct PhotoManagerTests {
         let cgImage = try #require(CIContext().createCGImage(output, from: output.extent))
         let data = try #require(UIImage(cgImage: cgImage).pngData())
 
-        let stored = fixture.sut.savePhoto(data, for: UUID())
-
-        let storedPath = try #require(stored)
+        let storedPath = try fixture.sut.savePhoto(data, for: UUID())
         let savedImage = try #require(fixture.sut.loadPhoto(from: storedPath))
 
         #expect(max(savedImage.size.width, savedImage.size.height) <= CGFloat(PhotoManager.photoMaxPixelSize))

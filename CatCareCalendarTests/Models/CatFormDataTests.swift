@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CatCareCalendar
 
@@ -157,5 +158,41 @@ struct CatFormDataTests {
         #expect(formData.ageValue == 2)
         #expect(formData.ageUnit == .years)
         #expect(formData.gender == .female)
+    }
+
+    // MARK: - Edit Cat photo change
+
+    @Test
+    func anUntouchedPhotoIsKept() {
+        let formData = CatFormData()
+
+        #expect(formData.editPhotoChange(hasChangedPhoto: false, includingPhoto: true) == .keep)
+    }
+
+    @Test
+    func aNewPickReplacesThePhoto() {
+        var formData = CatFormData()
+        formData.photoData = Data("new".utf8)
+
+        #expect(
+            formData.editPhotoChange(hasChangedPhoto: true, includingPhoto: true)
+                == .replace(.data(Data("new".utf8)))
+        )
+    }
+
+    /// "Save without photo" in Edit Cat keeps the cat's current photo; it does not remove it.
+    @Test
+    func savingWithoutTheNewPhotoKeepsTheCurrentOne() {
+        var formData = CatFormData()
+        formData.photoData = Data("new".utf8)
+
+        #expect(formData.editPhotoChange(hasChangedPhoto: true, includingPhoto: false) == .keep)
+    }
+
+    @Test
+    func aRemovedPhotoIsRemoved() {
+        let formData = CatFormData()
+
+        #expect(formData.editPhotoChange(hasChangedPhoto: true, includingPhoto: true) == .remove)
     }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import os
 
 /// Unified form view for creating and editing cats.
 /// Supports onboarding, add, and edit modes with adaptive UI.
@@ -19,6 +20,8 @@ struct CatFormView: View {
 
     // MARK: - Focus State
     @FocusState private var focusedField: CatFormData.Field?
+
+    private static let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "CatForm")
 
     // MARK: - Initialization
     init(mode: CatFormMode, onDelete: (() -> Void)? = nil) {
@@ -60,11 +63,12 @@ struct CatFormView: View {
     private var isSaveEnabled: Bool {
         switch mode {
         case .onboarding:
-            return formData.isNameValid
+            return formData.isNameValid && !formData.isLoadingPhoto
         case .add:
-            return formData.isNameValid && !formData.isLoading
+            return formData.isNameValid && !formData.isLoading && !formData.isLoadingPhoto
         case .edit(let cat):
-            return formData.isNameValid && !formData.isLoading && (formData.hasChanges(comparedTo: cat) || hasChangedPhoto)
+            return formData.isNameValid && !formData.isLoading && !formData.isLoadingPhoto
+                && (formData.hasChanges(comparedTo: cat) || hasChangedPhoto)
         }
     }
 
@@ -124,16 +128,16 @@ struct CatFormView: View {
                     }) {
                         Text(.onboardingFirstCatContinue)
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(formData.isNameValid ? .white : .gray)
+                            .foregroundStyle(isSaveEnabled ? .white : .gray)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(
                                 RoundedRectangle(cornerRadius: 25)
-                                    .fill(formData.isNameValid ? Color.blue : Color.gray.opacity(0.3))
+                                    .fill(isSaveEnabled ? Color.blue : Color.gray.opacity(0.3))
                             )
                     }
                     .accessibilityIdentifier("onboarding.firstCat.continueButton")
-                    .disabled(!formData.isNameValid)
+                    .disabled(!isSaveEnabled)
                 } secondaryAction: {
                     Button(action: onSkip) {
                         Text(.onboardingFirstCatSkip)
@@ -176,12 +180,25 @@ struct CatFormView: View {
         } message: {
             Text(.catAddCameraPermissionMessage)
         }
+        .alert(String(localized: .catPhotoNotSavedTitle), isPresented: $formData.showingPhotoNotSavedAlert) {
+            Button(String(localized: .catPhotoTryAgain)) {
+                saveCat()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button(String(localized: .catPhotoSaveWithout)) {
+                saveCat(includingPhoto: false)
+            }
+            Button(String(localized: .actionCancel), role: .cancel) { }
+        } message: {
+            Text(.catPhotoNotSavedMessage)
+        }
         .onChange(of: formData.selectedPhoto) { _, newValue in
             loadSelectedPhoto(newValue)
         }
         .onChange(of: formData.capturedImage) { _, newValue in
             if newValue != nil {
                 formData.photoData = nil // Clear photo data when camera image is captured
+                discardPhotoPick()
                 hasChangedPhoto = true
             }
         }
@@ -197,7 +214,12 @@ struct CatFormView: View {
                 }
 
                 // Photo Section
-                PhotoPickerSection(formData: $formData, hasChangedPhoto: $hasChangedPhoto, existingCat: existingCat)
+                PhotoPickerSection(
+                    formData: $formData,
+                    hasChangedPhoto: $hasChangedPhoto,
+                    existingCat: existingCat,
+                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) }
+                )
 
                 // Essential Fields
                 if case .onboarding = mode {
@@ -398,6 +420,7 @@ struct CatFormView: View {
         Button(action: {
             formData.photoData = nil
             formData.capturedImage = nil
+            discardPhotoPick()
             hasChangedPhoto = true
             formData.showingPhotoOptions = false
         }) {
@@ -411,24 +434,39 @@ struct CatFormView: View {
     }
 
     // MARK: - Actions
+    /// Forgets the photo-library pick, so a load still running for it is dropped when it ends
+    /// instead of overwriting the photo the caregiver chose since.
+    private func discardPhotoPick() {
+        formData.selectedPhoto = nil
+        formData.isLoadingPhoto = false
+        formData.photoProblem = nil
+    }
+
+    /// Loads and downsamples a photo-library pick. Save and Continue stay disabled until it ends.
+    /// A failed pick keeps the photo the form already had and shows why under the photo circle.
     private func loadSelectedPhoto(_ item: PhotosPickerItem?) {
-        guard let item = item else { return }
+        guard let item else { return }
+        formData.isLoadingPhoto = true
+        formData.photoProblem = nil
 
         Task {
-            do {
-                if let data = try await item.loadTransferable(type: Data.self) {
-                    // Downsample at ingestion (off the main actor) so we hold and later persist a
-                    // bounded-size image instead of the full-resolution original.
-                    let downsampled = await Task.detached {
-                        PhotoManager.downsampledJPEGData(from: data, maxPixelSize: PhotoManager.photoMaxPixelSize)
-                    }.value
-                    formData.photoData = downsampled ?? data
-                    hasChangedPhoto = true
-                    formData.capturedImage = nil // Clear captured image when gallery photo is selected
-                    formData.showingPhotoOptions = false
-                }
-            } catch {
-                print("Failed to load photo: \(error)")
+            let outcome = await CatPhotoIntake.prepare {
+                try await item.loadTransferable(type: Data.self)
+            }
+            // A newer pick replaced this one while it loaded; that load reports instead.
+            guard formData.selectedPhoto == item else { return }
+            formData.isLoadingPhoto = false
+
+            switch outcome {
+            case .ready(let data):
+                formData.photoData = data
+                formData.capturedImage = nil // Clear captured image when gallery photo is selected
+                formData.showingPhotoOptions = false
+                hasChangedPhoto = true
+            case .loadFailed:
+                formData.photoProblem = .loadFailed
+            case .unusable:
+                formData.photoProblem = .unusable
             }
         }
     }
@@ -444,7 +482,9 @@ struct CatFormView: View {
         }
     }
 
-    private func saveCat() {
+    /// `includingPhoto: false` is the "Save without photo" choice: Add Cat saves no photo, and Edit
+    /// Cat saves the other edits and keeps the cat's current photo.
+    private func saveCat(includingPhoto: Bool = true) {
         formData.isLoading = true
 
         switch mode {
@@ -459,103 +499,37 @@ struct CatFormView: View {
             onContinue()
 
         case .add:
-            Task { await saveNewCat() }
+            Task { await saveNewCat(includingPhoto: includingPhoto) }
 
         case .edit(let cat):
-            Task { await saveExistingCat(cat) }
+            Task { await saveExistingCat(cat, includingPhoto: includingPhoto) }
         }
     }
 
-    private func saveNewCat() async {
-        let trimmedName = formData.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedBreed = formData.breed.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedNotes = formData.medicalNotes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let conditions = trimmedNotes.isEmpty ? [] :
-            formData.medicalConditions.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-        let catId = UUID()
-        let ageInMonths = AgeUtils.months(from: formData.ageValue, unit: formData.ageUnit)
-
-        // Persist the photo off the main actor (decode/encode/disk write) — keep only the
-        // SwiftData mutation on the main actor below.
-        let savedPhotoFileName = await savePhotoOffMainActor(for: catId)
-
-        let photoURLs = savedPhotoFileName != nil ? [savedPhotoFileName!] : []
-        let newCat = Cat(
-            name: trimmedName,
-            photoURLs: photoURLs,
-            age: ageInMonths,
-            gender: formData.gender,
-            breed: trimmedBreed.isEmpty ? nil : trimmedBreed,
-            weight: formData.weightValue,
-            weightUnit: formData.weightUnit,
-            medicalNotes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            medicalConditions: conditions
-        )
-
-        newCat.id = catId
-        modelContext.insert(newCat)
-
+    private func saveNewCat(includingPhoto: Bool) async {
         do {
-            try modelContext.save()
+            _ = try await CatFormSaver().add(
+                formData.detailsForNewCat,
+                photo: includingPhoto ? formData.pendingPhoto : nil,
+                in: modelContext
+            )
             haptics.impact(.medium)
             dismiss()
         } catch {
-            print("Error saving cat: \(error)")
-            formData.isLoading = false
+            handleSaveFailure(error)
         }
     }
 
-    /// Writes the pending photo (downsample + encode + disk write) on a background task and returns
-    /// the saved file name. Nothing here touches SwiftData, so it is safe off the main actor.
-    private func savePhotoOffMainActor(for catId: UUID) async -> String? {
-        let photoData = formData.photoData
-        let capturedImage = formData.capturedImage
-        return await Task.detached {
-            if let photoData {
-                return PhotoManager.shared.savePhoto(photoData, for: catId)
-            }
-            if let capturedImage {
-                return PhotoManager.shared.saveUIImage(capturedImage, for: catId)
-            }
-            return nil
-        }.value
-    }
-
-    private func saveExistingCat(_ cat: Cat) async {
-        // Update cat properties
-        cat.name = formData.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        cat.gender = formData.gender
-        let validatedAge = AgeUtils.validateAge(formData.ageValue)
-        cat.age = AgeUtils.months(from: validatedAge, unit: formData.ageUnit)
-        cat.breed = formData.breed.isEmpty ? nil : formData.breed
-        cat.weight = formData.weightValue
-        cat.weightUnit = formData.weightUnit
-        cat.medicalNotes = formData.medicalNotes.isEmpty ? nil : formData.medicalNotes
-        cat.medicalConditions = formData.medicalConditions
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        cat.updatedAt = Date()
-
-        // Handle photo updates
-        if hasChangedPhoto {
-            // Delete old photos (cheap file removal — safe to keep on the main actor).
-            for oldPhotoFileName in cat.photoURLs {
-                PhotoManager.shared.deletePhoto(at: oldPhotoFileName)
-            }
-
-            // Save the new photo off the main actor.
-            let newPhotoFileName = await savePhotoOffMainActor(for: cat.id)
-
-            cat.photoURLs.removeAll()
-            if let newPhotoFileName {
-                cat.photoURLs.append(newPhotoFileName)
-            }
-        }
+    private func saveExistingCat(_ cat: Cat, includingPhoto: Bool) async {
+        let photoChange = formData.editPhotoChange(hasChangedPhoto: hasChangedPhoto, includingPhoto: includingPhoto)
 
         do {
-            try modelContext.save()
+            try await CatFormSaver().update(
+                cat,
+                with: formData.detailsForEditedCat,
+                photo: photoChange,
+                in: modelContext
+            )
             // Pending reminders carry the cat names they were scheduled with, so the rename only
             // reaches them through a reschedule. Refreshed unconditionally rather than gated on a
             // name comparison: this wiring is the one part of the fix a unit test cannot reach, and
@@ -565,8 +539,18 @@ struct CatFormView: View {
             formData.isLoading = false
             dismiss()
         } catch {
-            print("Failed to save cat: \(error)")
-            formData.isLoading = false
+            handleSaveFailure(error)
+        }
+    }
+
+    /// The form stays open with everything entered. A photo that could not be written asks the
+    /// caregiver what to do; a failed commit was already taken back out of the context.
+    private func handleSaveFailure(_ error: any Error) {
+        formData.isLoading = false
+        if error is PhotoSaveError {
+            formData.showingPhotoNotSavedAlert = true
+        } else {
+            Self.logger.error("Cat not saved: \(String(describing: error), privacy: .public)")
         }
     }
 

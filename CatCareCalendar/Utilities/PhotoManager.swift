@@ -1,4 +1,5 @@
 import Foundation
+import os
 import UIKit
 
 /// Stateless apart from three immutable dependencies, so it is `Sendable`
@@ -12,6 +13,7 @@ nonisolated final class PhotoManager: Sendable {
     /// Longest-edge pixel cap for caregiver avatars, which are only ever shown small.
     static let avatarMaxPixelSize = 512
     private static let saveCompressionQuality: CGFloat = 0.8
+    private static let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "Photos")
 
     private let photosDirectory: URL
     private let makeUUID: @Sendable () -> UUID
@@ -56,13 +58,20 @@ nonisolated final class PhotoManager: Sendable {
         )
     }
 
+    /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores. `nil` when
+    /// the data cannot be decoded.
+    @concurrent
+    static func preparedJPEGData(from data: Data) async -> Data? {
+        downsampledJPEGData(from: data, maxPixelSize: photoMaxPixelSize)
+    }
+
     // MARK: - Directory Management
 
     private func createPhotosDirectoryIfNeeded() {
         do {
             try FileManager.default.createDirectory(at: photosDirectory, withIntermediateDirectories: true)
         } catch {
-            print("❌ Failed to create photos directory: \(error)")
+            Self.logger.error("Photos directory not created: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -97,36 +106,54 @@ nonisolated final class PhotoManager: Sendable {
 
     // MARK: - Photo Saving
 
-    func savePhoto(_ data: Data, for catId: UUID) -> String? {
+    /// Downsamples `data`, writes it as a JPEG, and returns the stored file name. Every failure is
+    /// logged here, so a caller only decides what the caregiver sees.
+    func savePhoto(_ data: Data, for catId: UUID) throws -> String {
         guard let jpeg = PhotoManager.downsampledJPEGData(
             from: data,
             maxPixelSize: PhotoManager.photoMaxPixelSize
         ) else {
-            return nil
+            Self.logger.error("Photo not saved: the image data cannot be decoded")
+            throw PhotoSaveError.unreadableImage
         }
-        return writeJPEG(jpeg, for: catId)
+        return try writeJPEG(jpeg, for: catId)
     }
 
-    func saveUIImage(_ image: UIImage, for catId: UUID) -> String? {
+    func saveUIImage(_ image: UIImage, for catId: UUID) throws -> String {
         guard let jpeg = PhotoManager.downsampledJPEGData(
             from: image,
             maxPixelSize: PhotoManager.photoMaxPixelSize
         ) else {
-            print("❌ Failed to convert UIImage to data")
-            return nil
+            Self.logger.error("Photo not saved: the image cannot be encoded as a JPEG")
+            throw PhotoSaveError.unreadableImage
         }
-        return writeJPEG(jpeg, for: catId)
+        return try writeJPEG(jpeg, for: catId)
     }
 
-    private func writeJPEG(_ data: Data, for catId: UUID) -> String? {
+    /// Saves `photo` off the caller's actor: the decode, the encode and the disk write must not
+    /// block the main actor.
+    @concurrent
+    func save(_ photo: PendingCatPhoto, for catId: UUID) async throws -> String {
+        switch photo {
+        case .data(let data):
+            try savePhoto(data, for: catId)
+        case .image(let image):
+            try saveUIImage(image, for: catId)
+        }
+    }
+
+    /// Creates the photos folder first: it is made once at launch, and a folder removed since then
+    /// would otherwise fail every write.
+    private func writeJPEG(_ data: Data, for catId: UUID) throws -> String {
         let fileName = "cat_\(catId.uuidString)_\(makeUUID().uuidString).jpg"
         let fileURL = photosDirectory.appending(path: fileName)
         do {
+            try FileManager.default.createDirectory(at: photosDirectory, withIntermediateDirectories: true)
             try data.write(to: fileURL)
             return fileName
         } catch {
-            print("❌ Failed to save photo: \(error)")
-            return nil
+            Self.logger.error("Photo not saved: \(String(describing: error), privacy: .public)")
+            throw PhotoSaveError.writeFailed(error)
         }
     }
 
@@ -155,7 +182,7 @@ nonisolated final class PhotoManager: Sendable {
         do {
             try FileManager.default.removeItem(at: url)
         } catch {
-            print("❌ Failed to delete photo at \(path): \(error)")
+            Self.logger.error("Photo not deleted: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -177,7 +204,7 @@ nonisolated final class PhotoManager: Sendable {
                 try FileManager.default.removeItem(at: photoURL)
             }
         } catch {
-            print("❌ Failed to delete photos for cat \(catId): \(error)")
+            Self.logger.error("Cat photos not deleted: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -202,7 +229,7 @@ nonisolated final class PhotoManager: Sendable {
 
             return (totalPhotos: contents.count, totalSize: Int64(totalSize))
         } catch {
-            print("❌ Failed to get storage info: \(error)")
+            Self.logger.error("Photo storage info not read: \(String(describing: error), privacy: .public)")
             return (totalPhotos: 0, totalSize: 0)
         }
     }

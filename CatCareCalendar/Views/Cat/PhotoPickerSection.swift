@@ -9,6 +9,8 @@ struct PhotoPickerSection: View {
 
     // For edit mode to show existing photos
     var existingCat: Cat?
+    /// Loads the current photo-library pick again, after a failed load.
+    let onRetryPhotoLoad: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -19,7 +21,22 @@ struct PhotoPickerSection: View {
                 }
             }
             .buttonStyle(.plain)
+
+            if let problem = formData.photoProblem {
+                CatPhotoProblemMessage(
+                    problem: problem,
+                    onTryAgain: onRetryPhotoLoad,
+                    onChooseAnother: chooseAnotherPhoto
+                )
+            }
         }
+    }
+
+    /// Clears the selection too, so picking the same photo again still starts a new load.
+    private func chooseAnotherPhoto() {
+        formData.photoProblem = nil
+        formData.selectedPhoto = nil
+        formData.showingPhotoOptions = true
     }
 
     // MARK: - Photo Circle
@@ -57,6 +74,16 @@ struct PhotoPickerSection: View {
             // Edit indicator (show if any photo exists)
             if formData.hasPhoto || (existingCat?.hasPhoto ?? false) {
                 editIndicator
+            }
+
+            if formData.isLoadingPhoto {
+                Circle()
+                    .fill(.black.opacity(0.35))
+                    .frame(width: 140, height: 140)
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                    .accessibilityLabel(Text(.catPhotoLoading))
             }
         }
     }
