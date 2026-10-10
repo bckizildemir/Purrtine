@@ -29,7 +29,8 @@ struct TaskAssistantMessageBubbleView: View {
     }
 
     private var content: some View {
-        HStack(spacing: 8) {
+        // First-line alignment keeps the failure icon beside the message, not centred on the button.
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             if message.style == .failure {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.callout)
