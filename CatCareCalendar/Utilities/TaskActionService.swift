@@ -9,11 +9,11 @@ enum TaskActionError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .taskNotFound:
-            return "CareTask not found for the provided identifier."
+            String(localized: .errorTaskActionTaskNotFound)
         case .caregiverUnavailable:
-            return "No caregiver is available to record this completion."
+            String(localized: .errorTaskActionCaregiverUnavailable)
         case .invalidPostponeMinutes:
-            return "Postpone duration must be positive and representable."
+            String(localized: .errorTaskActionInvalidPostponeMinutes)
         }
     }
 }
