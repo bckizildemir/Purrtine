@@ -54,6 +54,7 @@ struct SettingsView: View {
                 semanticTitle: String(localized: .tabMore),
                 visualTitle: Text(.tabMore)
             )
+            .minimizingNavigationBarOnScroll()
             .navigationDestination(isPresented: $shouldNavigateToMyCats) {
                 CatsTabView()
             }
