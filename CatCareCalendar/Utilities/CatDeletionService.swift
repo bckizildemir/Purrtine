@@ -83,10 +83,10 @@ struct CatDeletionService {
 
         do {
             try await taskWriter.refreshReminders(for: touchedTaskIds, in: modelContext)
-        } catch let error where error is CancellationError || error is CareTaskRemindersOutOfSyncError {
-            // The real writer has already sorted and logged these.
-            throw error
         } catch {
+            // The commit is done, so no refresh failure may read as "not saved". The real writer
+            // already wraps its own; anything it did not wrap is wrapped here.
+            guard case .notSaved = CareTaskWriteFailure(error) else { throw error }
             Self.logger.error("Reminders stale after a cat delete: \(String(describing: error), privacy: .public)")
             throw CareTaskRemindersOutOfSyncError(taskIds: touchedTaskIds, underlyingError: error)
         }

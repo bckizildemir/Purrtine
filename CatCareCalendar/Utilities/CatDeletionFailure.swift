@@ -9,16 +9,16 @@ enum CatDeletionFailure: Hashable {
     /// save commits it.
     case commitPending(catName: String)
 
-    /// Sorts an error thrown by `CatDeletionService.delete`. Returns `nil` for a `CancellationError`:
-    /// that arrives only after the commit, and the next resync rebuilds the reminders, so there is
-    /// nothing to tell the caregiver.
+    /// Sorts an error thrown by `CatDeletionService.delete` with the shared `CareTaskWriteFailure`.
+    /// Returns `nil` for a cancellation: that arrives only after the commit, and the next resync
+    /// rebuilds the reminders, so there is nothing to tell the caregiver.
     init?(error: any Error, catName: String) {
-        switch error {
-        case is CancellationError:
+        switch CareTaskWriteFailure(error) {
+        case .cancelled:
             return nil
-        case is CareTaskRemindersOutOfSyncError:
+        case .remindersStale:
             self = .remindersStale(catName: catName)
-        default:
+        case .notSaved:
             self = .commitPending(catName: catName)
         }
     }
