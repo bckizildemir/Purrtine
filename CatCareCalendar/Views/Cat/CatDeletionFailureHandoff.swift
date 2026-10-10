@@ -1,8 +1,11 @@
 /// Holds a failed cat delete until the screen that deleted the cat has left, then hands it to
 /// `CatsTabView` once (#31).
 ///
-/// UIKit refuses to present the cats screen's alert while the deleting screen is still on screen,
-/// so the failure waits for `onDisappear`. But that screen can also leave first: the cat leaves the
+/// UIKit refuses to present the cats screen's alert while the deleting screen, or a confirmation it
+/// presented, is still on screen, so the failure waits for `onDisappear`. On the cat card that is the
+/// card leaving the grid with the cat, which also takes its confirmation alert. A commit failure
+/// throws before the delete's first suspension, so without this hold the card would report it while
+/// that confirmation may still be closing. The screen can also leave first: the cat leaves the
 /// `@Query` list the moment it is deleted, which takes a cat card, and the Edit Cat sheet it
 /// presents, with it before the delete has finished its reminder refresh. A failure that finishes
 /// after the screen has left is reported at once.
@@ -30,6 +33,24 @@ final class CatDeletionFailureHandoff {
     func deleteDidFinish(with failure: CatDeletionFailure?, reporting report: ReportCatDeletionFailureAction) {
         pending = failure.map { ($0, report) }
         reportIfReady()
+    }
+
+    /// Runs `delete`, sorts what it throws, and hands a failure on as `deleteDidFinish` does.
+    /// Returns the failure, so the caller can play the matching haptic.
+    @discardableResult
+    func runDelete(
+        ofCatNamed catName: String,
+        reporting report: ReportCatDeletionFailureAction,
+        _ delete: () async throws -> Void
+    ) async -> CatDeletionFailure? {
+        var failure: CatDeletionFailure?
+        do {
+            try await delete()
+        } catch {
+            failure = CatDeletionFailure(error: error, catName: catName)
+        }
+        deleteDidFinish(with: failure, reporting: report)
+        return failure
     }
 
     private func reportIfReady() {

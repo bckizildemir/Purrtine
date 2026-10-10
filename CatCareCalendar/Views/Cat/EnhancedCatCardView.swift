@@ -11,6 +11,7 @@ struct EnhancedCatCardView: View {
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var showingTaskAdd = false
+    @State private var deletionFailureHandoff = CatDeletionFailureHandoff()
     
     var body: some View {
         VStack(spacing: 12) {
@@ -29,6 +30,12 @@ struct EnhancedCatCardView: View {
         )
         .contextMenu {
             contextMenuItems
+        }
+        .onAppear {
+            deletionFailureHandoff.screenDidAppear()
+        }
+        .onDisappear {
+            deletionFailureHandoff.screenDidLeave()
         }
         .sheet(isPresented: $showingEditView) {
             EditCatView(cat: cat)
@@ -207,20 +214,23 @@ struct EnhancedCatCardView: View {
     }
     
     /// The cat is gone either way (#19); a failure goes to `CatsTabView`, which shows the note,
-    /// because this card leaves the grid with the cat.
+    /// because this card leaves the grid with the cat. It goes once the card has left, which takes
+    /// the confirmation alert with it, so the note never races that alert's dismissal (#31).
     private func deleteCat() {
         let catName = cat.name
+        let deletionFailureHandoff = deletionFailureHandoff
+        let reportCatDeletionFailure = reportCatDeletionFailure
         Task {
-            do {
+            let failure = await deletionFailureHandoff.runDelete(
+                ofCatNamed: catName,
+                reporting: reportCatDeletionFailure
+            ) {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
+            }
+            if failure != nil {
+                haptics.notify(.error)
+            } else {
                 haptics.impact(.medium)
-            } catch {
-                if let failure = CatDeletionFailure(error: error, catName: catName) {
-                    haptics.notify(.error)
-                    reportCatDeletionFailure(failure)
-                } else {
-                    haptics.impact(.medium)
-                }
             }
         }
     }

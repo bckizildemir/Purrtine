@@ -569,16 +569,15 @@ struct CatFormView: View {
         let deletionFailureHandoff = deletionFailureHandoff
         let reportCatDeletionFailure = reportCatDeletionFailure
         Task {
-            var failure: CatDeletionFailure?
-            do {
+            let failure = await deletionFailureHandoff.runDelete(
+                ofCatNamed: catName,
+                reporting: reportCatDeletionFailure
+            ) {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
-            } catch {
-                failure = CatDeletionFailure(error: error, catName: catName)
-                if failure != nil {
-                    haptics.notify(.error)
-                }
             }
-            deletionFailureHandoff.deleteDidFinish(with: failure, reporting: reportCatDeletionFailure)
+            if failure != nil {
+                haptics.notify(.error)
+            }
             onDelete?()
             dismiss()
         }
