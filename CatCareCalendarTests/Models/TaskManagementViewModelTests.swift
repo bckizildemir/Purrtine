@@ -187,11 +187,13 @@ struct TaskManagementViewModelTests {
 
         #expect(spy.completions.count == 1)
         #expect(sut.isShowingReminderWarning == false)
+        #expect(sut.actionFailure == nil)
+        #expect(sut.isShowingActionFailure == false)
     }
 
     /// "Not saved" is a different failure; a reminder warning would tell the caregiver it was done.
     @Test
-    func unsavedOneTapCompletionShowsNoReminderWarning() async throws {
+    func unsavedOneTapCompletionShowsTheNotSavedMessage() async throws {
         let fixture = try makeCompletionFixture()
         let spy = CareTaskWriterSpy()
         spy.completeError = TaskActionError.caregiverUnavailable
@@ -200,6 +202,8 @@ struct TaskManagementViewModelTests {
 
         await sut.completeCareTask(fixture.task, by: nil).value
 
+        #expect(sut.actionFailure == .completionNotSaved)
+        #expect(sut.isShowingActionFailure)
         #expect(sut.isShowingReminderWarning == false)
     }
 
@@ -252,42 +256,55 @@ struct TaskManagementViewModelTests {
         #expect(sut.groupedTasks.isEmpty)
     }
 
+    /// A failed delete commit stays staged and lands on the next save, so the row stays removed and
+    /// the message says the delete will finish later, never that the task was not deleted.
     @Test
-    func awaitedDuplicationCopiesOnlyActiveSchedulesAndOffsetsRange() async throws {
-        let container = try TestModelContainerFactory.makeInMemoryContainer()
-        let context = container.mainContext
+    func failedDeleteCommitKeepsTheRowRemovedAndSaysTheDeleteIsPending() async throws {
+        let fixture = try makeCompletionFixture()
         let spy = CareTaskWriterSpy()
-        let task = CareTask(title: "Medication")
-        let start = Date(timeIntervalSince1970: 1_710_000_000)
-        let end = start.addingTimeInterval(7 * 24 * 60 * 60)
-        let active = CareTaskSchedule(
-            scheduledDate: start,
-            frequency: .weekly,
-            endDate: end,
-            reminderMinutes: 15
-        )
-        let inactive = CareTaskSchedule(scheduledDate: start, frequency: .daily)
-        active.task = task
-        inactive.task = task
-        inactive.isActive = false
-        task.schedules = [active, inactive]
-        context.insert(task)
-        context.insert(active)
-        context.insert(inactive)
-        try context.save()
+        spy.deleteError = CocoaError(.fileWriteUnknown)
         let sut = TaskManagementViewModel(taskWriter: spy)
-        sut.configure(with: context, tasks: [task])
+        sut.configure(with: fixture.context, tasks: [fixture.task])
 
-        let duplicate = try #require(try await sut.duplicateTaskAndWait(task))
-        let duplicateSchedule = try #require(duplicate.activeSchedule)
-        let expectedStart = try #require(Calendar.current.date(byAdding: .day, value: 1, to: start))
-        let expectedEnd = try #require(Calendar.current.date(byAdding: .day, value: 1, to: end))
+        await sut.deleteCareTask(fixture.task).value
 
-        #expect(duplicate.title == "Medication" + String(localized: .taskCopySuffix))
-        #expect(duplicate.schedules.count == 1)
-        #expect(duplicateSchedule.scheduledDate == expectedStart)
-        #expect(duplicateSchedule.endDate == expectedEnd)
-        #expect(spy.savedTasks.map(\.id) == [duplicate.id])
+        #expect(spy.deletedTaskIds == [fixture.task.id])
+        #expect(sut.groupedTasks.isEmpty)
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+        #expect(sut.isShowingReminderWarning == false)
+    }
+
+    @Test
+    func deleteWithStaleRemindersStandsAndWarnsAboutReminders() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.deleteError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.deleteCareTask(fixture.task).value
+
+        #expect(sut.groupedTasks.isEmpty)
+        #expect(sut.isShowingReminderWarning)
+        #expect(sut.actionFailure == nil)
+        #expect(sut.isShowingActionFailure == false)
+    }
+
+    @Test
+    func cancelledDeleteShowsNoMessage() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.deleteError = CancellationError()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.deleteCareTask(fixture.task).value
+
+        #expect(sut.groupedTasks.isEmpty)
+        #expect(sut.isShowingReminderWarning == false)
+        #expect(sut.actionFailure == nil)
+        #expect(sut.isShowingActionFailure == false)
     }
 
     private func makeRemindersOutOfSyncError(for task: CareTask) -> CareTaskRemindersOutOfSyncError {
