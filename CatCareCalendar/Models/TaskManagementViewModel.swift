@@ -90,11 +90,13 @@ final class TaskManagementViewModel {
     }
 
     /// Sheets from the moment they are requested until their dismiss callback: a sheet whose state
-    /// was cleared is still on screen while it animates away.
+    /// was cleared is still on screen while it animates away. A sheet requested while another is up
+    /// presents once that one closes (the template sheet hands over to the creation sheet this way),
+    /// so every entry gets its dismiss callback.
     private var sheetsOnScreen: Set<Sheet> = []
 
     /// Alerts raised while a sheet or another alert was up, shown one at a time once nothing is.
-    private var pendingActionFailure: TaskActionFailure?
+    private var pendingActionFailures: [TaskActionFailure] = []
     private var hasPendingReminderWarning = false
 
     // YENİ: UI için işlenmiş ve hazır veriler
@@ -307,7 +309,10 @@ final class TaskManagementViewModel {
     }
 
     private func raiseActionFailure(_ failure: TaskActionFailure) {
-        pendingActionFailure = failure
+        // The same message twice in a row would say nothing new.
+        if pendingActionFailures.last != failure {
+            pendingActionFailures.append(failure)
+        }
         showNextPendingAlert()
     }
 
@@ -317,9 +322,8 @@ final class TaskManagementViewModel {
         guard sheetsOnScreen.isEmpty, isShowingActionFailure == false, isShowingReminderWarning == false else {
             return
         }
-        if let failure = pendingActionFailure {
-            pendingActionFailure = nil
-            actionFailure = failure
+        if pendingActionFailures.isEmpty == false {
+            actionFailure = pendingActionFailures.removeFirst()
             isShowingActionFailure = true
         } else if hasPendingReminderWarning {
             hasPendingReminderWarning = false

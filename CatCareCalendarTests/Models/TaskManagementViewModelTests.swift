@@ -610,6 +610,32 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingReminderWarning)
     }
 
+    @Test
+    func twoPendingActionFailuresBothShowInTheOrderTheyHappened() async throws {
+        let fixture = try makeCompletionFixture()
+        let otherTask = CareTask(title: "Brush")
+        fixture.context.insert(otherTask)
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task, otherTask])
+        sut.presentTaskEdit(fixture.task)
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        await sut.deleteCareTask(otherTask).value
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.actionFailure == .completionNotSaved)
+        #expect(sut.isShowingActionFailure)
+
+        sut.isShowingActionFailure = false
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
     /// Without a sheet, an alert raised while another alert is up waits for that alert to close.
     @Test
     func anAlertRaisedWhileAnotherIsUpShowsAfterItCloses() async throws {
