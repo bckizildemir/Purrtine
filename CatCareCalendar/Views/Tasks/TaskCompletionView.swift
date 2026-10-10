@@ -147,7 +147,10 @@ struct TaskCompletionView: View {
         .alert(String(localized: .errorDataSave), isPresented: $submission.isShowingFailure) { } message: {
             Text(submission.failureMessage)
         }
-        .alert(String(localized: .taskCompletionPhotoNotSavedTitle), isPresented: $submission.isShowingPhotoNotSaved) {
+        .alert(
+            String(localized: .taskCompletionPhotoNotSavedTitle),
+            isPresented: $submission.isShowingPhotoNotSaved
+        ) {
             Button(String(localized: .taskCompletionPhotoTryAgain)) {
                 submitCompletion()
             }
