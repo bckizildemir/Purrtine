@@ -12,7 +12,7 @@ struct CatDetailView: View {
     @State private var showingPhotoSheet = false
     @State private var showingDeleteConfirmation = false
     @State private var shouldDismissAfterEditDelete = false
-    @State private var deletionFailureToReport: CatDeletionFailure?
+    @State private var deletionFailureHandoff = CatDeletionFailureHandoff()
     
     // MARK: - Computed Properties
     private var missingFieldsCount: Int {
@@ -104,11 +104,11 @@ struct CatDetailView: View {
         } message: {
             deleteConfirmationMessage
         }
+        .onAppear {
+            deletionFailureHandoff.screenDidAppear()
+        }
         .onDisappear {
-            if let deletionFailureToReport {
-                reportCatDeletionFailure(deletionFailureToReport)
-                self.deletionFailureToReport = nil
-            }
+            deletionFailureHandoff.screenDidLeave()
         }
         .onChange(of: showingEditView) { _, isPresented in
             guard isPresented == false, shouldDismissAfterEditDelete else { return }
@@ -447,15 +447,20 @@ struct CatDetailView: View {
     // MARK: - Helper Methods
     /// A failed delete still leaves this screen: the cat is gone either way (#19), and
     /// `CatsTabView` shows the note once this screen has left, so the alert never races the
-    /// confirmation alert's dismissal.
+    /// confirmation alert's dismissal. The screen can leave before the delete finishes, because its
+    /// link leaves the cats grid with the cat (#31).
     private func deleteCat() {
         let catName = cat.name
+        let deletionFailureHandoff = deletionFailureHandoff
+        let reportCatDeletionFailure = reportCatDeletionFailure
         Task {
+            var failure: CatDeletionFailure?
             do {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
             } catch {
-                deletionFailureToReport = CatDeletionFailure(error: error, catName: catName)
+                failure = CatDeletionFailure(error: error, catName: catName)
             }
+            deletionFailureHandoff.deleteDidFinish(with: failure, reporting: reportCatDeletionFailure)
             dismiss()
         }
     }

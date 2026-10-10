@@ -159,12 +159,18 @@ struct CatDeletionServiceTests {
     }
 
     /// A failed commit throws the commit error itself. Nothing was written, so no photo is deleted
-    /// and no reminder is touched; the delete stays staged for the next save (#7 behaviour).
-    @Test
-    func commitFailureThrowsTheCommitErrorAndTouchesNothingElse() async throws {
+    /// and no reminder is touched; the delete stays staged for the next save, not rolled back
+    /// (#7 behaviour).
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/31", id: 31))
+    func commitFailureThrowsTheCommitErrorAndLeavesTheDeleteStaged() async throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
-        let (cat, _) = try insertCatWithTask(in: context)
+        let (cat, sharedTask) = try insertCatWithTask(in: context)
+        let remainingCat = Cat(name: "Luna")
+        context.insert(remainingCat)
+        sharedTask.assignedCats.append(remainingCat)
+        try context.save()
+        let catModelId = cat.persistentModelID
         let writer = CareTaskWriterSpy()
         var deletedPhotos: [String] = []
         let sut = CatDeletionService(
@@ -179,6 +185,16 @@ struct CatDeletionServiceTests {
 
         #expect(deletedPhotos.isEmpty)
         #expect(writer.refreshedTaskIds.isEmpty)
+        // Staged, not rolled back: the cat is still deleted in the context, and the shared task,
+        // which survives, no longer lists it.
+        #expect(context.hasChanges)
+        #expect(context.deletedModelsArray.contains { $0.persistentModelID == catModelId })
+        #expect(try context.fetch(FetchDescriptor<Cat>()).map(\.name) == ["Luna"])
+        #expect(sharedTask.isDeleted == false)
+        #expect(sharedTask.assignedCats.map(\.name) == ["Luna"])
+        // Lands the delete, so the watch it armed stops observing before the test ends.
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
     }
 
     // MARK: - Landed deletes
