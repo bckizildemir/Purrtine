@@ -212,8 +212,11 @@ extension CatFormData {
             self.preparedPhotoData = data
         case .image(let image):
             self.capturedImage = image
-        case .data, nil:
-            // The form only ever hands onboarding a prepared or a camera photo.
+        case .data:
+            // The form only ever hands onboarding a prepared or a camera photo, and the form
+            // cannot hold plain data without passing it off as prepared.
+            assertionFailure("Onboarding holds an unprepared photo the form cannot show")
+        case nil:
             break
         }
     }

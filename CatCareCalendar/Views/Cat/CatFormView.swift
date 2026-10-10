@@ -205,7 +205,7 @@ struct CatFormView: View {
         }
         .onChange(of: formData.capturedImage) { _, newValue in
             if newValue != nil {
-                formData.preparedPhotoData = nil // Clear photo data when camera image is captured
+                formData.preparedPhotoData = nil // Clear the picked photo when camera image is captured
                 discardPhotoPick()
                 hasChangedPhoto = true
             }

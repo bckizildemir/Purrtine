@@ -344,9 +344,9 @@ struct OnboardingDataBuilderTests {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let landscape = try #require(
-            UIGraphicsImageRenderer(size: CGSize(width: 2_600, height: 1_300), format: format).image { context in
+            UIGraphicsImageRenderer(size: CGSize(width: 2_600, height: 1_300), format: format).image { rendererContext in
                 UIColor.systemOrange.setFill()
-                context.fill(CGRect(x: 0, y: 0, width: 2_600, height: 1_300))
+                rendererContext.fill(CGRect(x: 0, y: 0, width: 2_600, height: 1_300))
             }.cgImage
         )
         let capture = UIImage(cgImage: landscape, scale: 1, orientation: .right)
