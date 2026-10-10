@@ -4569,7 +4569,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bunu kaydedecek bir bakıcı ayarlanmamış. Ayarlar'dan bir bakıcı ekleyin."
+            "value" : "Bunu kaydedecek bir bakıcı eklenmemiş. Ayarlar'dan bir bakıcı ekleyin."
           }
         }
       }
