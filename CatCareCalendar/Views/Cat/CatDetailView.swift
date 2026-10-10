@@ -107,6 +107,7 @@ struct CatDetailView: View {
         .onDisappear {
             if let deletionFailureToReport {
                 reportCatDeletionFailure(deletionFailureToReport)
+                self.deletionFailureToReport = nil
             }
         }
         .onChange(of: showingEditView) { _, isPresented in

@@ -197,6 +197,7 @@ struct CatFormView: View {
         .onDisappear {
             if let deletionFailureToReport {
                 reportCatDeletionFailure(deletionFailureToReport)
+                self.deletionFailureToReport = nil
             }
         }
         .onChange(of: formData.selectedPhoto) { _, newValue in

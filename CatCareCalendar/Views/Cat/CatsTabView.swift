@@ -143,7 +143,10 @@ struct CatsTabView: View {
     private func catCardView(for cat: Cat) -> some View {
         // Set on the destination too: a pushed view takes its environment from the navigation
         // stack, not from this link, so the modifier on `body` does not reach it.
-        NavigationLink(destination: CatDetailView(cat: cat).environment(\.reportCatDeletionFailure, reportCatDeletionFailure)) {
+        NavigationLink {
+            CatDetailView(cat: cat)
+                .environment(\.reportCatDeletionFailure, reportCatDeletionFailure)
+        } label: {
             EnhancedCatCardView(cat: cat)
         }
         .buttonStyle(.plain)

@@ -1470,8 +1470,6 @@ final class CriticalFlowsUITests: XCTestCase {
 
     /// Taps an element a second time, but only while it is still on screen.
     ///
-    /// A save button whose sheet has already closed is not a test failure: the sheet closing is the
-    /// wanted outcome. The assertion that matters is the row count after the taps.
     /// Cats screen → "UI Test Cat" detail → Edit Cat → Delete → confirm.
     private func deletePrimaryCatFromEditCat(in app: XCUIApplication) {
         let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
@@ -1507,6 +1505,8 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertFalse(app.buttons["cats.card.UI Test Cat"].exists)
     }
 
+    /// A save button whose sheet has already closed is not a test failure: the sheet closing is the
+    /// wanted outcome. The assertion that matters is the row count after the taps.
     private func tapAgainIfStillPresent(_ element: XCUIElement) {
         guard element.exists, element.isHittable else { return }
 
