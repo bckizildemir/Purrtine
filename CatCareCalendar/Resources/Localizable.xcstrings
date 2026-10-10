@@ -12578,23 +12578,6 @@
         }
       }
     },
-    "task.copy_suffix" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " (Copy)"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " (Kopya)"
-          }
-        }
-      }
-    },
     "task.detail.active" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13890,6 +13873,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ tarihi için görevler"
+          }
+        }
+      }
+    },
+    "tasks.delete_pending.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The task is gone from your list. The app could not finish deleting it yet, and will finish the next time it saves a change."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Görev listenizden kaldırıldı. Uygulama silme işlemini henüz tamamlayamadı; bir sonraki kayıtta tamamlayacak."
+          }
+        }
+      }
+    },
+    "tasks.delete_pending.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task removed"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Görev kaldırıldı"
           }
         }
       }

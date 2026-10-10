@@ -52,6 +52,13 @@ final class TaskManagementViewModel {
     /// A reminder warning from the completion sheet, held until the sheet has closed.
     private var hasPendingReminderWarning = false
 
+    /// The last one-tap complete or delete that did not save. Kept after the alert closes, so the
+    /// alert's text does not change while it animates away.
+    private(set) var actionFailure: TaskActionFailure?
+
+    /// Drives the alert for `actionFailure`.
+    var isShowingActionFailure = false
+
     // YENİ: UI için işlenmiş ve hazır veriler
     var groupedTasks: [TaskListSection] = []
     var taskCounts: [CareTaskFilter: Int] = [:]
@@ -125,10 +132,11 @@ final class TaskManagementViewModel {
                     break
                 case .remindersStale(let staleError):
                     // The completion committed, so it counts as done; only the reminders are stale.
-                    logStaleReminders(after: task, staleError)
+                    logStaleReminders(after: "Completed", task, staleError)
                     isShowingReminderWarning = true
                 case .notSaved:
                     logger.error("Failed to complete task: \(error.localizedDescription)")
+                    showActionFailure(.completionNotSaved)
                 }
             }
         }
@@ -193,7 +201,7 @@ final class TaskManagementViewModel {
             case .remindersStale(let staleError):
                 // The completion committed. A retry would record it twice, so the sheet still closes,
                 // and the warning shows once it has.
-                logStaleReminders(after: task, staleError)
+                logStaleReminders(after: "Completed", task, staleError)
                 hasPendingReminderWarning = true
             case .notSaved:
                 throw error
@@ -210,10 +218,19 @@ final class TaskManagementViewModel {
         isShowingReminderWarning = true
     }
 
-    private func logStaleReminders(after task: CareTask, _ error: CareTaskRemindersOutOfSyncError) {
+    private func logStaleReminders(
+        after action: String,
+        _ task: CareTask,
+        _ error: CareTaskRemindersOutOfSyncError
+    ) {
         logger.error(
-            "Completed '\(task.title)' but could not update its reminders: \(error.underlyingError.localizedDescription)"
+            "\(action) '\(task.title)' but could not update its reminders: \(error.underlyingError.localizedDescription)"
         )
+    }
+
+    private func showActionFailure(_ failure: TaskActionFailure) {
+        actionFailure = failure
+        isShowingActionFailure = true
     }
 
     @discardableResult
@@ -222,7 +239,19 @@ final class TaskManagementViewModel {
             do {
                 try await deleteCareTaskAndWait(task)
             } catch {
-                print("❌ Failed to delete task: \(error.localizedDescription)")
+                switch CareTaskWriteFailure(error) {
+                case .cancelled:
+                    break
+                case .remindersStale(let staleError):
+                    // The delete committed; only the reminders are stale.
+                    logStaleReminders(after: "Deleted", task, staleError)
+                    isShowingReminderWarning = true
+                case .notSaved:
+                    // The writer keeps a failed delete staged, and the next successful save commits it,
+                    // so the row stays removed.
+                    logger.error("Failed to commit task delete: \(error.localizedDescription)")
+                    showActionFailure(.deletePending)
+                }
             }
         }
     }
@@ -230,71 +259,12 @@ final class TaskManagementViewModel {
     func deleteCareTaskAndWait(_ task: CareTask) async throws {
         guard let modelContext else { return }
         let taskId = task.id
-        let taskTitle = task.title
+        // Drop the row before the write: a failed commit leaves the delete staged, not undone.
         allCareTasks.removeAll { $0.id == taskId }
+        refreshTasks()
         try await taskWriter.delete(task, in: modelContext)
-
-        print("CareTask deleted and notifications cancelled: \(taskTitle)")
-        refreshTasks()
     }
 
-    @discardableResult
-    func duplicateTask(_ task: CareTask) -> Task<Void, Never> {
-        Task { @MainActor in
-            do {
-                _ = try await duplicateTaskAndWait(task)
-            } catch {
-                print("❌ Failed to duplicate task: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    func duplicateTaskAndWait(_ task: CareTask) async throws -> CareTask? {
-        guard let modelContext else { return nil }
-
-        // Create duplicate task
-        let duplicateTask = CareTask(
-            title: task.title + String(localized: .taskCopySuffix),
-            description: task.taskDescription,
-            category: task.category,
-            iconName: task.iconName,
-            priority: task.priority,
-            status: .pending
-        )
-        
-        // Copy cat assignments
-        duplicateTask.assignedCats = task.assignedCats
-        
-        // Duplicate schedules with +1 day offset
-        for schedule in task.activeSchedules {
-            let newScheduleDate = Calendar.current.date(byAdding: .day, value: 1, to: schedule.scheduledDate) ?? schedule.scheduledDate
-            let newEndDate = schedule.endDate.flatMap {
-                Calendar.current.date(byAdding: .day, value: 1, to: $0)
-            }
-
-            let duplicateSchedule = CareTaskSchedule(
-                scheduledDate: newScheduleDate,
-                scheduledTime: schedule.scheduledTime,
-                frequency: schedule.frequency,
-                frequencyInterval: schedule.frequencyInterval,
-                endDate: newEndDate,
-                reminderMinutes: schedule.reminderMinutes,
-                customDays: schedule.customDays
-            )
-            duplicateSchedule.task = duplicateTask
-            modelContext.insert(duplicateSchedule)
-        }
-
-        // Append only once the save returns: a failed save leaves nothing to list. A duplicate that
-        // committed with stale reminders still arrives through the view's `@Query` re-configure.
-        try await taskWriter.save(duplicateTask, in: modelContext)
-        allCareTasks.append(duplicateTask)
-
-        print("✅ CareTask duplicated successfully: \(duplicateTask.title)")
-        refreshTasks()
-        return duplicateTask
-    }
-    
     // MARK: - Notification Management
     func setupNotifications() async {
         // Check and request notification permissions
