@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 import SwiftData
 import UserNotifications
@@ -44,7 +45,13 @@ final class TaskManagementViewModel {
     
     // CareTask Completion
     var taskCompletionRequest: TaskCompletionRequest?
-    
+
+    /// A completion saved, but its reminders could not be updated. Drives the reminder warning alert.
+    var isShowingReminderWarning = false
+
+    /// A reminder warning from the completion sheet, held until the sheet has closed.
+    private var hasPendingReminderWarning = false
+
     // YENİ: UI için işlenmiş ve hazır veriler
     var groupedTasks: [TaskListSection] = []
     var taskCounts: [CareTaskFilter: Int] = [:]
@@ -53,6 +60,7 @@ final class TaskManagementViewModel {
     private let taskWriter: any CareTaskWriting
     private var modelContext: ModelContext?
     private var allCareTasks: [CareTask] = []
+    private let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "TaskManagement")
 
     init(
         notificationManager: NotificationManager = .shared,
@@ -112,7 +120,16 @@ final class TaskManagementViewModel {
                     photos: photos
                 )
             } catch {
-                print("❌ Failed to complete task: \(error.localizedDescription)")
+                switch CareTaskWriteFailure(error) {
+                case .cancelled:
+                    break
+                case .remindersStale(let staleError):
+                    // The completion committed, so it counts as done; only the reminders are stale.
+                    logStaleReminders(after: task, staleError)
+                    isShowingReminderWarning = true
+                case .notSaved:
+                    logger.error("Failed to complete task: \(error.localizedDescription)")
+                }
             }
         }
     }
@@ -168,13 +185,35 @@ final class TaskManagementViewModel {
                 with: notes,
                 photos: photos
             )
-        } catch is CancellationError {
-            // The completion committed, and the next resync rebuilds the reminders from the store.
-        } catch let error as CareTaskRemindersOutOfSyncError {
-            // The completion committed. A retry would record it twice, so the sheet still closes.
-            print("❌ Failed to update reminders after completing '\(task.title)': \(error.underlyingError)")
+        } catch {
+            switch CareTaskWriteFailure(error) {
+            case .cancelled:
+                // The completion committed, and the next resync rebuilds the reminders from the store.
+                break
+            case .remindersStale(let staleError):
+                // The completion committed. A retry would record it twice, so the sheet still closes,
+                // and the warning shows once it has.
+                logStaleReminders(after: task, staleError)
+                hasPendingReminderWarning = true
+            case .notSaved:
+                throw error
+            }
         }
         dismissTaskCompletion()
+    }
+
+    /// Call when the completion sheet has closed. Shows the reminder warning its save left pending:
+    /// an alert raised while the sheet is still on screen would not present.
+    func taskCompletionSheetDidDismiss() {
+        guard hasPendingReminderWarning else { return }
+        hasPendingReminderWarning = false
+        isShowingReminderWarning = true
+    }
+
+    private func logStaleReminders(after task: CareTask, _ error: CareTaskRemindersOutOfSyncError) {
+        logger.error(
+            "Completed '\(task.title)' but could not update its reminders: \(error.underlyingError.localizedDescription)"
+        )
     }
 
     @discardableResult
