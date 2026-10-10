@@ -1,7 +1,9 @@
 import Foundation
 import CoreImage
+import ImageIO
 import Testing
 import UIKit
+import UniformTypeIdentifiers
 @testable import CatCareCalendar
 
 @Suite
@@ -197,6 +199,29 @@ struct PhotoManagerTests {
         let saved = try #require(fixture.sut.loadPhoto(from: stored))
 
         #expect(max(saved.size.width, saved.size.height) <= CGFloat(PhotoManager.photoMaxPixelSize))
+    }
+
+    /// Only data without a location is written as it is: a small JPEG with GPS data is re-encoded,
+    /// which drops the location.
+    @Test
+    func aJPEGWithLocationDataIsReEncodedWithoutIt() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let cgImage = try #require(UIImage(data: try makeImageData(width: 64, height: 64))?.cgImage)
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
+        )
+        let gps: [CFString: Any] = [kCGImagePropertyGPSLatitude: 41.0, kCGImagePropertyGPSLongitude: 29.0]
+        CGImageDestinationAddImage(destination, cgImage, [kCGImagePropertyGPSDictionary: gps] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+
+        let stored = try fixture.sut.savePhoto(output as Data, for: UUID())
+
+        let url = try #require(fixture.sut.getPhotoURL(from: stored))
+        let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        #expect(properties[kCGImagePropertyGPSDictionary] == nil)
     }
 
     @Test

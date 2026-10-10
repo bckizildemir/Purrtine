@@ -47,10 +47,24 @@ nonisolated final class PhotoManager: Sendable {
         return UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality)
     }
 
-    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once. The drawing
-    /// applies the image orientation, so the JPEG is upright. `nil` when the image has no pixels or
-    /// cannot be encoded.
     static func downsampledJPEGData(
+        from image: UIImage,
+        maxPixelSize: Int,
+        compressionQuality: CGFloat = saveCompressionQuality
+    ) -> Data? {
+        guard let data = image.jpegData(compressionQuality: 1.0) else { return nil }
+        return downsampledJPEGData(
+            from: data,
+            maxPixelSize: maxPixelSize,
+            compressionQuality: compressionQuality
+        )
+    }
+
+    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once, where
+    /// `downsampledJPEGData(from: UIImage)` encodes, decodes and encodes again. The drawing applies
+    /// the image orientation, so the JPEG is upright. `nil` when the image has no pixels or cannot be
+    /// encoded.
+    static func renderedJPEGData(
         from image: UIImage,
         maxPixelSize: Int,
         compressionQuality: CGFloat = saveCompressionQuality
@@ -75,7 +89,8 @@ nonisolated final class PhotoManager: Sendable {
     }
 
     /// Whether `data` is already what `preparedJPEGData` makes: one complete, upright JPEG image no
-    /// larger than `maxPixelSize` on its longest edge. Reads the header only; nothing is decoded.
+    /// larger than `maxPixelSize` on its longest edge, with no location data. Reads the header only;
+    /// nothing is decoded.
     static func isPreparedJPEG(_ data: Data, maxPixelSize: Int) -> Bool {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
@@ -88,7 +103,9 @@ nonisolated final class PhotoManager: Sendable {
             return false
         }
         let orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
-        return width > 0 && height > 0 && max(width, height) <= maxPixelSize && orientation == 1
+        let hasLocation = properties[kCGImagePropertyGPSDictionary] != nil
+        return width > 0 && height > 0 && max(width, height) <= maxPixelSize
+            && orientation == 1 && hasLocation == false
     }
 
     /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores, so that
@@ -158,7 +175,7 @@ nonisolated final class PhotoManager: Sendable {
     }
 
     func saveUIImage(_ image: UIImage, for catId: UUID) throws -> String {
-        guard let jpeg = PhotoManager.downsampledJPEGData(
+        guard let jpeg = PhotoManager.renderedJPEGData(
             from: image,
             maxPixelSize: PhotoManager.photoMaxPixelSize
         ) else {
