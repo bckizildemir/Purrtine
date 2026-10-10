@@ -178,7 +178,7 @@ final class TaskManagementViewModel {
                     break
                 case .remindersStale(let staleError):
                     // The completion committed, so it counts as done; only the reminders are stale.
-                    logStaleReminders(after: "Completed", task, staleError)
+                    logStaleReminders(after: .completed, task, staleError)
                     raiseReminderWarning()
                 case .notSaved:
                     logger.error("Failed to complete task: \(error.localizedDescription)")
@@ -271,7 +271,7 @@ final class TaskManagementViewModel {
             case .remindersStale(let staleError):
                 // The completion committed. A retry would record it twice, so the sheet still closes,
                 // and the warning shows once it has.
-                logStaleReminders(after: "Completed", task, staleError)
+                logStaleReminders(after: .completed, task, staleError)
                 raiseReminderWarning()
             case .notSaved:
                 throw error
@@ -344,14 +344,19 @@ final class TaskManagementViewModel {
         }
     }
 
+    /// The write that committed before its reminders went stale; the raw value opens the log line.
+    private enum StaleRemindersAction: String {
+        case completed = "Completed"
+        case deleted = "Deleted"
+    }
+
     private func logStaleReminders(
-        after action: String,
+        after action: StaleRemindersAction,
         _ task: CareTask,
         _ error: CareTaskRemindersOutOfSyncError
     ) {
-        logger.error(
-            "\(action) '\(task.title)' but could not update its reminders: \(error.underlyingError.localizedDescription)"
-        )
+        let reason = error.underlyingError.localizedDescription
+        logger.error("\(action.rawValue) '\(task.title)' but could not update its reminders: \(reason)")
     }
 
     @discardableResult
@@ -365,7 +370,7 @@ final class TaskManagementViewModel {
                     break
                 case .remindersStale(let staleError):
                     // The delete committed; only the reminders are stale.
-                    logStaleReminders(after: "Deleted", task, staleError)
+                    logStaleReminders(after: .deleted, task, staleError)
                     raiseReminderWarning()
                 case .notSaved:
                     // The writer keeps a failed delete staged, and the next successful save commits it,
@@ -383,6 +388,8 @@ final class TaskManagementViewModel {
         // Drop the row before the write: a failed commit leaves the delete staged, not undone.
         allCareTasks.removeAll { $0.id == taskId }
         refreshTasks()
+        // A `CancellationError` also leaves the row removed. That is right only because
+        // `CareTaskWriter.delete` commits before its first `await`; re-check it if the writer changes.
         try await taskWriter.delete(task, in: modelContext)
     }
 
