@@ -799,7 +799,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
     /// #31: the card menu's Delete reports a failed commit once its confirmation has closed.
     func testCatCardMenuDeleteCommitFailureShowsPendingSaveNote() {
-        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-cat-delete-commit")
+        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-cat-delete-commit", keepsAnimations: true)
 
         deletePrimaryCatFromCardMenu(in: app)
 
@@ -808,7 +808,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
     /// #31: the card menu's Delete reports a reminder failure after the commit.
     func testCatCardMenuDeleteReminderFailureShowsReminderWarning() {
-        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-notification-schedule")
+        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-notification-schedule", keepsAnimations: true)
 
         deletePrimaryCatFromCardMenu(in: app)
 
@@ -818,7 +818,7 @@ final class CriticalFlowsUITests: XCTestCase {
     /// #31: Edit Cat opened from the card leaves with the card, so its note must not depend on the
     /// order of the sheet closing and the delete finishing.
     func testCatCardEditDeleteCommitFailureShowsPendingSaveNote() {
-        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-cat-delete-commit")
+        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-cat-delete-commit", keepsAnimations: true)
 
         deletePrimaryCatFromCardEditCat(in: app)
 
@@ -827,21 +827,23 @@ final class CriticalFlowsUITests: XCTestCase {
 
     /// #31: here the sheet closes before the reminder refresh fails, which used to lose the note.
     func testCatCardEditDeleteReminderFailureShowsReminderWarning() {
-        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-notification-schedule")
+        let app = launchCatDeletionFailureScenario(failureFlag: "-fail-notification-schedule", keepsAnimations: true)
 
         deletePrimaryCatFromCardEditCat(in: app)
 
         assertCatDeletionAlert(in: app, title: scheduleFailureAlertTitle)
     }
 
-    private func launchCatDeletionFailureScenario(failureFlag: String) -> XCUIApplication {
+    /// - Parameter keepsAnimations: Keeps the confirmation's and the sheet's dismissal animations on,
+    ///   so the note races them the way it does on a device (#31).
+    private func launchCatDeletionFailureScenario(failureFlag: String, keepsAnimations: Bool) -> XCUIApplication {
         let app = makeApp(
             additionalArguments: [
                 "-complete-onboarding",
                 "-launch-route", "cats",
                 "-seed-scenario", "shared_task_cat_deletion",
                 failureFlag
-            ]
+            ] + (keepsAnimations ? ["-keep-animations"] : [])
         )
         app.launch()
         return app
