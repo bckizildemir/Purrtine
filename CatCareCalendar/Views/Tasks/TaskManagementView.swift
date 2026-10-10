@@ -146,6 +146,7 @@ struct TaskManagementView: View {
         semanticTitle: String(localized: .tasksTitle),
         visualTitle: Text(.tasksTitle)
       )
+      .minimizingNavigationBarOnScroll()
       .toolbar {
         if !allCats.isEmpty {
           if #available(iOS 26.0, *) {
