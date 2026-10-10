@@ -96,27 +96,103 @@ struct CatDeletionServiceTests {
         #expect(rescheduleInfo.reminderMinutes == 45)
     }
 
-    /// The cat is gone once the delete commits, so a reminder failure after it must not make the
-    /// delete look failed to the view, which would then keep a sheet open over a deleted cat.
+    // MARK: - Failures
+
+    /// The cat is gone once the delete commits, so a reminder failure after it reads as "deleted,
+    /// reminders stale" — never as "not deleted".
     @Test
-    func deletingCatSucceedsWhenTheReminderRefreshFails() async throws {
+    func reminderRefreshFailureAfterTheCommitThrowsRemindersOutOfSync() async throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
-        let cat = Cat(name: "Mochi")
-        let task = CareTask(title: "Brush Mochi", category: .grooming)
-        task.assignedCats = [cat]
-        context.insert(cat)
-        context.insert(task)
-        try context.save()
+        let (cat, task) = try insertCatWithTask(in: context)
+        let writer = CareTaskWriterSpy()
+        writer.refreshError = RefreshFailure()
+        var deletedPhotos: [String] = []
+        let sut = CatDeletionService(taskWriter: writer, deletePhoto: { deletedPhotos.append($0) })
+
+        let error = try await #require(throws: CareTaskRemindersOutOfSyncError.self) {
+            try await sut.delete(cat, from: context)
+        }
+
+        #expect(error.taskIds == [task.id])
+        #expect(error.underlyingError is RefreshFailure)
+        #expect(writer.refreshedTaskIds == [[task.id]])
+        #expect(deletedPhotos == ["mochi.jpg"])
+        #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
+    }
+
+    /// The real writer already wraps its scheduler failure; the service must not wrap it twice.
+    @Test
+    func writerOutOfSyncErrorPassesThroughUnwrapped() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, task) = try insertCatWithTask(in: context)
         let spy = NotificationSchedulerSpy()
         spy.observe(container)
         spy.resyncError = .forcedFailure
         let sut = CatDeletionService(taskWriter: CareTaskWriter(scheduler: spy), deletePhoto: { _ in })
 
-        let summary = try await sut.delete(cat, from: context)
+        let error = try await #require(throws: CareTaskRemindersOutOfSyncError.self) {
+            try await sut.delete(cat, from: context)
+        }
 
-        #expect(summary.deletedTaskIds == [task.id])
-        #expect(spy.resyncAttemptCount == 1)
+        #expect(error.taskIds == [task.id])
+        #expect(!(error.underlyingError is CareTaskRemindersOutOfSyncError))
         #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
     }
+
+    /// Cancellation is not a reminder failure: it reaches the caller as itself, and the delete stands.
+    @Test
+    func cancellationDuringTheRefreshPassesThroughAndTheDeleteStands() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, _) = try insertCatWithTask(in: context)
+        let writer = CareTaskWriterSpy()
+        writer.refreshError = CancellationError()
+        let sut = CatDeletionService(taskWriter: writer, deletePhoto: { _ in })
+
+        await #expect(throws: CancellationError.self) {
+            try await sut.delete(cat, from: context)
+        }
+
+        #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
+    }
+
+    /// A failed commit throws the commit error itself. Nothing was written, so no photo is deleted
+    /// and no reminder is touched; the delete stays staged for the next save (#7 behaviour).
+    @Test
+    func commitFailureThrowsTheCommitErrorAndTouchesNothingElse() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, _) = try insertCatWithTask(in: context)
+        let writer = CareTaskWriterSpy()
+        var deletedPhotos: [String] = []
+        let sut = CatDeletionService(
+            taskWriter: writer,
+            deletePhoto: { deletedPhotos.append($0) },
+            saveContext: { _ in throw CommitFailure() }
+        )
+
+        await #expect(throws: CommitFailure.self) {
+            try await sut.delete(cat, from: context)
+        }
+
+        #expect(deletedPhotos.isEmpty)
+        #expect(writer.refreshedTaskIds.isEmpty)
+    }
+
+    // MARK: - Helpers
+
+    private func insertCatWithTask(in context: ModelContext) throws -> (Cat, CareTask) {
+        let cat = Cat(name: "Mochi", photoURLs: ["mochi.jpg"])
+        let task = CareTask(title: "Brush Mochi", category: .grooming)
+        task.assignedCats = [cat]
+        context.insert(cat)
+        context.insert(task)
+        try context.save()
+        return (cat, task)
+    }
 }
+
+private struct RefreshFailure: Error {}
+private struct CommitFailure: Error {}

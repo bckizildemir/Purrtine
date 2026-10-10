@@ -7,6 +7,7 @@ struct CatsTabView: View {
     @State private var showingAddCat = false
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    @State private var catDeletionFailure: CatDeletionFailure?
 
     @State private var viewWidth: CGFloat = 0
 
@@ -81,12 +82,22 @@ struct CatsTabView: View {
         .sheet(isPresented: $showingAddCat) {
             AddCatView()
         }
+        // Hosted here, not on the screen that deleted the cat: that screen leaves with the cat.
+        .alert(catDeletionFailure?.title ?? "", item: $catDeletionFailure) { _ in
+        } message: { failure in
+            Text(failure.message)
+        }
+        .environment(\.reportCatDeletionFailure, reportCatDeletionFailure)
         .onAppear {
             sanitizeInvalidAges()
         }
         .accessibilityIdentifier("cats.view")
     }
     
+    private var reportCatDeletionFailure: ReportCatDeletionFailureAction {
+        ReportCatDeletionFailureAction { catDeletionFailure = $0 }
+    }
+
     // MARK: - Main Content View
     @ViewBuilder
     private var mainContentView: some View {
@@ -130,7 +141,9 @@ struct CatsTabView: View {
     // MARK: - Cat Card View
     @ViewBuilder
     private func catCardView(for cat: Cat) -> some View {
-        NavigationLink(destination: CatDetailView(cat: cat)) {
+        // Set on the destination too: a pushed view takes its environment from the navigation
+        // stack, not from this link, so the modifier on `body` does not reach it.
+        NavigationLink(destination: CatDetailView(cat: cat).environment(\.reportCatDeletionFailure, reportCatDeletionFailure)) {
             EnhancedCatCardView(cat: cat)
         }
         .buttonStyle(.plain)

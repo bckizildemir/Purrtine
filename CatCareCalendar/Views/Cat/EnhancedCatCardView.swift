@@ -7,6 +7,7 @@ struct EnhancedCatCardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.haptics) private var haptics
     @Environment(\.careTaskWriter) private var careTaskWriter
+    @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var showingTaskAdd = false
@@ -200,13 +201,21 @@ struct EnhancedCatCardView: View {
         }
     }
     
+    /// The cat is gone either way (#19); a failure goes to `CatsTabView`, which shows the note,
+    /// because this card leaves the grid with the cat.
     private func deleteCat() {
+        let catName = cat.name
         Task {
             do {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
                 haptics.impact(.medium)
             } catch {
-                print("Error deleting cat: \(error)")
+                if let failure = CatDeletionFailure(error: error, catName: catName) {
+                    haptics.notify(.error)
+                    reportCatDeletionFailure(failure)
+                } else {
+                    haptics.impact(.medium)
+                }
             }
         }
     }

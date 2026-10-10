@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 
 /// Deletes a cat, the tasks only it was assigned to, and its photos, then resyncs the reminders of
@@ -14,20 +15,47 @@ struct CatDeletionService {
         let deletedTaskIds: [UUID]
     }
 
+    private static let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "CatDeletion")
+
     private let taskWriter: any CareTaskWriting
     private let deletePhoto: (String) -> Void
+    private let saveContext: @MainActor (ModelContext) throws -> Void
 
+    /// - Parameter saveContext: The commit step. Production keeps the default; a test passes a
+    ///   throwing one, because SwiftData offers no other way to make a real `save()` fail.
     init(
         taskWriter: any CareTaskWriting,
-        deletePhoto: @escaping (String) -> Void = { PhotoManager.shared.deletePhoto(at: $0) }
+        deletePhoto: @escaping (String) -> Void = { PhotoManager.shared.deletePhoto(at: $0) },
+        saveContext: @escaping @MainActor (ModelContext) throws -> Void = CatDeletionService.commit
     ) {
         self.taskWriter = taskWriter
         self.deletePhoto = deletePhoto
+        self.saveContext = saveContext
     }
 
-    /// Throws only when the cat could not be deleted. Once the delete commits, a reminder failure is
-    /// logged rather than thrown: the cat is gone either way, and the next resync rebuilds the
-    /// reminders from the store.
+    private static func commit(_ modelContext: ModelContext) throws {
+        #if DEBUG
+        // UI-test-only; see `AppLaunchConfiguration.failsCatDeleteCommit`.
+        if AppLaunchConfiguration.current.failsCatDeleteCommit {
+            throw InjectedCommitFailure()
+        }
+        #endif
+        try modelContext.save()
+    }
+
+    #if DEBUG
+    /// Failure injected by the `-fail-cat-delete-commit` UI-test launch argument.
+    struct InjectedCommitFailure: Error {}
+    #endif
+
+    /// Follows the `CareTaskWriting` failure contract, so `CatDeletionFailure` can sort what it throws:
+    /// - A commit failure throws the commit error. The delete is **not** rolled back: it stays staged
+    ///   in the shared context, the cat already reads as gone, and the next successful save commits
+    ///   it. No photo is deleted and no reminder is touched.
+    /// - `CareTaskRemindersOutOfSyncError` means the delete committed and the photos are gone, but
+    ///   the reminders of the cat's tasks could not be brought in line.
+    /// - A `CancellationError` after the commit passes through unwrapped; the delete stands, and the
+    ///   next resync rebuilds the reminders from the store.
     @discardableResult
     func delete(_ cat: Cat, from modelContext: ModelContext) async throws -> DeletionSummary {
         let photoFileNames = cat.photoURLs
@@ -42,7 +70,12 @@ struct CatDeletionService {
         }
 
         modelContext.delete(cat)
-        try modelContext.save()
+        do {
+            try saveContext(modelContext)
+        } catch {
+            Self.logger.error("Cat delete not committed, left staged: \(String(describing: error), privacy: .public)")
+            throw error
+        }
 
         for photoFileName in photoFileNames {
             deletePhoto(photoFileName)
@@ -50,10 +83,12 @@ struct CatDeletionService {
 
         do {
             try await taskWriter.refreshReminders(for: touchedTaskIds, in: modelContext)
-        } catch is CancellationError {
-            // The delete stands and the next resync rebuilds the reminders from the store.
+        } catch let error where error is CancellationError || error is CareTaskRemindersOutOfSyncError {
+            // The real writer has already sorted and logged these.
+            throw error
         } catch {
-            print("❌ Failed to refresh reminders after a cat delete: \(error.localizedDescription)")
+            Self.logger.error("Reminders stale after a cat delete: \(String(describing: error), privacy: .public)")
+            throw CareTaskRemindersOutOfSyncError(taskIds: touchedTaskIds, underlyingError: error)
         }
 
         return DeletionSummary(

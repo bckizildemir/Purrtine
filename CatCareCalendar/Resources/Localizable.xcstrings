@@ -2007,6 +2007,57 @@
         }
       }
     },
+    "cat.delete.pending_save.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ was removed, but the change could not be saved yet. It will be saved the next time the app saves your data."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kaldırıldı, ancak bu değişiklik henüz kaydedilemedi. Uygulama verilerinizi bir sonraki kaydedişinde kaydedilecek."
+          }
+        }
+      }
+    },
+    "cat.delete.pending_save.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Not Saved Yet"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silme Henüz Kaydedilmedi"
+          }
+        }
+      }
+    },
+    "cat.delete.reminders_stale.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ was deleted, but reminders could not be updated. They will update the next time you open the app."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ silindi, ancak hatırlatıcılar güncellenemedi. Uygulamayı bir sonraki açışınızda güncellenecekler."
+          }
+        }
+      }
+    },
     "cat.delete.with_tasks_and_shared_warning" : {
       "extractionState" : "manual",
       "localizations" : {
