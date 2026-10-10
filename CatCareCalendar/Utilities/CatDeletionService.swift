@@ -26,6 +26,8 @@ struct CatDeletionService {
 
     /// One watch per context that still holds a failed cat delete. Static, because the service is a
     /// value each view builds per delete, and one landing save must resync once for every cat it lands.
+    /// A watch keeps the `deletePhoto` and `taskWriter` of the service that started it, for every cat
+    /// it lands; in the app every service gets the same ones, so that is the same work.
     private static var stagedDeleteWatches: [StagedDeleteWatch<StagedCatDelete>] = []
 
     /// Test handle only: the follow-up a save most recently started for the watch on `context`, so a
@@ -145,6 +147,8 @@ struct CatDeletionService {
             for photoFileName in landedDeletes.flatMap(\.photoFileNames) {
                 deletePhoto(photoFileName)
             }
+            // A cat with no tasks brings no task IDs, and the writer skips the resync: no reminder
+            // carried its name.
             guard let modelContext else { return }
             do {
                 try await taskWriter.refreshReminders(

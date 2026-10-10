@@ -276,6 +276,26 @@ struct CatDeletionServiceTests {
         #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
     }
 
+    /// A cat that was never committed has no delete to land: no later save posts its identifier,
+    /// so a watch for it would observe until the process ends.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func aFailedDeleteOfANeverSavedCatLeavesNothingToWatch() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let cat = Cat(name: "Mochi", photoURLs: ["mochi.jpg"])
+        context.insert(cat)
+        let spy = NotificationSchedulerSpy()
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(cat, from: context)
+
+        try context.save()
+
+        #expect(CatDeletionService.pendingFollowUp(in: context) == nil)
+        #expect(deletedPhotos.isEmpty)
+        #expect(spy.resyncAttemptCount == 0)
+    }
+
     // MARK: - Helpers
 
     /// A service whose own commit always fails, so its delete stays staged for a later plain save.
