@@ -1247,6 +1247,82 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["taskEdit.saveButton"].isEnabled)
     }
 
+    /// Guards #14: a one-tap completion whose reminders cannot be updated used to be `print()`-only.
+    ///
+    /// The completion stands, so the row reads as completed and the alert offers no retry.
+    func testOneTapCompletionWithStaleRemindersWarnsAndCountsAsDone() {
+        let app = launchStaleReminderCompletionScenario()
+
+        let completeButton = app.buttons["taskRow.complete.UI Solo Task"]
+        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        completeButton.tap()
+
+        acknowledgeReminderWarning(in: app)
+        let completedValue = NSPredicate(format: "value CONTAINS %@", "Completed")
+        let completed = expectation(for: completedValue, evaluatedWith: completeButton)
+        wait(for: [completed], timeout: 5)
+    }
+
+    /// Guards #14 on the calendar, which completes through the same view model as the list.
+    func testCalendarOneTapCompletionWithStaleRemindersWarns() {
+        let app = launchStaleReminderCompletionScenario()
+
+        let viewModeButton = app.buttons["taskManagement.viewModeButton"]
+        XCTAssertTrue(viewModeButton.waitForExistence(timeout: 5))
+        viewModeButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["taskManagement.calendar"].waitForExistence(timeout: 5))
+
+        let completeButton = app.buttons["taskRow.complete.UI Solo Task"]
+        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        completeButton.tap()
+
+        acknowledgeReminderWarning(in: app)
+    }
+
+    /// Guards #14 on the completion sheet: the sheet closes, because the completion committed, and
+    /// the warning appears once it has closed.
+    func testSheetCompletionWithStaleRemindersClosesTheSheetThenWarns() {
+        let app = launchStaleReminderCompletionScenario()
+
+        let completeButton = app.buttons["taskRow.complete.UI Shared Task"]
+        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        completeButton.tap()
+
+        let selectAllButton = app.buttons["taskCompletionSelectAllButton"]
+        XCTAssertTrue(selectAllButton.waitForExistence(timeout: 5))
+        selectAllButton.tap()
+
+        let confirmButton = app.buttons["taskCompletion.confirmButton"]
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        confirmButton.tap()
+
+        acknowledgeReminderWarning(in: app)
+        XCTAssertFalse(confirmButton.exists)
+    }
+
+
+    private func launchStaleReminderCompletionScenario() -> XCUIApplication {
+        let app = makeApp(
+            additionalArguments: [
+                "-complete-onboarding",
+                "-launch-route", "tasks",
+                "-seed-scenario", "shared_task_cat_deletion",
+                "-fail-notification-schedule"
+            ]
+        )
+        app.launch()
+        return app
+    }
+
+    /// The warning's only button is OK; no retry is offered, because a retry would record twice.
+    private func acknowledgeReminderWarning(in app: XCUIApplication) {
+        let warning = app.alerts[scheduleFailureAlertTitle]
+        XCTAssertTrue(warning.waitForExistence(timeout: 5))
+        XCTAssertEqual(warning.buttons.count, 1)
+        warning.buttons.firstMatch.tap()
+        XCTAssertTrue(warning.waitForNonExistence(timeout: 5))
+    }
+
     /// Guards finding P3: `saveChanges` re-baselines `initialSnapshot` right after `updateTask`
     /// succeeds, so the sheet must not warn about discarding edits that are already on disk.
     ///

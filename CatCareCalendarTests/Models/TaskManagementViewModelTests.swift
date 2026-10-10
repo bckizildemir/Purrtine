@@ -138,6 +138,71 @@ struct TaskManagementViewModelTests {
         #expect(fixture.task.completions.count == 1)
     }
 
+    /// The warning waits for the sheet to close: an alert raised while the sheet is still on screen
+    /// cannot be presented from the view underneath it.
+    @Test
+    func sheetCompletionWithStaleRemindersWarnsOnceTheSheetHasClosed() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+
+        try await sut.submitCompletion(of: fixture.task, by: nil)
+
+        #expect(sut.taskCompletionRequest == nil)
+        #expect(spy.completions.count == 1)
+        #expect(sut.isShowingReminderWarning == false)
+
+        sut.taskCompletionSheetDidDismiss()
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func oneTapCompletionWithStaleRemindersCountsAsDoneAndWarns() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(spy.completions.count == 1)
+        #expect(sut.taskCompletionRequest == nil)
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func cancelledOneTapCompletionShowsNoWarning() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = CancellationError()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(spy.completions.count == 1)
+        #expect(sut.isShowingReminderWarning == false)
+    }
+
+    /// "Not saved" is a different failure; a reminder warning would tell the caregiver it was done.
+    @Test
+    func unsavedOneTapCompletionShowsNoReminderWarning() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(sut.isShowingReminderWarning == false)
+    }
+
     @Test
     func cancelledSheetCompletionStillClosesTheSheet() async throws {
         let fixture = try makeCompletionFixture()
@@ -148,9 +213,11 @@ struct TaskManagementViewModelTests {
         sut.presentTaskCompletion(fixture.task, completedForDate: nil)
 
         try await sut.submitCompletion(of: fixture.task, by: nil)
+        sut.taskCompletionSheetDidDismiss()
 
         #expect(sut.taskCompletionRequest == nil)
         #expect(spy.completions.count == 1)
+        #expect(sut.isShowingReminderWarning == false)
     }
 
     @Test
@@ -221,6 +288,10 @@ struct TaskManagementViewModelTests {
         #expect(duplicateSchedule.scheduledDate == expectedStart)
         #expect(duplicateSchedule.endDate == expectedEnd)
         #expect(spy.savedTasks.map(\.id) == [duplicate.id])
+    }
+
+    private func makeRemindersOutOfSyncError(for task: CareTask) -> CareTaskRemindersOutOfSyncError {
+        CareTaskRemindersOutOfSyncError(taskIds: [task.id], underlyingError: CocoaError(.featureUnsupported))
     }
 
     private func makeCompletionFixture() throws -> (container: ModelContainer, context: ModelContext, task: CareTask) {
