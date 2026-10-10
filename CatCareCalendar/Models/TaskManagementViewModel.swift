@@ -65,16 +65,19 @@ final class TaskManagementViewModel {
     
     private let notificationManager: NotificationManager
     private let taskWriter: any CareTaskWriting
+    private let photoWriter: CareTaskPhotoWriter
     private var modelContext: ModelContext?
     private var allCareTasks: [CareTask] = []
     private let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "TaskManagement")
 
     init(
         notificationManager: NotificationManager = .shared,
-        taskWriter: (any CareTaskWriting)? = nil
+        taskWriter: (any CareTaskWriting)? = nil,
+        photoWriter: CareTaskPhotoWriter = CareTaskPhotoWriter()
     ) {
         self.notificationManager = notificationManager
         self.taskWriter = taskWriter ?? CareTaskWriter(scheduler: notificationManager)
+        self.photoWriter = photoWriter
     }
 
     func configure(with modelContext: ModelContext, tasks: [CareTask]) {
@@ -142,28 +145,49 @@ final class TaskManagementViewModel {
         }
     }
 
+    /// Saves the photos, then commits the completion with them.
+    ///
+    /// With `.failCompletion`, a photo that cannot be saved throws its `PhotoSaveError` and nothing is
+    /// committed. Photo files written by an attempt that commits nothing are deleted again.
     func completeCareTaskAndWait(
         _ task: CareTask,
         for cats: [Cat] = [],
         by caregiver: Caregiver?,
         completedForDate: Date? = nil,
         with notes: String? = nil,
-        photos: [UIImage]? = nil
+        photos: [UIImage]? = nil,
+        unsavedPhotos: UnsavedPhotoPolicy = .failCompletion
     ) async throws {
         guard let modelContext else { return }
 
-        let photoURLs = photos.map(savePhotosToDocuments) ?? []
-        try await taskWriter.complete(
-            task,
-            with: CareTaskCompletionInput(
-                cats: cats,
-                caregiver: caregiver,
-                completedForDate: completedForDate,
-                notes: notes,
-                photoURLs: photoURLs
-            ),
-            in: modelContext
-        )
+        var savedPhotos = CareTaskPhotoSaveResult()
+        if let photos, photos.isEmpty == false {
+            savedPhotos = await photoWriter.save(photos)
+        }
+        if unsavedPhotos == .failCompletion, let failure = savedPhotos.failures.first {
+            await photoWriter.delete(savedPhotos.fileNames)
+            throw failure
+        }
+
+        do {
+            try await taskWriter.complete(
+                task,
+                with: CareTaskCompletionInput(
+                    cats: cats,
+                    caregiver: caregiver,
+                    completedForDate: completedForDate,
+                    notes: notes,
+                    photoURLs: savedPhotos.fileNames
+                ),
+                in: modelContext
+            )
+        } catch {
+            // A cancelled or reminder-stale completion committed, and its photos belong to it.
+            if case .notSaved = CareTaskWriteFailure(error) {
+                await photoWriter.delete(savedPhotos.fileNames)
+            }
+            throw error
+        }
         refreshTasks()
     }
 
@@ -172,14 +196,16 @@ final class TaskManagementViewModel {
 
     /// Saves a completion from the completion sheet and closes the sheet once the completion committed.
     ///
-    /// Throws only when nothing was saved, so the sheet stays open with the user's input.
+    /// Throws only when nothing was saved, so the sheet stays open with the user's input. A
+    /// `PhotoSaveError` means a photo could not be saved while `unsavedPhotos` was `.failCompletion`.
     func submitCompletion(
         of task: CareTask,
         for cats: [Cat] = [],
         by caregiver: Caregiver?,
         completedForDate: Date? = nil,
         with notes: String? = nil,
-        photos: [UIImage]? = nil
+        photos: [UIImage]? = nil,
+        unsavedPhotos: UnsavedPhotoPolicy = .failCompletion
     ) async throws {
         // `completeCareTaskAndWait` returns quietly without a store; here that would close the sheet
         // with nothing saved.
@@ -191,7 +217,8 @@ final class TaskManagementViewModel {
                 by: caregiver,
                 completedForDate: completedForDate,
                 with: notes,
-                photos: photos
+                photos: photos,
+                unsavedPhotos: unsavedPhotos
             )
         } catch {
             switch CareTaskWriteFailure(error) {
@@ -339,35 +366,6 @@ final class TaskManagementViewModel {
         }
     }
     
-    // MARK: - Photo Management
-    private func savePhotosToDocuments(_ photos: [UIImage]) -> [String] {
-        var savedPaths: [String] = []
-        
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let photosDirectory = documentsPath.appendingPathComponent("CareTaskPhotos")
-        
-        // Create directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: photosDirectory, withIntermediateDirectories: true)
-        
-        for (_, photo) in photos.enumerated() {
-            let fileName = "task_photo_\(UUID().uuidString).jpg"
-            let fileURL = photosDirectory.appendingPathComponent(fileName)
-            
-            // Downsample + encode once before writing.
-            if let imageData = PhotoManager.downsampledJPEGData(from: photo, maxPixelSize: PhotoManager.photoMaxPixelSize) {
-                do {
-                    try imageData.write(to: fileURL)
-                    savedPaths.append(fileURL.lastPathComponent) // Store relative path
-                    print("✅ Photo saved: \(fileName)")
-                } catch {
-                    print("❌ Failed to save photo: \(error)")
-                }
-            }
-        }
-
-        return savedPaths
-    }
-
     // MARK: - Utility
     var dateRangeText: String {
         Date().formatted(

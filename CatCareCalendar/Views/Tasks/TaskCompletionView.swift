@@ -9,8 +9,9 @@ struct TaskCompletionView: View {
     let initialNotes: String?
     let initialSelectedCats: [Cat]
     /// Saves the completion. Throws only when nothing was saved; the sheet then stays open with the
-    /// user's input. The caller closes the sheet on success.
-    let onComplete: @MainActor ([Cat], Caregiver?, String?, [UIImage]?, Date?) async throws -> Void
+    /// user's input. The caller closes the sheet on success. A thrown `PhotoSaveError` shows the photo
+    /// alert, whose Complete Without Photo calls this again with `.completeWithout`.
+    let onComplete: @MainActor ([Cat], Caregiver?, String?, [UIImage]?, Date?, UnsavedPhotoPolicy) async throws -> Void
 
     @State private var submission = TaskCompletionSubmission()
     @State private var selectedCats: Set<Cat> = []
@@ -54,7 +55,9 @@ struct TaskCompletionView: View {
         completedForDate: Date?,
         initialNotes: String? = nil,
         initialSelectedCats: [Cat] = [],
-        onComplete: @escaping @MainActor ([Cat], Caregiver?, String?, [UIImage]?, Date?) async throws -> Void
+        onComplete: @escaping @MainActor (
+            [Cat], Caregiver?, String?, [UIImage]?, Date?, UnsavedPhotoPolicy
+        ) async throws -> Void
     ) {
         self.task = task
         self.completedForDate = completedForDate
@@ -143,6 +146,18 @@ struct TaskCompletionView: View {
         }
         .alert(String(localized: .errorDataSave), isPresented: $submission.isShowingFailure) { } message: {
             Text(submission.failureMessage)
+        }
+        .alert(String(localized: .taskCompletionPhotoNotSavedTitle), isPresented: $submission.isShowingPhotoNotSaved) {
+            Button(String(localized: .taskCompletionPhotoTryAgain)) {
+                submitCompletion()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button(String(localized: .taskCompletionPhotoCompleteWithout)) {
+                submitCompletion(unsavedPhotos: .completeWithout)
+            }
+            Button(String(localized: .actionCancel), role: .cancel) { }
+        } message: {
+            Text(.taskCompletionPhotoNotSavedMessage)
         }
         .disabled(isLoadingPhotos || submission.isSaving)
     }
@@ -348,6 +363,10 @@ var completeButton: some View {
 // MARK: - Helper Methods
 private extension TaskCompletionView {
     func submitCompletion() {
+        submitCompletion(unsavedPhotos: .failCompletion)
+    }
+
+    func submitCompletion(unsavedPhotos: UnsavedPhotoPolicy) {
         let cats = Array(selectedCats)
         let caregiver = selectedCaregiver
         let notesToSend = notes.isEmpty ? nil : notes
@@ -356,7 +375,7 @@ private extension TaskCompletionView {
         // with it. The commit is synchronous, so a late cancellation already counts as saved.
         Task {
             await submission.submit {
-                try await onComplete(cats, caregiver, notesToSend, photosToSend, completedForDate)
+                try await onComplete(cats, caregiver, notesToSend, photosToSend, completedForDate, unsavedPhotos)
             }
         }
     }
@@ -498,7 +517,7 @@ struct MultipleCatSelectionRow: View {
 #Preview("Task Completion") {
     PreviewHost(scenario: .standard) {
         if let task = PreviewData.firstTask() {
-            TaskCompletionView(task: task, completedForDate: .now) { _, _, _, _, _ in }
+            TaskCompletionView(task: task, completedForDate: .now) { _, _, _, _, _, _ in }
         }
     }
 }

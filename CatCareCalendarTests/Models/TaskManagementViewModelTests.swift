@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
+import UIKit
 @testable import CatCareCalendar
 
 @MainActor
@@ -237,6 +238,153 @@ struct TaskManagementViewModelTests {
 
         #expect(sut.taskCompletionRequest?.task === task)
         #expect(spy.completions.isEmpty)
+    }
+
+    @Test
+    func blockedPhotoFolderThrowsATypedErrorLogsItAndCommitsNothing() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder(blocked: true)
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+
+        await #expect(throws: PhotoSaveError.self) {
+            try await sut.submitCompletion(of: fixture.task, by: nil, photos: [try CareTaskPhotoFolder.makeImage()])
+        }
+
+        #expect(folder.log.messages.count == 1)
+        #expect(spy.completions.isEmpty)
+        #expect(sut.taskCompletionRequest?.task === fixture.task)
+    }
+
+    /// The sheet asks the caregiver what to do, instead of the general "not saved" alert.
+    @Test
+    func blockedPhotoFolderShowsThePhotoAlertOnTheSheet() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder(blocked: true)
+        defer { folder.remove() }
+        let sut = TaskManagementViewModel(taskWriter: CareTaskWriterSpy(), photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+        let submission = TaskCompletionSubmission()
+        let photo = try CareTaskPhotoFolder.makeImage()
+
+        let didSave = await submission.submit {
+            try await sut.submitCompletion(of: fixture.task, by: nil, photos: [photo])
+        }
+
+        #expect(didSave == false)
+        #expect(submission.isShowingPhotoNotSaved)
+        #expect(submission.isShowingFailure == false)
+        #expect(sut.taskCompletionRequest?.task === fixture.task)
+    }
+
+    /// Nothing is committed, so the photos that did save would belong to no completion.
+    @Test
+    func anUnsavedPhotoRemovesThePhotosThatDidSave() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let photos = [UIImage(), try CareTaskPhotoFolder.makeImage()]
+
+        await #expect(throws: PhotoSaveError.self) {
+            try await sut.submitCompletion(of: fixture.task, by: nil, photos: photos)
+        }
+
+        #expect(spy.completions.isEmpty)
+        #expect(try folder.storedFileNames().isEmpty)
+    }
+
+    @Test
+    func failedCompletionCommitLeavesNoNewPhotoFile() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        spy.completeError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let photo = try CareTaskPhotoFolder.makeImage()
+
+        await #expect(throws: CocoaError.self) {
+            try await sut.submitCompletion(of: fixture.task, by: nil, photos: [photo])
+        }
+
+        let completion = try #require(spy.completions.first)
+        #expect(completion.input.photoURLs.count == 1)
+        #expect(try folder.storedFileNames().isEmpty)
+    }
+
+    /// A completion with stale reminders committed, so it keeps its photos.
+    @Test
+    func completionWithStaleRemindersKeepsItsPhotoFiles() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+        let photo = try CareTaskPhotoFolder.makeImage()
+
+        try await sut.submitCompletion(of: fixture.task, by: nil, photos: [photo])
+
+        let completion = try #require(spy.completions.first)
+        #expect(try folder.storedFileNames() == Set(completion.input.photoURLs))
+        #expect(completion.input.photoURLs.count == 1)
+    }
+
+    @Test
+    func completeWithoutPhotoCommitsTheCompletionWithoutTheFailedPhoto() async throws {
+        let fixture = try makeCompletionFixture()
+        let caregiver = Caregiver(name: "Primary", role: .primary)
+        fixture.context.insert(caregiver)
+        try fixture.context.save()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let sut = TaskManagementViewModel(
+            taskWriter: CareTaskWriter(scheduler: NotificationSchedulerSpy()),
+            photoWriter: folder.sut
+        )
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+        let photos = [UIImage(), try CareTaskPhotoFolder.makeImage()]
+
+        try await sut.submitCompletion(
+            of: fixture.task,
+            by: caregiver,
+            photos: photos,
+            unsavedPhotos: .completeWithout
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(fixture.task.completions.count == 1)
+        #expect(completion.photoURLs.count == 1)
+        #expect(try folder.storedFileNames() == Set(completion.photoURLs))
+        #expect(sut.taskCompletionRequest == nil)
+    }
+
+    @Test
+    func completeWithoutPhotoInABlockedFolderCommitsWithNoPhotos() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder(blocked: true)
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let photo = try CareTaskPhotoFolder.makeImage()
+
+        try await sut.submitCompletion(of: fixture.task, by: nil, photos: [photo], unsavedPhotos: .completeWithout)
+
+        let completion = try #require(spy.completions.first)
+        #expect(spy.completions.count == 1)
+        #expect(completion.input.photoURLs.isEmpty)
     }
 
     @Test

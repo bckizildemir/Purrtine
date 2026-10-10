@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
+import UIKit
 @testable import CatCareCalendar
 
 @MainActor
@@ -263,6 +264,65 @@ struct TaskAssistantViewModelTests {
             String(localized: .taskAssistantScheduleFailed)
         ])
         #expect(sut.messages.last?.style == .failure)
+    }
+
+    /// A photo that cannot be saved does not stop the completion, and the chat says it was left out.
+    @Test
+    func unsavedPhotoIsReportedInTheChatAndTheCompletionStands() async throws {
+        let fixture = try makeFixture()
+        let context = fixture.container.mainContext
+        let caregiver = Caregiver(name: "Primary", role: .primary)
+        context.insert(caregiver)
+        try context.save()
+        let folder = try CareTaskPhotoFolder(blocked: true)
+        defer { folder.remove() }
+        let sut = TaskAssistantViewModel(
+            taskWriter: CareTaskWriter(scheduler: NotificationSchedulerSpy()),
+            photoWriter: folder.sut
+        )
+
+        try await sut.completeDetailedTask(
+            task: fixture.task,
+            selectedCats: [],
+            selectedCaregiver: caregiver,
+            notes: nil,
+            photos: [try CareTaskPhotoFolder.makeImage()],
+            completedForDate: nil,
+            in: context
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.photoURLs.isEmpty)
+        #expect(folder.log.messages.count == 1)
+        #expect(sut.messages.suffix(2).map(\.text) == [
+            String(localized: .taskAssistantCompleteSuccess(fixture.task.title)),
+            String(localized: .taskAssistantPhotosNotSaved(1))
+        ])
+        #expect(sut.messages.last?.style == .failure)
+    }
+
+    @Test
+    func failedDetailedCompletionLeavesNoNewPhotoFile() async throws {
+        let fixture = try makeFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let sut = TaskAssistantViewModel(photoWriter: folder.sut)
+
+        // No caregiver exists and none is chosen, so the completion cannot be recorded.
+        await #expect(throws: TaskActionError.caregiverUnavailable) {
+            try await sut.completeDetailedTask(
+                task: fixture.task,
+                selectedCats: [],
+                selectedCaregiver: nil,
+                notes: nil,
+                photos: [try CareTaskPhotoFolder.makeImage()],
+                completedForDate: nil,
+                in: fixture.container.mainContext
+            )
+        }
+
+        #expect(fixture.task.completions.isEmpty)
+        #expect(try folder.storedFileNames().isEmpty)
     }
 
     @Test

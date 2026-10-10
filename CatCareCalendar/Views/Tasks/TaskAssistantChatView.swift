@@ -47,7 +47,9 @@ struct TaskAssistantChatView: View {
                 completedForDate: request.completedForDate,
                 initialNotes: request.initialNotes,
                 initialSelectedCats: request.initialSelectedCats
-            ) { selectedCats, selectedCaregiver, notes, photos, completedForDate in
+            ) { selectedCats, selectedCaregiver, notes, photos, completedForDate, _ in
+                // The assistant completes with the photos that saved and reports the others in the
+                // chat, so it never throws a `PhotoSaveError` and needs no unsaved-photo policy.
                 try await viewModel.completeDetailedTask(
                     task: request.task,
                     selectedCats: selectedCats,

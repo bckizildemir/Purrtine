@@ -11881,6 +11881,47 @@
         }
       }
     },
+    "task.assistant.photos_not_saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d photo couldn't be saved on this device, so the task was completed without it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d photos couldn't be saved on this device, so the task was completed without them."
+                }
+              }
+            }
+          }
+        },
+        "tr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d fotoğraf bu cihaza kaydedilemedi, görev o fotoğraf olmadan tamamlandı."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d fotoğraf bu cihaza kaydedilemedi, görev bu fotoğraflar olmadan tamamlandı."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "task.assistant.postpone_success" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12523,6 +12564,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Görev hakkında not ekle..."
+          }
+        }
+      }
+    },
+    "task.completion.photo.complete_without" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Complete Without Photo"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğrafsız Tamamla"
+          }
+        }
+      }
+    },
+    "task.completion.photo.try_again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tekrar Dene"
+          }
+        }
+      }
+    },
+    "task.completion.photo_not_saved.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A photo couldn't be saved on this device, so the task isn't completed yet. You can try again, or complete the task without the photos that didn't save."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir fotoğraf bu cihaza kaydedilemedi, bu yüzden görev henüz tamamlanmadı. Tekrar deneyebilir ya da görevi kaydedilemeyen fotoğraflar olmadan tamamlayabilirsin."
+          }
+        }
+      }
+    },
+    "task.completion.photo_not_saved.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo not saved"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotoğraf kaydedilemedi"
           }
         }
       }
