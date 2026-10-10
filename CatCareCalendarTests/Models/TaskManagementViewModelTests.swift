@@ -606,6 +606,7 @@ struct TaskManagementViewModelTests {
 
         // The caregiver closes the first alert.
         sut.isShowingActionFailure = false
+        await sut.nextAlertPresentation?.value
 
         #expect(sut.isShowingReminderWarning)
     }
@@ -631,6 +632,31 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingActionFailure)
 
         sut.isShowingActionFailure = false
+        await sut.nextAlertPresentation?.value
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// Setting the same alert's flag back to `true` inside the write that closes it is no change to
+    /// SwiftUI, so that alert would never present and its flag would block every later alert.
+    @Test
+    func theNextAlertWaitsUntilTheClosingAlertsWriteHasFinished() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        await sut.completeCareTask(fixture.task, by: nil).value
+        await sut.deleteCareTask(fixture.task).value
+        #expect(sut.actionFailure == .completionNotSaved)
+
+        sut.isShowingActionFailure = false
+
+        #expect(sut.isShowingActionFailure == false)
+
+        await sut.nextAlertPresentation?.value
 
         #expect(sut.actionFailure == .deletePending)
         #expect(sut.isShowingActionFailure)
@@ -653,6 +679,7 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingActionFailure == false)
 
         sut.isShowingReminderWarning = false
+        await sut.nextAlertPresentation?.value
 
         #expect(sut.actionFailure == .deletePending)
         #expect(sut.isShowingActionFailure)

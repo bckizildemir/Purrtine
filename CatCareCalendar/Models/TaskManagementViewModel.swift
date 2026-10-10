@@ -65,7 +65,7 @@ final class TaskManagementViewModel {
     /// A write saved, but its reminders could not be updated. Drives the reminder warning alert.
     var isShowingReminderWarning = false {
         didSet {
-            if isShowingReminderWarning == false { showNextPendingAlert() }
+            if isShowingReminderWarning == false { showNextPendingAlertAfterAlertCloses() }
         }
     }
 
@@ -76,7 +76,7 @@ final class TaskManagementViewModel {
     /// Drives the alert for `actionFailure`.
     var isShowingActionFailure = false {
         didSet {
-            if isShowingActionFailure == false { showNextPendingAlert() }
+            if isShowingActionFailure == false { showNextPendingAlertAfterAlertCloses() }
         }
     }
 
@@ -98,6 +98,9 @@ final class TaskManagementViewModel {
     /// Alerts raised while a sheet or another alert was up, shown one at a time once nothing is.
     private var pendingActionFailures: [TaskActionFailure] = []
     private var hasPendingReminderWarning = false
+
+    /// Shows the next pending alert once the closing alert's binding write has finished. Tests await it.
+    @ObservationIgnored private(set) var nextAlertPresentation: Task<Void, Never>?
 
     // YENİ: UI için işlenmiş ve hazır veriler
     var groupedTasks: [TaskListSection] = []
@@ -314,6 +317,16 @@ final class TaskManagementViewModel {
             pendingActionFailures.append(failure)
         }
         showNextPendingAlert()
+    }
+
+    /// An alert closes inside the write of its own binding. Raising the next alert in that same write
+    /// drops it when it uses the same alert (SwiftUI sees `true` before and after, so no change), and
+    /// that flag then blocks every later alert. The next alert waits for the next main-actor turn.
+    private func showNextPendingAlertAfterAlertCloses() {
+        guard pendingActionFailures.isEmpty == false || hasPendingReminderWarning else { return }
+        nextAlertPresentation = Task { [weak self] in
+            self?.showNextPendingAlert()
+        }
     }
 
     /// Shows one pending alert, the action failure first, when no sheet and no other alert is up.
