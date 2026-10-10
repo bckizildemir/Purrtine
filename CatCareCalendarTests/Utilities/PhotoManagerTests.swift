@@ -40,7 +40,7 @@ struct PhotoManagerTests {
             .deletingLastPathComponent()
             .appending(path: "external-\(UUID().uuidString).jpg")
         defer { try? FileManager.default.removeItem(at: externalURL) }
-        try makeImageData().write(to: externalURL)
+        try makeImageData(width: 16, height: 16).write(to: externalURL)
         let traversalPath = fixture.directory
             .appending(path: "..")
             .appending(path: externalURL.lastPathComponent)
@@ -63,7 +63,7 @@ struct PhotoManagerTests {
             .deletingLastPathComponent()
             .appending(path: "external-\(UUID().uuidString).jpg")
         defer { try? FileManager.default.removeItem(at: externalURL) }
-        try makeImageData().write(to: externalURL)
+        try makeImageData(width: 16, height: 16).write(to: externalURL)
         let symlinkURL = fixture.directory.appending(path: "linked.jpg")
         try FileManager.default.createSymbolicLink(at: symlinkURL, withDestinationURL: externalURL)
 
@@ -81,7 +81,7 @@ struct PhotoManagerTests {
         let catId = UUID()
         let fixture = try makeFixture(makeUUID: { generatedId })
         defer { fixture.cleanup() }
-        let data = try makeImageData()
+        let data = try makeImageData(width: 16, height: 16)
 
         let stored = try fixture.sut.savePhoto(data, for: catId)
         let expected = "cat_\(catId.uuidString)_\(generatedId.uuidString).jpg"
@@ -122,7 +122,7 @@ struct PhotoManagerTests {
         let sut = PhotoManager(photosDirectory: blocker)
 
         let error = try #require(throws: PhotoSaveError.self) {
-            try sut.savePhoto(try makeImageData(), for: UUID())
+            try sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
         }
 
         guard case .writeFailed = error else {
@@ -140,7 +140,7 @@ struct PhotoManagerTests {
         defer { try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.directory.path) }
 
         let error = try #require(throws: PhotoSaveError.self) {
-            try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+            try fixture.sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
         }
 
         guard case .writeFailed = error else {
@@ -155,7 +155,7 @@ struct PhotoManagerTests {
         defer { fixture.cleanup() }
         try FileManager.default.removeItem(at: fixture.directory)
 
-        let stored = try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+        let stored = try fixture.sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
 
         #expect(fixture.sut.getPhotoURL(from: stored) != nil)
     }
@@ -181,10 +181,39 @@ struct PhotoManagerTests {
         // Noise, not a flat colour: a flat image can come out of a second encode byte for byte.
         let prepared = try #require(await PhotoManager.preparedJPEGData(from: try makeNoiseImageData()))
 
-        let stored = try fixture.sut.savePhoto(prepared, for: UUID())
+        let stored = try await fixture.sut.save(.prepared(prepared), for: UUID())
 
         let url = try #require(fixture.sut.getPhotoURL(from: stored))
         #expect(try Data(contentsOf: url) == prepared)
+    }
+
+    /// Only data the app prepared itself is written as it is. Plain data that only looks prepared
+    /// (small, upright, one JPEG image, no location) is re-encoded, which drops its EXIF, IPTC and
+    /// XMP metadata.
+    @Test
+    func plainJPEGDataWithMetadataIsReEncodedWithoutIt() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let jpeg = try makeJPEGWithMetadata()
+        let source = try #require(CGImageSourceCreateWithData(jpeg as CFData, nil))
+        let sourceProperties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        let sourceExif = try #require(sourceProperties[kCGImagePropertyExifDictionary] as? [CFString: Any])
+        let sourceIPTC = try #require(sourceProperties[kCGImagePropertyIPTCDictionary] as? [CFString: Any])
+        try #require(sourceExif[kCGImagePropertyExifLensMake] as? String == "Test Lens Maker")
+        try #require(sourceIPTC[kCGImagePropertyIPTCCity] as? String == "Istanbul")
+        try #require(xmpTagValue(of: source) == "Purrtine Test")
+        try #require(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: PhotoManager.photoMaxPixelSize))
+
+        let stored = try fixture.sut.savePhoto(jpeg, for: UUID())
+
+        let url = try #require(fixture.sut.getPhotoURL(from: stored))
+        let saved = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(saved, 0, nil) as? [CFString: Any])
+        let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
+        #expect(exif[kCGImagePropertyExifLensMake] == nil)
+        #expect(exif[kCGImagePropertyExifUserComment] == nil)
+        #expect(properties[kCGImagePropertyIPTCDictionary] == nil)
+        #expect(xmpTagValue(of: saved) == nil)
     }
 
     /// Onboarding can hand over a full-size camera JPEG; it must still be capped on save.
@@ -214,7 +243,10 @@ struct PhotoManagerTests {
         )
         let gps: [CFString: Any] = [kCGImagePropertyGPSLatitude: 41.0, kCGImagePropertyGPSLongitude: 29.0]
         CGImageDestinationAddImage(destination, cgImage, [kCGImagePropertyGPSDictionary: gps] as CFDictionary)
-        #expect(CGImageDestinationFinalize(destination))
+        try #require(CGImageDestinationFinalize(destination))
+        let input = try #require(CGImageSourceCreateWithData(output, nil))
+        let inputProperties = try #require(CGImageSourceCopyPropertiesAtIndex(input, 0, nil) as? [CFString: Any])
+        try #require(inputProperties[kCGImagePropertyGPSDictionary] != nil)
 
         let stored = try fixture.sut.savePhoto(output as Data, for: UUID())
 
@@ -295,14 +327,6 @@ struct PhotoManagerTests {
         )
     }
 
-    private func makeImageData() throws -> Data {
-        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 16)).image { context in
-            UIColor.systemBlue.setFill()
-            context.fill(CGRect(origin: .zero, size: CGSize(width: 16, height: 16)))
-        }
-        return try #require(image.pngData())
-    }
-
     /// A 2600 × 2600 PNG of random noise, larger than the photo pixel limit.
     private func makeNoiseImageData() throws -> Data {
         let filter = try #require(CIFilter(name: "CIRandomGenerator"))
@@ -313,7 +337,53 @@ struct PhotoManagerTests {
         return try #require(UIImage(cgImage: cgImage).pngData())
     }
 
-    /// An opaque PNG of `width` × `height` pixels.
+    private static let xmpTagPath = "purrtine:CreatorTool"
+
+    /// A 64 × 64 JPEG with no location, but with EXIF (lens maker, user comment), IPTC (city,
+    /// country) and an XMP tag.
+    private func makeJPEGWithMetadata() throws -> Data {
+        let cgImage = try #require(UIImage(data: try makeImageData(width: 64, height: 64))?.cgImage)
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
+        )
+        // A namespace of its own: ImageIO does not write a lone `xmp:` basic tag.
+        let metadata = CGImageMetadataCreateMutable()
+        try #require(
+            CGImageMetadataRegisterNamespaceForPrefix(
+                metadata,
+                "https://example.com/purrtine-test/1.0/" as CFString,
+                "purrtine" as CFString,
+                nil
+            )
+        )
+        try #require(
+            CGImageMetadataSetValueWithPath(metadata, nil, Self.xmpTagPath as CFString, "Purrtine Test" as CFString)
+        )
+        let properties: [CFString: Any] = [
+            kCGImagePropertyExifDictionary: [
+                kCGImagePropertyExifLensMake: "Test Lens Maker",
+                kCGImagePropertyExifUserComment: "A private note"
+            ],
+            kCGImagePropertyIPTCDictionary: [
+                kCGImagePropertyIPTCCity: "Istanbul",
+                kCGImagePropertyIPTCCountryPrimaryLocationName: "Türkiye"
+            ]
+        ]
+        CGImageDestinationAddImageAndMetadata(destination, cgImage, metadata, properties as CFDictionary)
+        try #require(CGImageDestinationFinalize(destination))
+        return output as Data
+    }
+
+    private func xmpTagValue(of source: CGImageSource) -> String? {
+        guard let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil),
+              let tag = CGImageMetadataCopyTagWithPath(metadata, nil, Self.xmpTagPath as CFString) else {
+            return nil
+        }
+        return CGImageMetadataTagCopyValue(tag) as? String
+    }
+
+    /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.
     private func makeImageData(width: Int, height: Int) throws -> Data {
         let size = CGSize(width: width, height: height)
         let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))

@@ -11,8 +11,8 @@ import SwiftData
 struct OnboardingDataBuilder {
     let taskWriter: any CareTaskWriting
     var now: () -> Date = Date.init
-    var savePhoto: (Data, UUID) async throws -> String = { data, catID in
-        try await PhotoManager.shared.save(.data(data), for: catID)
+    var savePhoto: (PendingCatPhoto, UUID) async throws -> String = { photo, catID in
+        try await PhotoManager.shared.save(photo, for: catID)
     }
     var deletePhoto: (String) -> Void = { PhotoManager.shared.deletePhoto(at: $0) }
     var saveContext: (ModelContext) throws -> Void = { try $0.save() }
@@ -41,7 +41,7 @@ struct OnboardingDataBuilder {
         }
 
         let cat = makeCat(from: tempData)
-        let photoPath = await savedPhotoPath(tempData.photoData, for: cat.id)
+        let photoPath = await savedPhotoPath(tempData.photo, for: cat.id)
         if let photoPath {
             cat.photoURLs = [photoPath]
         }
@@ -67,10 +67,10 @@ struct OnboardingDataBuilder {
         return cat
     }
 
-    private func savedPhotoPath(_ photoData: Data?, for catId: UUID) async -> String? {
-        guard let photoData else { return nil }
+    private func savedPhotoPath(_ photo: PendingCatPhoto?, for catId: UUID) async -> String? {
+        guard let photo else { return nil }
         do {
-            return try await savePhoto(photoData, catId)
+            return try await savePhoto(photo, catId)
         } catch {
             logger.error(
                 "Onboarding cat saved without its photo: \(String(describing: error), privacy: .public)"
