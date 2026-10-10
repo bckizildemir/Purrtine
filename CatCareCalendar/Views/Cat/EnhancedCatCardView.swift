@@ -42,9 +42,9 @@ struct EnhancedCatCardView: View {
                 deleteCat()
             }
         } message: {
-            // Guarded on `modelContext`: SwiftUI can
-            // re-evaluate this closure after the delete has committed, and reading a relationship
-            // on an invalidated `@Model` traps (seen on iOS 18.5 in #19).
+            // Guarded on `modelContext`: SwiftUI can re-evaluate this closure after the delete has
+            // committed, and reading a relationship on an invalidated `@Model` traps (seen on
+            // iOS 18.5 in #19).
             if cat.modelContext != nil {
                 let tasksCount = cat.tasks.count
                 if tasksCount > 0 {

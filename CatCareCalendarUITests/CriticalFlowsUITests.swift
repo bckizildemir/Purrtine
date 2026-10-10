@@ -1578,6 +1578,7 @@ final class CriticalFlowsUITests: XCTestCase {
     private func assertCatDeletionAlert(in app: XCUIApplication, title: String) {
         let alert = app.alerts[title]
         XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.alerts.count, 1)
         XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Test Cat")).firstMatch.exists)
 
         let dismissAlertButton = alert.buttons.firstMatch

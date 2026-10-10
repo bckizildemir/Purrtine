@@ -13,8 +13,7 @@
 @MainActor
 final class CatDeletionFailureHandoff {
     private var isScreenUp = false
-    private var pendingFailure: CatDeletionFailure?
-    private var pendingReport: ReportCatDeletionFailureAction?
+    private var pending: (failure: CatDeletionFailure, report: ReportCatDeletionFailureAction)?
 
     /// Call from `onAppear`.
     func screenDidAppear() {
@@ -29,15 +28,13 @@ final class CatDeletionFailureHandoff {
 
     /// Call when the delete has finished. `nil` — a success or a cancellation — reports nothing.
     func deleteDidFinish(with failure: CatDeletionFailure?, reporting report: ReportCatDeletionFailureAction) {
-        pendingFailure = failure
-        pendingReport = report
+        pending = failure.map { ($0, report) }
         reportIfReady()
     }
 
     private func reportIfReady() {
-        guard isScreenUp == false, let pendingFailure, let pendingReport else { return }
-        self.pendingFailure = nil
-        self.pendingReport = nil
-        pendingReport(pendingFailure)
+        guard isScreenUp == false, let pending else { return }
+        self.pending = nil
+        pending.report(pending.failure)
     }
 }
