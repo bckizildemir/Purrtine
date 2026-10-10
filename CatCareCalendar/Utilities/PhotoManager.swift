@@ -1,6 +1,8 @@
 import Foundation
+import ImageIO
 import os
 import UIKit
+import UniformTypeIdentifiers
 
 /// Stateless apart from three immutable dependencies, so it is `Sendable`
 /// rather than main-actor isolated: it does disk I/O and must stay off the
@@ -45,21 +47,53 @@ nonisolated final class PhotoManager: Sendable {
         return UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality)
     }
 
+    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once. The drawing
+    /// applies the image orientation, so the JPEG is upright. `nil` when the image has no pixels or
+    /// cannot be encoded.
     static func downsampledJPEGData(
         from image: UIImage,
         maxPixelSize: Int,
         compressionQuality: CGFloat = saveCompressionQuality
     ) -> Data? {
-        guard let data = image.jpegData(compressionQuality: 1.0) else { return nil }
-        return downsampledJPEGData(
-            from: data,
-            maxPixelSize: maxPixelSize,
-            compressionQuality: compressionQuality
+        let pixelWidth = image.size.width * image.scale
+        let pixelHeight = image.size.height * image.scale
+        let longestEdge = max(pixelWidth, pixelHeight)
+        guard longestEdge > 0 else { return nil }
+        let factor = min(1, CGFloat(maxPixelSize) / longestEdge)
+        let targetSize = CGSize(
+            width: max(1, (pixelWidth * factor).rounded()),
+            height: max(1, (pixelHeight * factor).rounded())
         )
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let resized = UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return resized.jpegData(compressionQuality: compressionQuality)
     }
 
-    /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores. `nil` when
-    /// the data cannot be decoded.
+    /// Whether `data` is already what `preparedJPEGData` makes: one complete, upright JPEG image no
+    /// larger than `maxPixelSize` on its longest edge. Reads the header only; nothing is decoded.
+    static func isPreparedJPEG(_ data: Data, maxPixelSize: Int) -> Bool {
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, options),
+              CGImageSourceGetType(source) as String? == UTType.jpeg.identifier,
+              CGImageSourceGetCount(source) == 1,
+              CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int else {
+            return false
+        }
+        let orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
+        return width > 0 && height > 0 && max(width, height) <= maxPixelSize && orientation == 1
+    }
+
+    /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores, so that
+    /// `savePhoto` can write it without a second decode and encode. `nil` when the data cannot be
+    /// decoded.
     @concurrent
     static func preparedJPEGData(from data: Data) async -> Data? {
         downsampledJPEGData(from: data, maxPixelSize: photoMaxPixelSize)
@@ -106,9 +140,13 @@ nonisolated final class PhotoManager: Sendable {
 
     // MARK: - Photo Saving
 
-    /// Downsamples `data`, writes it as a JPEG, and returns the stored file name. Every failure is
+    /// Writes `data` as a JPEG and returns the stored file name. Data that `preparedJPEGData`
+    /// already made is written as it is; anything else is downsampled first. Every failure is
     /// logged here, so a caller only decides what the caregiver sees.
     func savePhoto(_ data: Data, for catId: UUID) throws -> String {
+        if PhotoManager.isPreparedJPEG(data, maxPixelSize: PhotoManager.photoMaxPixelSize) {
+            return try writeJPEG(data, for: catId)
+        }
         guard let jpeg = PhotoManager.downsampledJPEGData(
             from: data,
             maxPixelSize: PhotoManager.photoMaxPixelSize
