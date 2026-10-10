@@ -293,6 +293,37 @@ struct PhotoManagerTests {
         #expect(max(saved.size.width, saved.size.height) == CGFloat(PhotoManager.photoMaxPixelSize))
     }
 
+    /// Caregiver avatars are capped at the smaller avatar limit.
+    @Test
+    func renderedJPEGDataCapsAnAvatarAtTheAvatarPixelLimit() throws {
+        let image = try #require(UIImage(data: try makeImageData(width: 2_600, height: 1_300)))
+
+        let jpeg = try #require(
+            PhotoManager.renderedJPEGData(from: image, maxPixelSize: PhotoManager.avatarMaxPixelSize)
+        )
+        let saved = try #require(UIImage(data: jpeg))
+
+        #expect(jpeg.starts(with: [0xFF, 0xD8]))
+        let cap = PhotoManager.avatarMaxPixelSize
+        #expect(saved.size == CGSize(width: cap, height: cap / 2))
+    }
+
+    /// A JPEG has no alpha channel. Avatars, task photos and cat photos all go through
+    /// `renderedJPEGData`, so a transparent area comes out the same colour on each: black.
+    @Test
+    func renderedJPEGDataTurnsATransparentImageBlack() throws {
+        let size = CGSize(width: 16, height: 16)
+        let format = UIGraphicsImageRendererFormat(for: .init(displayScale: 1))
+        format.opaque = false
+        let transparent = UIGraphicsImageRenderer(size: size, format: format).image { _ in }
+
+        let jpeg = try #require(PhotoManager.renderedJPEGData(from: transparent, maxPixelSize: 64))
+        let cgImage = try #require(UIImage(data: jpeg)?.cgImage)
+
+        #expect([.none, .noneSkipLast, .noneSkipFirst].contains(cgImage.alphaInfo))
+        #expect(try centrePixel(of: cgImage).allSatisfy { $0 <= 2 })
+    }
+
     @Test
     func bulkDeletionOnlyRemovesFilesOwnedByTheRequestedCat() throws {
         let fixture = try makeFixture()
@@ -384,6 +415,29 @@ struct PhotoManagerTests {
     }
 
     /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.
+    /// The red, green and blue values of the centre pixel, drawn into an sRGB bitmap.
+    private func centrePixel(of image: CGImage) throws -> [UInt8] {
+        var rgba = [UInt8](repeating: 255, count: 4)
+        let colorSpace = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let drawn = rgba.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress,
+                width: 1,
+                height: 1,
+                bitsPerComponent: 8,
+                bytesPerRow: 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            context.interpolationQuality = .none
+            let offset = CGPoint(x: -CGFloat(image.width / 2), y: -CGFloat(image.height / 2))
+            context.draw(image, in: CGRect(origin: offset, size: CGSize(width: image.width, height: image.height)))
+            return true
+        }
+        try #require(drawn)
+        return Array(rgba.prefix(3))
+    }
+
     private func makeImageData(width: Int, height: Int) throws -> Data {
         let size = CGSize(width: width, height: height)
         let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))
