@@ -127,7 +127,7 @@ final class TaskManagementViewModel {
                     // The completion committed, so it counts as done; only the reminders are stale.
                     logStaleReminders(after: task, staleError)
                     isShowingReminderWarning = true
-                case .notSaved(let error):
+                case .notSaved:
                     logger.error("Failed to complete task: \(error.localizedDescription)")
                 }
             }

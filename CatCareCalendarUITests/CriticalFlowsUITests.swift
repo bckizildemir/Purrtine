@@ -1300,7 +1300,6 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertFalse(confirmButton.exists)
     }
 
-
     private func launchStaleReminderCompletionScenario() -> XCUIApplication {
         let app = makeApp(
             additionalArguments: [
