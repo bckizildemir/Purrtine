@@ -71,7 +71,9 @@ struct TempCatData {
     var ageUnit: AgeUnit = .years
     var gender: Gender = .unknown
     var breed: String = ""
-    var photoData: Data?
+    /// The photo from the cat form, kept as it is until onboarding saves it: a picked photo stays
+    /// prepared, and a camera photo is encoded once, on save.
+    var photo: PendingCatPhoto?
     var notes: String = ""
 }
 

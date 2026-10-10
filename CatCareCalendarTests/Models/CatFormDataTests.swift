@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UIKit
 @testable import CatCareCalendar
 
 @Suite
@@ -148,7 +149,7 @@ struct CatFormDataTests {
             ageUnit: .years,
             gender: .female,
             breed: "",
-            photoData: nil,
+            photo: nil,
             notes: ""
         )
 
@@ -158,6 +159,29 @@ struct CatFormDataTests {
         #expect(formData.ageValue == 2)
         #expect(formData.ageUnit == .years)
         #expect(formData.gender == .female)
+    }
+
+    /// Going back in onboarding shows the photo again, and keeps what kind of photo it is: a
+    /// picked photo stays prepared, and a camera photo stays an image that is encoded only on save.
+    @Test
+    func formInitializedFromOnboardingDataKeepsAPreparedPhotoPrepared() {
+        var onboardingData = TempCatData()
+        onboardingData.photo = .prepared(Data("picked".utf8))
+
+        let formData = CatFormData(from: onboardingData)
+
+        #expect(formData.pendingPhoto == .prepared(Data("picked".utf8)))
+    }
+
+    @Test
+    func formInitializedFromOnboardingDataKeepsACameraPhotoAnImage() {
+        let capture = UIImage()
+        var onboardingData = TempCatData()
+        onboardingData.photo = .image(capture)
+
+        let formData = CatFormData(from: onboardingData)
+
+        #expect(formData.pendingPhoto == .image(capture))
     }
 
     // MARK: - Edit Cat photo change
@@ -172,11 +196,11 @@ struct CatFormDataTests {
     @Test
     func aNewPickReplacesThePhoto() {
         var formData = CatFormData()
-        formData.photoData = Data("new".utf8)
+        formData.preparedPhotoData = Data("new".utf8)
 
         #expect(
             formData.editPhotoChange(hasChangedPhoto: true, includingPhoto: true)
-                == .replace(.data(Data("new".utf8)))
+                == .replace(.prepared(Data("new".utf8)))
         )
     }
 
@@ -184,7 +208,7 @@ struct CatFormDataTests {
     @Test
     func savingWithoutTheNewPhotoKeepsTheCurrentOne() {
         var formData = CatFormData()
-        formData.photoData = Data("new".utf8)
+        formData.preparedPhotoData = Data("new".utf8)
 
         #expect(formData.editPhotoChange(hasChangedPhoto: true, includingPhoto: false) == .keep)
     }

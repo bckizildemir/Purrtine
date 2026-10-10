@@ -48,7 +48,7 @@ struct PhotoPickerSection: View {
                 .frame(width: 140, height: 140)
 
             // Display photo based on priority: captured > selected > existing
-            if let photoData = formData.photoData,
+            if let photoData = formData.preparedPhotoData,
                let uiImage = UIImage(data: photoData) {
                 Image(uiImage: uiImage)
                     .resizable()

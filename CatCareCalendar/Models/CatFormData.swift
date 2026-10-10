@@ -31,7 +31,9 @@ struct CatFormData {
 
     // MARK: - Photo State
     var selectedPhoto: PhotosPickerItem?
-    var photoData: Data?
+    /// The JPEG `CatPhotoIntake` prepared from a photo-library pick. Nothing else is stored here:
+    /// `pendingPhoto` saves it as it is.
+    var preparedPhotoData: Data?
     var capturedImage: UIImage?
     var showingPhotoOptions = false
     var showingCamera = false
@@ -84,13 +86,13 @@ extension CatFormData {
 
     /// Whether any photo is currently selected or captured
     var hasPhoto: Bool {
-        photoData != nil || capturedImage != nil
+        preparedPhotoData != nil || capturedImage != nil
     }
 
     /// The selected or captured photo, not written to disk yet.
     var pendingPhoto: PendingCatPhoto? {
-        if let photoData {
-            return .data(photoData)
+        if let preparedPhotoData {
+            return .prepared(preparedPhotoData)
         }
         if let capturedImage {
             return .image(capturedImage)
@@ -205,6 +207,14 @@ extension CatFormData {
         self.ageValue = AgeUtils.validateAge(onboardingData.age)
         self.ageText = self.ageValue.map { String($0) } ?? ""
         self.ageUnit = onboardingData.ageUnit
-        self.photoData = onboardingData.photoData
+        switch onboardingData.photo {
+        case .prepared(let data):
+            self.preparedPhotoData = data
+        case .image(let image):
+            self.capturedImage = image
+        case .data, nil:
+            // The form only ever hands onboarding a prepared or a camera photo.
+            break
+        }
     }
 }
