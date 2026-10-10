@@ -321,7 +321,7 @@ struct PhotoManagerTests {
         let cgImage = try #require(UIImage(data: jpeg)?.cgImage)
 
         #expect([.none, .noneSkipLast, .noneSkipFirst].contains(cgImage.alphaInfo))
-        #expect(try centrePixel(of: cgImage).allSatisfy { $0 <= 2 })
+        #expect(try centreRGB(of: cgImage).allSatisfy { $0 <= 2 })
     }
 
     @Test
@@ -414,9 +414,8 @@ struct PhotoManagerTests {
         return CGImageMetadataTagCopyValue(tag) as? String
     }
 
-    /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.
     /// The red, green and blue values of the centre pixel, drawn into an sRGB bitmap.
-    private func centrePixel(of image: CGImage) throws -> [UInt8] {
+    private func centreRGB(of image: CGImage) throws -> [UInt8] {
         var rgba = [UInt8](repeating: 255, count: 4)
         let colorSpace = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         let drawn = rgba.withUnsafeMutableBytes { buffer -> Bool in
@@ -431,13 +430,15 @@ struct PhotoManagerTests {
             ) else { return false }
             context.interpolationQuality = .none
             let offset = CGPoint(x: -CGFloat(image.width / 2), y: -CGFloat(image.height / 2))
-            context.draw(image, in: CGRect(origin: offset, size: CGSize(width: image.width, height: image.height)))
+            let size = CGSize(width: image.width, height: image.height)
+            context.draw(image, in: CGRect(origin: offset, size: size))
             return true
         }
         try #require(drawn)
         return Array(rgba.prefix(3))
     }
 
+    /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.
     private func makeImageData(width: Int, height: Int) throws -> Data {
         let size = CGSize(width: width, height: height)
         let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))

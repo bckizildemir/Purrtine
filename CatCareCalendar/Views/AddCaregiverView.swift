@@ -175,7 +175,10 @@ struct AddCaregiverView: View {
         let fileURL = avatarsDirectory.appendingPathComponent(fileName)
         
         // Scale down to avatar size and encode once before writing.
-        if let imageData = PhotoManager.renderedJPEGData(from: image, maxPixelSize: PhotoManager.avatarMaxPixelSize) {
+        if let imageData = PhotoManager.renderedJPEGData(
+            from: image,
+            maxPixelSize: PhotoManager.avatarMaxPixelSize
+        ) {
             do {
                 try imageData.write(to: fileURL)
                 return fileURL.lastPathComponent // Store relative path
