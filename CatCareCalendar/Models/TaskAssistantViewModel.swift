@@ -33,6 +33,7 @@ final class TaskAssistantViewModel {
     private let taskWriter: any CareTaskWriting
     private let speechService: any SpeechRecognitionServicing
     private let userDefaults: UserDefaults
+    private let photoWriter: CareTaskPhotoWriter
     private var isRequestingSpeechPermission = false
 
     init(
@@ -40,11 +41,13 @@ final class TaskAssistantViewModel {
         cloudInterpreter: (any TaskAssistantCloudInterpreting)? = FirebaseTaskAssistantCloudInterpreter(),
         taskWriter: (any CareTaskWriting)? = nil,
         speechService: (any SpeechRecognitionServicing)? = nil,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        photoWriter: CareTaskPhotoWriter = CareTaskPhotoWriter()
     ) {
         self.interpreter = interpreter
         self.cloudInterpreter = cloudInterpreter
         self.taskWriter = taskWriter ?? CareTaskWriter(scheduler: NotificationManager.shared)
+        self.photoWriter = photoWriter
         self.speechService = speechService ?? SpeechRecognitionService()
         self.userDefaults = userDefaults
         self.messages = []
@@ -562,28 +565,38 @@ final class TaskAssistantViewModel {
         isProcessing = true
         defer { isProcessing = false }
 
-        var photoURLs: [String] = []
-        if let photos, !photos.isEmpty {
-            // Each photo costs a full-size JPEG encode, a downsample and a disk write, so
-            // this must not run on the main actor. `Task.detached` is the tool available at
-            // SWIFT_VERSION = 5.0; once the target moves to Swift 6.2, mark the helper
-            // `@concurrent` instead.
-            photoURLs = await Task.detached(priority: .userInitiated) {
-                Self.savePhotosToDocuments(photos)
-            }.value
+        // A photo that cannot be saved does not stop the completion: the chat reports it instead.
+        var savedPhotos = CareTaskPhotoSaveResult()
+        if let photos, photos.isEmpty == false {
+            savedPhotos = await photoWriter.save(photos)
         }
 
-        try await complete(
-            task,
-            with: CareTaskCompletionInput(
-                cats: selectedCats,
-                caregiver: selectedCaregiver,
-                completedForDate: completedForDate,
-                notes: notes,
-                photoURLs: photoURLs
-            ),
-            in: context
-        )
+        do {
+            try await complete(
+                task,
+                with: CareTaskCompletionInput(
+                    cats: selectedCats,
+                    caregiver: selectedCaregiver,
+                    completedForDate: completedForDate,
+                    notes: notes,
+                    photoURLs: savedPhotos.fileNames
+                ),
+                in: context
+            )
+        } catch {
+            // `complete` throws only when nothing was committed, so no completion owns these files.
+            await photoWriter.delete(savedPhotos.fileNames)
+            throw error
+        }
+        if savedPhotos.failures.isEmpty == false {
+            messages.append(
+                TaskAssistantMessage(
+                    role: .assistant,
+                    text: String(localized: .taskAssistantPhotosNotSaved(Int32(savedPhotos.failures.count))),
+                    style: .failure
+                )
+            )
+        }
         taskCompletionRequest = nil
     }
 
@@ -711,32 +724,5 @@ final class TaskAssistantViewModel {
         case .open:
             return true
         }
-    }
-
-    private nonisolated static func savePhotosToDocuments(_ photos: [UIImage]) -> [String] {
-        var savedPaths: [String] = []
-
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            return savedPaths
-        }
-
-        let photosDirectory = documentsPath.appendingPathComponent("CareTaskPhotos")
-        try? FileManager.default.createDirectory(at: photosDirectory, withIntermediateDirectories: true)
-
-        for photo in photos {
-            let fileName = "task_photo_\(UUID().uuidString).jpg"
-            let fileURL = photosDirectory.appendingPathComponent(fileName)
-
-            guard let imageData = PhotoManager.downsampledJPEGData(from: photo, maxPixelSize: PhotoManager.photoMaxPixelSize) else { continue }
-
-            do {
-                try imageData.write(to: fileURL)
-                savedPaths.append(fileURL.lastPathComponent)
-            } catch {
-                print("❌ Failed to save photo: \(error)")
-            }
-        }
-
-        return savedPaths
     }
 }

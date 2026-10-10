@@ -11,11 +11,15 @@ final class TaskCompletionSubmission {
     private(set) var isSaving = false
     var isShowingFailure = false
     private(set) var failureMessage = ""
+    /// A photo could not be saved, so nothing was. Drives the alert that offers Try Again, Complete
+    /// Without Photo, and Cancel.
+    var isShowingPhotoNotSaved = false
 
     /// Runs `save` unless a save is already running.
     ///
     /// `save` throws only when nothing was saved. A `CancellationError` ends the save without an
-    /// alert; the sheet stays open, so the user can tap Complete again.
+    /// alert; the sheet stays open, so the user can tap Complete again. A `PhotoSaveError` shows the
+    /// photo alert instead of the general one.
     ///
     /// - Returns: `true` when `save` finished without an error.
     @discardableResult
@@ -30,6 +34,9 @@ final class TaskCompletionSubmission {
             try await save()
             return true
         } catch is CancellationError {
+            return false
+        } catch is PhotoSaveError {
+            isShowingPhotoNotSaved = true
             return false
         } catch {
             failureMessage = Self.message(for: error)
