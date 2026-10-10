@@ -88,19 +88,23 @@ struct TaskManagementView: View {
     .onChange(of: tasksChangeSignature) { _, _ in
       viewModel.configure(with: modelContext, tasks: allCareTasks)
     }
-    .sheet(isPresented: $viewModel.showingTaskTemplate) {
+    // Every sheet reports its dismissal: an alert raised while a sheet is up waits for it to close.
+    .sheet(isPresented: $viewModel.showingTaskTemplate, onDismiss: { viewModel.sheetDidDismiss(.taskTemplate) }) {
       TaskTemplateSelectionView { template in
         viewModel.presentTaskCreation(template: template)
         viewModel.dismissTaskTemplateSelection()
       }
     }
-    .sheet(item: $viewModel.taskCreationRequest) { request in
+    .sheet(item: $viewModel.taskCreationRequest, onDismiss: { viewModel.sheetDidDismiss(.taskCreation) }) { request in
       TaskAddView(template: request.template)
     }
-    .sheet(item: $viewModel.selectedCareTask) { task in
+    .sheet(item: $viewModel.selectedCareTask, onDismiss: { viewModel.sheetDidDismiss(.taskEdit) }) { task in
       TaskEditView(task: task)
     }
-    .sheet(item: $viewModel.taskCompletionRequest, onDismiss: viewModel.taskCompletionSheetDidDismiss) { request in
+    .sheet(
+      item: $viewModel.taskCompletionRequest,
+      onDismiss: { viewModel.sheetDidDismiss(.taskCompletion) }
+    ) { request in
       TaskCompletionView(task: request.task, completedForDate: request.completedForDate) {
         selectedCats, selectedCaregiver, notes, photos, completedForDate, unsavedPhotos in
         try await viewModel.submitCompletion(
@@ -115,7 +119,7 @@ struct TaskManagementView: View {
         haptics.impact(.medium)
       }
     }
-    .sheet(isPresented: $showingAddCat) {
+    .sheet(isPresented: $showingAddCat, onDismiss: { viewModel.sheetDidDismiss(.addCat) }) {
       AddCatView()
     }
     // Covers the list and the calendar: both complete through the view model. The completion
@@ -319,7 +323,7 @@ struct TaskManagementView: View {
         }
       }
 
-      Button(action: { showingAddCat = true }) {
+      Button(action: presentAddCat) {
         HStack(spacing: 8) {
           Image(systemName: "plus.circle.fill")
           Text(.catsAddFirstCat)
@@ -383,6 +387,11 @@ struct TaskManagementView: View {
       viewModel.selectedViewMode = TaskViewPreference.resolvedViewMode(from: defaultTaskViewRawValue)
       hasAppliedDefaultTaskView = true
     }
+  }
+
+  private func presentAddCat() {
+    viewModel.addCatSheetWillPresent()
+    showingAddCat = true
   }
 
   private func handleTaskTap(_ task: CareTask) {
