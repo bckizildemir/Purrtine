@@ -47,6 +47,7 @@ struct HomePageView: View {
         visualTitle: Text(greeting),
         visualSubtitle: Text(formattedDate)
       )
+      .minimizingNavigationBarOnScroll()
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {

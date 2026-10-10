@@ -156,7 +156,7 @@ struct TaskManagementViewModelTests {
         #expect(spy.completions.count == 1)
         #expect(sut.isShowingReminderWarning == false)
 
-        sut.taskCompletionSheetDidDismiss()
+        sut.sheetDidDismiss(.taskCompletion)
 
         #expect(sut.isShowingReminderWarning)
     }
@@ -218,7 +218,7 @@ struct TaskManagementViewModelTests {
         sut.presentTaskCompletion(fixture.task, completedForDate: nil)
 
         try await sut.submitCompletion(of: fixture.task, by: nil)
-        sut.taskCompletionSheetDidDismiss()
+        sut.sheetDidDismiss(.taskCompletion)
 
         #expect(sut.taskCompletionRequest == nil)
         #expect(spy.completions.count == 1)
@@ -453,6 +453,256 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingReminderWarning == false)
         #expect(sut.actionFailure == nil)
         #expect(sut.isShowingActionFailure == false)
+    }
+
+    // MARK: - Alerts wait for an open sheet
+
+    /// An alert raised under an open sheet cannot present, so it waits for the sheet to close.
+    @Test
+    func oneTapCompletionWithStaleRemindersWarnsOnceAnOpenSheetHasClosed() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskEdit(fixture.task)
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(spy.completions.count == 1)
+        #expect(sut.isShowingReminderWarning == false)
+
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func unsavedOneTapCompletionShowsTheFailureOnceAnOpenSheetHasClosed() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskTemplateSelection()
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(sut.isShowingActionFailure == false)
+
+        sut.dismissTaskTemplateSelection()
+        sut.sheetDidDismiss(.taskTemplate)
+
+        #expect(sut.actionFailure == .completionNotSaved)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// The add-cat sheet is the view's own state, so the view reports it.
+    @Test
+    func failedDeleteShowsTheFailureOnceTheAddCatSheetHasClosed() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.addCatSheetWillPresent()
+
+        await sut.deleteCareTask(fixture.task).value
+
+        #expect(sut.isShowingActionFailure == false)
+
+        sut.sheetDidDismiss(.addCat)
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// The sheet's state is cleared before it animates away; the alert waits for the dismiss callback.
+    @Test
+    func anAlertWaitsWhileAClosingSheetIsStillOnScreen() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.deleteError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCreation()
+        sut.dismissTaskCreation()
+
+        await sut.deleteCareTask(fixture.task).value
+
+        #expect(sut.isShowingReminderWarning == false)
+
+        sut.sheetDidDismiss(.taskCreation)
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func anAlertWaitsUntilEverySheetHasClosed() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskTemplateSelection()
+        sut.presentTaskCreation()
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        sut.dismissTaskTemplateSelection()
+        sut.sheetDidDismiss(.taskTemplate)
+
+        #expect(sut.isShowingReminderWarning == false)
+
+        sut.dismissTaskCreation()
+        sut.sheetDidDismiss(.taskCreation)
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    /// A sheet whose state was replaced, not cleared, is still on screen after the old one closes.
+    @Test
+    func aDismissCallbackForAReplacedSheetKeepsTheAlertWaiting() async throws {
+        let fixture = try makeCompletionFixture()
+        let otherTask = CareTask(title: "Brush")
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskEdit(fixture.task)
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        sut.presentTaskEdit(otherTask)
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.isShowingReminderWarning == false)
+
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func twoPendingAlertsShowOneAfterTheOtherActionFailureFirst() async throws {
+        let fixture = try makeCompletionFixture()
+        let otherTask = CareTask(title: "Brush")
+        fixture.context.insert(otherTask)
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task, otherTask])
+        sut.presentTaskEdit(fixture.task)
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        await sut.deleteCareTask(otherTask).value
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+        #expect(sut.isShowingReminderWarning == false)
+
+        // The caregiver closes the first alert.
+        sut.isShowingActionFailure = false
+        await sut.nextAlertPresentation?.value
+
+        #expect(sut.isShowingReminderWarning)
+    }
+
+    @Test
+    func twoPendingActionFailuresBothShowInTheOrderTheyHappened() async throws {
+        let fixture = try makeCompletionFixture()
+        let otherTask = CareTask(title: "Brush")
+        fixture.context.insert(otherTask)
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task, otherTask])
+        sut.presentTaskEdit(fixture.task)
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        await sut.deleteCareTask(otherTask).value
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+
+        #expect(sut.actionFailure == .completionNotSaved)
+        #expect(sut.isShowingActionFailure)
+
+        sut.isShowingActionFailure = false
+        await sut.nextAlertPresentation?.value
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// Setting the same alert's flag back to `true` inside the write that closes it is no change to
+    /// SwiftUI, so that alert would never present and its flag would block every later alert.
+    @Test
+    func theNextAlertWaitsUntilTheClosingAlertsWriteHasFinished() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = TaskActionError.caregiverUnavailable
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        await sut.completeCareTask(fixture.task, by: nil).value
+        await sut.deleteCareTask(fixture.task).value
+        #expect(sut.actionFailure == .completionNotSaved)
+
+        sut.isShowingActionFailure = false
+
+        #expect(sut.isShowingActionFailure == false)
+
+        await sut.nextAlertPresentation?.value
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// Without a sheet, an alert raised while another alert is up waits for that alert to close.
+    @Test
+    func anAlertRaisedWhileAnotherIsUpShowsAfterItCloses() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        spy.deleteError = CocoaError(.fileWriteUnknown)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+        #expect(sut.isShowingReminderWarning)
+
+        await sut.deleteCareTask(fixture.task).value
+        #expect(sut.isShowingActionFailure == false)
+
+        sut.isShowingReminderWarning = false
+        await sut.nextAlertPresentation?.value
+
+        #expect(sut.actionFailure == .deletePending)
+        #expect(sut.isShowingActionFailure)
+    }
+
+    /// A shown alert leaves nothing behind: the next one presents at once.
+    @Test
+    func aShownPendingAlertDoesNotBlockLaterAlerts() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        spy.completeError = makeRemindersOutOfSyncError(for: fixture.task)
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskEdit(fixture.task)
+        await sut.completeCareTask(fixture.task, by: nil).value
+        sut.dismissTaskEdit()
+        sut.sheetDidDismiss(.taskEdit)
+        #expect(sut.isShowingReminderWarning)
+        sut.isShowingReminderWarning = false
+
+        await sut.completeCareTask(fixture.task, by: nil).value
+
+        #expect(sut.isShowingReminderWarning)
     }
 
     private func makeRemindersOutOfSyncError(for task: CareTask) -> CareTaskRemindersOutOfSyncError {
