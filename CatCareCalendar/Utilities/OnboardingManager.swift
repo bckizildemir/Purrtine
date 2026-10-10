@@ -31,8 +31,12 @@ final class OnboardingManager {
         self.hasCompletedOnboarding = userDefaults.bool(forKey: "hasCompletedOnboarding")
     }
     
+    /// Drops the pending photo too: this manager lives for the whole session, and a camera photo
+    /// is a full-size decoded image. The rest of the temporary data stays, so the screen on its way
+    /// out does not change.
     func completeOnboarding() {
         hasCompletedOnboarding = true
+        tempCatData.photo = nil
     }
     
     func resetOnboarding() {
