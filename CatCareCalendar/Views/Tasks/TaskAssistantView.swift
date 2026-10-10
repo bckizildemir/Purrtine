@@ -23,6 +23,7 @@ struct TaskAssistantView: View {
             .onAppear(perform: revalidateAssistantState)
             .navigationTitle(String(localized: .taskAssistantTitle))
             .navigationBarTitleDisplayMode(.inline)
+            .minimizingNavigationBarOnScroll()
             .navigationDestination(for: TaskAssistantDestination.self) { destination in
                 switch destination {
                 case .chat:
