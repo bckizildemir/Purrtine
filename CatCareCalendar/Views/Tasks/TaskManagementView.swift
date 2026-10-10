@@ -122,6 +122,16 @@ struct TaskManagementView: View {
     .alert(String(localized: .errorReminderSchedule), isPresented: $viewModel.isShowingReminderWarning) {
       Button(String(localized: .actionOk)) {}
     }
+    // A one-tap complete or a delete from the list or the calendar that did not save.
+    .alert(
+      viewModel.actionFailure?.title ?? "",
+      isPresented: $viewModel.isShowingActionFailure,
+      presenting: viewModel.actionFailure
+    ) { _ in
+      Button(String(localized: .actionOk)) {}
+    } message: { failure in
+      Text(failure.message)
+    }
     .accessibilityIdentifier("taskManagement.view")
   }
 
