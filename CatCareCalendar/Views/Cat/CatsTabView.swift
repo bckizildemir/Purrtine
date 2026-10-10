@@ -7,7 +7,9 @@ struct CatsTabView: View {
     @State private var showingAddCat = false
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    /// Kept after the alert closes, so its text does not change while it animates away.
     @State private var catDeletionFailure: CatDeletionFailure?
+    @State private var isShowingCatDeletionFailure = false
 
     @State private var viewWidth: CGFloat = 0
 
@@ -83,7 +85,12 @@ struct CatsTabView: View {
             AddCatView()
         }
         // Hosted here, not on the screen that deleted the cat: that screen leaves with the cat.
-        .alert(catDeletionFailure?.title ?? "", item: $catDeletionFailure) { _ in
+        .alert(
+            catDeletionFailure?.title ?? "",
+            isPresented: $isShowingCatDeletionFailure,
+            presenting: catDeletionFailure
+        ) { _ in
+            Button(String(localized: .actionOk)) {}
         } message: { failure in
             Text(failure.message)
         }
@@ -95,7 +102,10 @@ struct CatsTabView: View {
     }
     
     private var reportCatDeletionFailure: ReportCatDeletionFailureAction {
-        ReportCatDeletionFailureAction { catDeletionFailure = $0 }
+        ReportCatDeletionFailureAction { failure in
+            catDeletionFailure = failure
+            isShowingCatDeletionFailure = true
+        }
     }
 
     // MARK: - Main Content View
