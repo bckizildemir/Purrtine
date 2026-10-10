@@ -88,9 +88,10 @@ nonisolated final class PhotoManager: Sendable {
         return resized.jpegData(compressionQuality: compressionQuality)
     }
 
-    /// Whether `data` is already what `preparedJPEGData` makes: one complete, upright JPEG image no
+    /// Whether `data` looks like what `preparedJPEGData` makes: one complete, upright JPEG image no
     /// larger than `maxPixelSize` on its longest edge, with no location data. Reads the header only;
-    /// nothing is decoded.
+    /// nothing is decoded. A sanity check for `.prepared` data, not a reason to skip the re-encode:
+    /// other metadata (EXIF, IPTC, XMP) can still be in a JPEG that passes it.
     static func isPreparedJPEG(_ data: Data, maxPixelSize: Int) -> Bool {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
@@ -157,13 +158,10 @@ nonisolated final class PhotoManager: Sendable {
 
     // MARK: - Photo Saving
 
-    /// Writes `data` as a JPEG and returns the stored file name. Data that `preparedJPEGData`
-    /// already made is written as it is; anything else is downsampled first. Every failure is
-    /// logged here, so a caller only decides what the caregiver sees.
+    /// Downsamples and re-encodes `data` as a JPEG, writes it and returns the stored file name. The
+    /// re-encode drops the source metadata. Every failure is logged here, so a caller only decides
+    /// what the caregiver sees.
     func savePhoto(_ data: Data, for catId: UUID) throws -> String {
-        if PhotoManager.isPreparedJPEG(data, maxPixelSize: PhotoManager.photoMaxPixelSize) {
-            return try writeJPEG(data, for: catId)
-        }
         guard let jpeg = PhotoManager.downsampledJPEGData(
             from: data,
             maxPixelSize: PhotoManager.photoMaxPixelSize
@@ -172,6 +170,16 @@ nonisolated final class PhotoManager: Sendable {
             throw PhotoSaveError.unreadableImage
         }
         return try writeJPEG(jpeg, for: catId)
+    }
+
+    /// Writes data that `preparedJPEGData` made as it is, without a second decode and encode. Data
+    /// that does not look prepared is re-encoded as `savePhoto` does.
+    func savePreparedPhoto(_ data: Data, for catId: UUID) throws -> String {
+        guard PhotoManager.isPreparedJPEG(data, maxPixelSize: PhotoManager.photoMaxPixelSize) else {
+            Self.logger.error("Prepared photo does not look prepared; it is re-encoded")
+            return try savePhoto(data, for: catId)
+        }
+        return try writeJPEG(data, for: catId)
     }
 
     func saveUIImage(_ image: UIImage, for catId: UUID) throws -> String {
@@ -190,6 +198,8 @@ nonisolated final class PhotoManager: Sendable {
     @concurrent
     func save(_ photo: PendingCatPhoto, for catId: UUID) async throws -> String {
         switch photo {
+        case .prepared(let data):
+            try savePreparedPhoto(data, for: catId)
         case .data(let data):
             try savePhoto(data, for: catId)
         case .image(let image):

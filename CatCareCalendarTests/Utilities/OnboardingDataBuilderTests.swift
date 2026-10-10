@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
+import UIKit
 @testable import CatCareCalendar
 
 @MainActor
@@ -26,7 +27,7 @@ struct OnboardingDataBuilderTests {
         tempData.gender = .female
         tempData.breed = "Tabby"
         tempData.notes = "Needs slow feeding"
-        tempData.photoData = Data("photo".utf8)
+        tempData.photo = .prepared(Data("photo".utf8))
 
         let cat = try #require(
             try await sut.createCatAndTasks(
@@ -310,7 +311,7 @@ struct OnboardingDataBuilderTests {
         )
         var tempData = TempCatData()
         tempData.name = "Luna"
-        tempData.photoData = Data("photo".utf8)
+        tempData.photo = .prepared(Data("photo".utf8))
 
         let cat = try #require(
             try await sut.createCatAndTasks(from: tempData, selectedTasks: [.feeding], in: context)
@@ -319,6 +320,50 @@ struct OnboardingDataBuilderTests {
         #expect(cat.photoURLs.isEmpty)
         #expect(try context.fetch(FetchDescriptor<Cat>()).map(\.name) == ["Luna"])
         #expect(try context.fetch(FetchDescriptor<CareTask>()).count == 1)
+    }
+
+    /// A camera photo reaches the save as the image itself, not as a JPEG made on the main actor,
+    /// so it is encoded once: upright and within the pixel limit.
+    @Test
+    func aCameraPhotoIsSavedOnceAsAnImageUprightWithinThePixelLimit() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        CaregiverBootstrapper.ensureDefaultCaregiverExists(in: context)
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "OnboardingDataBuilderTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let photoManager = PhotoManager(photosDirectory: directory)
+        var receivedPhotos: [PendingCatPhoto] = []
+        let sut = OnboardingDataBuilder(
+            taskWriter: CareTaskWriter(scheduler: scheduler),
+            savePhoto: { photo, catID in
+                receivedPhotos.append(photo)
+                return try await photoManager.save(photo, for: catID)
+            }
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let landscape = try #require(
+            UIGraphicsImageRenderer(size: CGSize(width: 2_600, height: 1_300), format: format).image { rendererContext in
+                UIColor.systemOrange.setFill()
+                rendererContext.fill(CGRect(x: 0, y: 0, width: 2_600, height: 1_300))
+            }.cgImage
+        )
+        let capture = UIImage(cgImage: landscape, scale: 1, orientation: .right)
+        var tempData = TempCatData()
+        tempData.name = "Luna"
+        tempData.photo = .image(capture)
+
+        let cat = try #require(
+            try await sut.createCatAndTasks(from: tempData, selectedTasks: [], in: context)
+        )
+
+        #expect(receivedPhotos == [.image(capture)])
+        let stored = try #require(cat.photoURLs.first)
+        let saved = try #require(photoManager.loadPhoto(from: stored))
+        #expect(saved.imageOrientation == .up)
+        #expect(saved.size.height > saved.size.width)
+        #expect(max(saved.size.width, saved.size.height) == CGFloat(PhotoManager.photoMaxPixelSize))
     }
 
     /// Nothing was saved, so the photo written for this attempt is not kept either.
@@ -336,7 +381,7 @@ struct OnboardingDataBuilderTests {
         )
         var tempData = TempCatData()
         tempData.name = "Luna"
-        tempData.photoData = Data("photo".utf8)
+        tempData.photo = .prepared(Data("photo".utf8))
 
         await #expect(throws: SaveFailure.self) {
             _ = try await sut.createCatAndTasks(from: tempData, selectedTasks: [.feeding], in: context)
@@ -359,7 +404,7 @@ struct OnboardingDataBuilderTests {
         )
         var tempData = TempCatData()
         tempData.name = "Luna"
-        tempData.photoData = Data("photo".utf8)
+        tempData.photo = .prepared(Data("photo".utf8))
 
         await #expect(throws: SaveFailure.self) {
             _ = try await sut.createCatAndTasks(from: tempData, selectedTasks: [], in: context)

@@ -205,7 +205,7 @@ struct CatFormView: View {
         }
         .onChange(of: formData.capturedImage) { _, newValue in
             if newValue != nil {
-                formData.photoData = nil // Clear photo data when camera image is captured
+                formData.preparedPhotoData = nil // Clear the picked photo when camera image is captured
                 discardPhotoPick()
                 hasChangedPhoto = true
             }
@@ -426,7 +426,7 @@ struct CatFormView: View {
     @ViewBuilder
     private var removePhotoButton: some View {
         Button(action: {
-            formData.photoData = nil
+            formData.preparedPhotoData = nil
             formData.capturedImage = nil
             discardPhotoPick()
             hasChangedPhoto = true
@@ -467,7 +467,7 @@ struct CatFormView: View {
 
             switch outcome {
             case .ready(let data):
-                formData.photoData = data
+                formData.preparedPhotoData = data
                 formData.capturedImage = nil // Clear captured image when gallery photo is selected
                 formData.showingPhotoOptions = false
                 hasChangedPhoto = true
@@ -499,11 +499,8 @@ struct CatFormView: View {
         case .onboarding(let onContinue, _):
             // Save to onboarding manager
             OnboardingManager.shared.tempCatData.name = formData.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let photoData = formData.photoData {
-                OnboardingManager.shared.tempCatData.photoData = photoData
-            } else if let capturedImage = formData.capturedImage {
-                OnboardingManager.shared.tempCatData.photoData = capturedImage.jpegData(compressionQuality: 0.8)
-            }
+            // Kept as it is: a camera photo is encoded once, off the main actor, when onboarding saves.
+            OnboardingManager.shared.tempCatData.photo = formData.pendingPhoto
             onContinue()
 
         case .add:
