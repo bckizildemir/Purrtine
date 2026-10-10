@@ -341,6 +341,7 @@ var cancelButton: some View {
 var completeButton: some View {
     SheetConfirmButton(action: submitCompletion)
         .disabled(isLoadingPhotos || selectedCaregiver == nil || selectedCats.isEmpty)
+        .accessibilityIdentifier("taskCompletion.confirmButton")
     }
 }
 

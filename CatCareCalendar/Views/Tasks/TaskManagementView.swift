@@ -100,7 +100,7 @@ struct TaskManagementView: View {
     .sheet(item: $viewModel.selectedCareTask) { task in
       TaskEditView(task: task)
     }
-    .sheet(item: $viewModel.taskCompletionRequest) { request in
+    .sheet(item: $viewModel.taskCompletionRequest, onDismiss: viewModel.taskCompletionSheetDidDismiss) { request in
       TaskCompletionView(task: request.task, completedForDate: request.completedForDate) {
         selectedCats, selectedCaregiver, notes, photos, completedForDate in
         try await viewModel.submitCompletion(
@@ -116,6 +116,11 @@ struct TaskManagementView: View {
     }
     .sheet(isPresented: $showingAddCat) {
       AddCatView()
+    }
+    // Covers the list and the calendar: both complete through the view model. The completion
+    // stands, so the alert only acknowledges the stale reminders and offers no retry.
+    .alert(String(localized: .errorReminderSchedule), isPresented: $viewModel.isShowingReminderWarning) {
+      Button(String(localized: .actionOk)) {}
     }
     .accessibilityIdentifier("taskManagement.view")
   }
