@@ -42,18 +42,23 @@ struct EnhancedCatCardView: View {
                 deleteCat()
             }
         } message: {
-            let tasksCount = cat.tasks.count
-            if tasksCount > 0 {
-                let sharedCount = cat.tasks.filter { $0.assignedCats.count > 1 }.count
-                let singleCount = tasksCount - sharedCount
-                
-                if sharedCount > 0 {
-                    Text(.catDeleteWithTasksAndSharedWarning(cat.name, Int32(singleCount), Int32(sharedCount)))
+            // Guarded on `modelContext`, like the same alert in `CatDetailView`: SwiftUI can
+            // re-evaluate this closure after the delete has committed, and reading a relationship
+            // on an invalidated `@Model` traps (seen on iOS 18.5 in #19).
+            if cat.modelContext != nil {
+                let tasksCount = cat.tasks.count
+                if tasksCount > 0 {
+                    let sharedCount = cat.tasks.filter { $0.assignedCats.count > 1 }.count
+                    let singleCount = tasksCount - sharedCount
+
+                    if sharedCount > 0 {
+                        Text(.catDeleteWithTasksAndSharedWarning(cat.name, Int32(singleCount), Int32(sharedCount)))
+                    } else {
+                        Text(.catDeleteWithTasksWarning(cat.name, Int32(singleCount)))
+                    }
                 } else {
-                    Text(.catDeleteWithTasksWarning(cat.name, Int32(singleCount)))
+                    Text(.catCardDeleteConfirmation(cat.name))
                 }
-            } else {
-                Text(.catCardDeleteConfirmation(cat.name))
             }
         }
         .onAppear {
