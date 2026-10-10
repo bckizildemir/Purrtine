@@ -4540,6 +4540,57 @@
         }
       }
     },
+    "error.task_action.task_not_found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This task no longer exists. It may have been deleted."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu görev artık yok. Silinmiş olabilir."
+          }
+        }
+      }
+    },
+    "error.task_action.caregiver_unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No caregiver is set up to record this. Add a caregiver in Settings."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bunu kaydedecek bir bakıcı ayarlanmamış. Ayarlar'dan bir bakıcı ekleyin."
+          }
+        }
+      }
+    },
+    "error.task_action.invalid_postpone_minutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a valid number of minutes to postpone."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ertelemek için geçerli bir dakika sayısı seçin."
+          }
+        }
+      }
+    },
     "error.unknown_cat" : {
       "extractionState" : "manual",
       "localizations" : {

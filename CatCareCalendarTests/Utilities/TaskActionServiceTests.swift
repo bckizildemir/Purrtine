@@ -177,6 +177,17 @@ struct TaskActionServiceTests {
         #expect(fixture.task.completions.isEmpty)
     }
 
+    /// These messages reach the completion sheet alert and the Task Assistant, so each must come
+    /// from the String Catalog. A hard-coded literal would fail here.
+    @Test(arguments: [
+        (TaskActionError.taskNotFound, String(localized: .errorTaskActionTaskNotFound)),
+        (.caregiverUnavailable, String(localized: .errorTaskActionCaregiverUnavailable)),
+        (.invalidPostponeMinutes, String(localized: .errorTaskActionInvalidPostponeMinutes)),
+    ])
+    func errorDescriptionComesFromTheStringCatalog(error: TaskActionError, expected: String) {
+        #expect(error.errorDescription == expected)
+    }
+
     private func makeFixture(
         frequency: CareTaskFrequency,
         endDate: Date?,
