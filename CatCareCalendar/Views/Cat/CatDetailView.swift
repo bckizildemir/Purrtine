@@ -5,14 +5,9 @@ import PhotosUI
 struct CatDetailView: View {
     let cat: Cat
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.careTaskWriter) private var careTaskWriter
-    @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
     @State private var showingEditView = false
     @State private var showingPhotoSheet = false
-    @State private var showingDeleteConfirmation = false
     @State private var shouldDismissAfterEditDelete = false
-    @State private var deletionFailureToReport: CatDeletionFailure?
     
     // MARK: - Computed Properties
     private var missingFieldsCount: Int {
@@ -95,20 +90,6 @@ struct CatDetailView: View {
         .sheet(isPresented: $showingPhotoSheet) {
             PhotoSheetView(cat: cat)
                 .presentationDetents([.medium, .large])
-        }
-        .alert(String(localized: .catEditDeleteConfirmationTitle), isPresented: $showingDeleteConfirmation) {
-            Button(String(localized: .actionCancel), role: .cancel) { }
-            Button(String(localized: .actionDelete), role: .destructive) {
-                deleteCat()
-            }
-        } message: {
-            deleteConfirmationMessage
-        }
-        .onDisappear {
-            if let deletionFailureToReport {
-                reportCatDeletionFailure(deletionFailureToReport)
-                self.deletionFailureToReport = nil
-            }
         }
         .onChange(of: showingEditView) { _, isPresented in
             guard isPresented == false, shouldDismissAfterEditDelete else { return }
@@ -420,44 +401,6 @@ struct CatDetailView: View {
     private func shouldShowAdditionalDivider() -> Bool {
         // Show divider if there's weight, medical conditions, or notes after breed
         return cat.weight != nil || !cat.medicalConditions.isEmpty || !(cat.medicalNotes?.isEmpty ?? true)
-    }
-    
-    /// Content for the delete-confirmation alert. Guarded on `modelContext` because SwiftUI can
-    /// re-evaluate this closure during a body pass after `deleteCat()` has removed `cat` from the
-    /// store, and reading a relationship on an invalidated `@Model` traps.
-    @ViewBuilder
-    private var deleteConfirmationMessage: some View {
-        if cat.modelContext != nil {
-            let tasksCount = cat.tasks.count
-            if tasksCount > 0 {
-                let sharedCount = cat.tasks.filter { $0.assignedCats.count > 1 }.count
-                let singleCount = tasksCount - sharedCount
-
-                if sharedCount > 0 {
-                    Text(.catDeleteWithTasksAndSharedWarning(cat.name, Int32(singleCount), Int32(sharedCount)))
-                } else {
-                    Text(.catDeleteWithTasksWarning(cat.name, Int32(singleCount)))
-                }
-            } else {
-                Text(.catEditDeleteConfirmationMessage(cat.name))
-            }
-        }
-    }
-
-    // MARK: - Helper Methods
-    /// A failed delete still leaves this screen: the cat is gone either way (#19), and
-    /// `CatsTabView` shows the note once this screen has left, so the alert never races the
-    /// confirmation alert's dismissal.
-    private func deleteCat() {
-        let catName = cat.name
-        Task {
-            do {
-                try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
-            } catch {
-                deletionFailureToReport = CatDeletionFailure(error: error, catName: catName)
-            }
-            dismiss()
-        }
     }
 }
 

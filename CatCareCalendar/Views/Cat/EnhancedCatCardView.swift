@@ -11,6 +11,7 @@ struct EnhancedCatCardView: View {
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var showingTaskAdd = false
+    @State private var deletionFailureHandoff = CatDeletionFailureHandoff()
     
     var body: some View {
         VStack(spacing: 12) {
@@ -30,6 +31,12 @@ struct EnhancedCatCardView: View {
         .contextMenu {
             contextMenuItems
         }
+        .onAppear {
+            deletionFailureHandoff.screenDidAppear()
+        }
+        .onDisappear {
+            deletionFailureHandoff.screenDidLeave()
+        }
         .sheet(isPresented: $showingEditView) {
             EditCatView(cat: cat)
         }
@@ -42,9 +49,9 @@ struct EnhancedCatCardView: View {
                 deleteCat()
             }
         } message: {
-            // Guarded on `modelContext`, like the same alert in `CatDetailView`: SwiftUI can
-            // re-evaluate this closure after the delete has committed, and reading a relationship
-            // on an invalidated `@Model` traps (seen on iOS 18.5 in #19).
+            // Guarded on `modelContext`: SwiftUI can re-evaluate this closure after the delete has
+            // committed, and reading a relationship on an invalidated `@Model` traps (seen on
+            // iOS 18.5 in #19).
             if cat.modelContext != nil {
                 let tasksCount = cat.tasks.count
                 if tasksCount > 0 {
@@ -207,20 +214,23 @@ struct EnhancedCatCardView: View {
     }
     
     /// The cat is gone either way (#19); a failure goes to `CatsTabView`, which shows the note,
-    /// because this card leaves the grid with the cat.
+    /// because this card leaves the grid with the cat. It goes once the card has left, which takes
+    /// the confirmation alert with it, so the note never races that alert's dismissal (#31).
     private func deleteCat() {
         let catName = cat.name
+        let deletionFailureHandoff = deletionFailureHandoff
+        let reportCatDeletionFailure = reportCatDeletionFailure
         Task {
-            do {
+            let failure = await deletionFailureHandoff.runDelete(
+                ofCatNamed: catName,
+                reporting: reportCatDeletionFailure
+            ) {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
+            }
+            if failure != nil {
+                haptics.notify(.error)
+            } else {
                 haptics.impact(.medium)
-            } catch {
-                if let failure = CatDeletionFailure(error: error, catName: catName) {
-                    haptics.notify(.error)
-                    reportCatDeletionFailure(failure)
-                } else {
-                    haptics.impact(.medium)
-                }
             }
         }
     }
