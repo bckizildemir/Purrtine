@@ -4591,6 +4591,23 @@
         }
       }
     },
+    "error.notification_scheduling.unauthorized" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications are off for Purrtine. Turn them on in Settings to postpone reminders."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purrtine için bildirimler kapalı. Hatırlatmaları ertelemek için Ayarlar'dan açın."
+          }
+        }
+      }
+    },
     "error.task_action.task_not_found" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11860,6 +11877,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bunu bir görevle güvenle eşleştiremedim. Görev adını, kedi adını veya bakım türünü dene."
+          }
+        }
+      }
+    },
+    "task_assistant.open_settings.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens Purrtine's page in the Settings app, where you can turn on notifications."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildirimleri açabileceğiniz Ayarlar uygulamasındaki Purrtine sayfasını açar."
           }
         }
       }
