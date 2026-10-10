@@ -763,6 +763,40 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertFalse(app.buttons["taskRow.UI Solo Task"].waitForExistence(timeout: 2))
     }
 
+    /// #19: a failed commit keeps the cat gone, and the cats screen says the delete is not saved yet.
+    func testCatDeleteCommitFailureShowsPendingSaveNote() {
+        let app = makeApp(
+            additionalArguments: [
+                "-complete-onboarding",
+                "-launch-route", "cats",
+                "-seed-scenario", "shared_task_cat_deletion",
+                "-fail-cat-delete-commit"
+            ]
+        )
+        app.launch()
+
+        deletePrimaryCatFromEditCat(in: app)
+
+        assertCatDeletionAlert(in: app, title: "Delete Not Saved Yet")
+    }
+
+    /// #19: a reminder failure after the commit keeps the cat gone and shows the reminder warning.
+    func testCatDeleteReminderFailureShowsReminderWarning() {
+        let app = makeApp(
+            additionalArguments: [
+                "-complete-onboarding",
+                "-launch-route", "cats",
+                "-seed-scenario", "shared_task_cat_deletion",
+                "-fail-notification-schedule"
+            ]
+        )
+        app.launch()
+
+        deletePrimaryCatFromEditCat(in: app)
+
+        assertCatDeletionAlert(in: app, title: scheduleFailureAlertTitle)
+    }
+
     /// Regression: deleting a cat cascades its exclusive tasks away while their
     /// TaskRows are already in the view hierarchy; re-rendering a row for a
     /// deleted model used to trap in SwiftData (SIGTRAP in CareTask.category).
@@ -1436,6 +1470,41 @@ final class CriticalFlowsUITests: XCTestCase {
 
     /// Taps an element a second time, but only while it is still on screen.
     ///
+    /// Cats screen → "UI Test Cat" detail → Edit Cat → Delete → confirm.
+    private func deletePrimaryCatFromEditCat(in app: XCUIApplication) {
+        let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
+        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: 5))
+        primaryCatCard.tap()
+
+        let editButton = app.buttons["catDetail.editButton"]
+        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        editButton.tap()
+
+        let deleteButton = app.buttons["catForm.deleteButton"]
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        deleteButton.tap()
+
+        let confirmDeleteButton = app.alerts.buttons["Delete"].firstMatch
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 5))
+        confirmDeleteButton.tap()
+    }
+
+    /// The note shows on the cats screen, names the cat, and the cat stays gone after it closes.
+    private func assertCatDeletionAlert(in app: XCUIApplication, title: String) {
+        let alert = app.alerts[title]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Test Cat")).firstMatch.exists)
+
+        let dismissAlertButton = alert.buttons.firstMatch
+        XCTAssertTrue(dismissAlertButton.waitForExistence(timeout: 5))
+        dismissAlertButton.tap()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
+
+        XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["cats.card.UI Test Cat"].exists)
+    }
+
     /// A save button whose sheet has already closed is not a test failure: the sheet closing is the
     /// wanted outcome. The assertion that matters is the row count after the taps.
     private func tapAgainIfStillPresent(_ element: XCUIElement) {

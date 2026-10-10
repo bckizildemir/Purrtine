@@ -72,6 +72,9 @@ struct AppLaunchConfiguration {
     /// Compiled into Debug builds only, and gated on `isUITesting` on top of that, so a release
     /// build has no such property and cannot reach it even if the argument is passed.
     var failsNotificationSchedule: Bool { isUITesting && hasArgument("-fail-notification-schedule") }
+    /// UI-test-only injection: makes the commit in `CatDeletionService.delete` throw, so the UI
+    /// tests can reach the "delete not saved yet" alert. Debug builds only, gated like the one above.
+    var failsCatDeleteCommit: Bool { isUITesting && hasArgument("-fail-cat-delete-commit") }
     #endif
     var disablesCloudServices: Bool { isUITesting || isUnitTesting || isRunningForPreviews }
     var resetsOnboarding: Bool { hasArgument("-reset-onboarding") }

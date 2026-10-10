@@ -4,11 +4,13 @@ import SwiftData
 
 /// Records what a view model asked the writer to do and does nothing else. The postcondition itself
 /// is covered by `CareTaskWriterTests` against a real store; suites that use this spy assert only
-/// that the right write was requested for the right task. `completeError` and `deleteError`, when
-/// set, are thrown after the request is recorded, the way the writer throws after its commit.
+/// that the right write was requested for the right task. `completeError`, `deleteError` and
+/// `refreshError`, when set, are thrown after the request is recorded, the way the writer throws
+/// after its commit.
 final class CareTaskWriterSpy: CareTaskWriting {
     var completeError: (any Error)?
     var deleteError: (any Error)?
+    var refreshError: (any Error)?
 
     private(set) var savedTasks: [CareTask] = []
     private(set) var deletedTaskIds: [UUID] = []
@@ -44,5 +46,8 @@ final class CareTaskWriterSpy: CareTaskWriting {
 
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws {
         refreshedTaskIds.append(taskIds)
+        if let refreshError {
+            throw refreshError
+        }
     }
 }

@@ -7,6 +7,9 @@ struct CatsTabView: View {
     @State private var showingAddCat = false
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    /// Kept after the alert closes, so its text does not change while it animates away.
+    @State private var catDeletionFailure: CatDeletionFailure?
+    @State private var isShowingCatDeletionFailure = false
 
     @State private var viewWidth: CGFloat = 0
 
@@ -81,12 +84,30 @@ struct CatsTabView: View {
         .sheet(isPresented: $showingAddCat) {
             AddCatView()
         }
+        // Hosted here, not on the screen that deleted the cat: that screen leaves with the cat.
+        .alert(
+            catDeletionFailure?.title ?? "",
+            isPresented: $isShowingCatDeletionFailure,
+            presenting: catDeletionFailure
+        ) { _ in
+            Button(String(localized: .actionOk)) {}
+        } message: { failure in
+            Text(failure.message)
+        }
+        .environment(\.reportCatDeletionFailure, reportCatDeletionFailure)
         .onAppear {
             sanitizeInvalidAges()
         }
         .accessibilityIdentifier("cats.view")
     }
     
+    private var reportCatDeletionFailure: ReportCatDeletionFailureAction {
+        ReportCatDeletionFailureAction { failure in
+            catDeletionFailure = failure
+            isShowingCatDeletionFailure = true
+        }
+    }
+
     // MARK: - Main Content View
     @ViewBuilder
     private var mainContentView: some View {
@@ -130,7 +151,12 @@ struct CatsTabView: View {
     // MARK: - Cat Card View
     @ViewBuilder
     private func catCardView(for cat: Cat) -> some View {
-        NavigationLink(destination: CatDetailView(cat: cat)) {
+        // Set on the destination too: a pushed view takes its environment from the navigation
+        // stack, not from this link, so the modifier on `body` does not reach it.
+        NavigationLink {
+            CatDetailView(cat: cat)
+                .environment(\.reportCatDeletionFailure, reportCatDeletionFailure)
+        } label: {
             EnhancedCatCardView(cat: cat)
         }
         .buttonStyle(.plain)

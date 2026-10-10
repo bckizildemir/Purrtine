@@ -7,6 +7,7 @@ struct EnhancedCatCardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.haptics) private var haptics
     @Environment(\.careTaskWriter) private var careTaskWriter
+    @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
     @State private var showingEditView = false
     @State private var showingDeleteAlert = false
     @State private var showingTaskAdd = false
@@ -41,18 +42,23 @@ struct EnhancedCatCardView: View {
                 deleteCat()
             }
         } message: {
-            let tasksCount = cat.tasks.count
-            if tasksCount > 0 {
-                let sharedCount = cat.tasks.filter { $0.assignedCats.count > 1 }.count
-                let singleCount = tasksCount - sharedCount
-                
-                if sharedCount > 0 {
-                    Text(.catDeleteWithTasksAndSharedWarning(cat.name, Int32(singleCount), Int32(sharedCount)))
+            // Guarded on `modelContext`, like the same alert in `CatDetailView`: SwiftUI can
+            // re-evaluate this closure after the delete has committed, and reading a relationship
+            // on an invalidated `@Model` traps (seen on iOS 18.5 in #19).
+            if cat.modelContext != nil {
+                let tasksCount = cat.tasks.count
+                if tasksCount > 0 {
+                    let sharedCount = cat.tasks.filter { $0.assignedCats.count > 1 }.count
+                    let singleCount = tasksCount - sharedCount
+
+                    if sharedCount > 0 {
+                        Text(.catDeleteWithTasksAndSharedWarning(cat.name, Int32(singleCount), Int32(sharedCount)))
+                    } else {
+                        Text(.catDeleteWithTasksWarning(cat.name, Int32(singleCount)))
+                    }
                 } else {
-                    Text(.catDeleteWithTasksWarning(cat.name, Int32(singleCount)))
+                    Text(.catCardDeleteConfirmation(cat.name))
                 }
-            } else {
-                Text(.catCardDeleteConfirmation(cat.name))
             }
         }
         .onAppear {
@@ -200,13 +206,21 @@ struct EnhancedCatCardView: View {
         }
     }
     
+    /// The cat is gone either way (#19); a failure goes to `CatsTabView`, which shows the note,
+    /// because this card leaves the grid with the cat.
     private func deleteCat() {
+        let catName = cat.name
         Task {
             do {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
                 haptics.impact(.medium)
             } catch {
-                print("Error deleting cat: \(error)")
+                if let failure = CatDeletionFailure(error: error, catName: catName) {
+                    haptics.notify(.error)
+                    reportCatDeletionFailure(failure)
+                } else {
+                    haptics.impact(.medium)
+                }
             }
         }
     }

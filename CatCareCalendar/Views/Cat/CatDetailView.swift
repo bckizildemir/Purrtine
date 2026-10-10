@@ -7,10 +7,12 @@ struct CatDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.careTaskWriter) private var careTaskWriter
+    @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
     @State private var showingEditView = false
     @State private var showingPhotoSheet = false
     @State private var showingDeleteConfirmation = false
     @State private var shouldDismissAfterEditDelete = false
+    @State private var deletionFailureToReport: CatDeletionFailure?
     
     // MARK: - Computed Properties
     private var missingFieldsCount: Int {
@@ -101,6 +103,12 @@ struct CatDetailView: View {
             }
         } message: {
             deleteConfirmationMessage
+        }
+        .onDisappear {
+            if let deletionFailureToReport {
+                reportCatDeletionFailure(deletionFailureToReport)
+                self.deletionFailureToReport = nil
+            }
         }
         .onChange(of: showingEditView) { _, isPresented in
             guard isPresented == false, shouldDismissAfterEditDelete else { return }
@@ -437,14 +445,18 @@ struct CatDetailView: View {
     }
 
     // MARK: - Helper Methods
+    /// A failed delete still leaves this screen: the cat is gone either way (#19), and
+    /// `CatsTabView` shows the note once this screen has left, so the alert never races the
+    /// confirmation alert's dismissal.
     private func deleteCat() {
+        let catName = cat.name
         Task {
             do {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
-                dismiss()
             } catch {
-                print("Failed to delete cat: \(error)")
+                deletionFailureToReport = CatDeletionFailure(error: error, catName: catName)
             }
+            dismiss()
         }
     }
 }

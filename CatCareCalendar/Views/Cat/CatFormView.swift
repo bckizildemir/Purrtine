@@ -12,11 +12,13 @@ struct CatFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.haptics) private var haptics
     @Environment(\.careTaskWriter) private var careTaskWriter
+    @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
 
     // MARK: - Form State
     @State private var formData: CatFormData
     @State private var hasChangedPhoto = false
     @State private var showingDeleteConfirmation = false
+    @State private var deletionFailureToReport: CatDeletionFailure?
 
     // MARK: - Focus State
     @FocusState private var focusedField: CatFormData.Field?
@@ -191,6 +193,12 @@ struct CatFormView: View {
             Button(String(localized: .actionCancel), role: .cancel) { }
         } message: {
             Text(.catPhotoNotSavedMessage)
+        }
+        .onDisappear {
+            if let deletionFailureToReport {
+                reportCatDeletionFailure(deletionFailureToReport)
+                self.deletionFailureToReport = nil
+            }
         }
         .onChange(of: formData.selectedPhoto) { _, newValue in
             loadSelectedPhoto(newValue)
@@ -554,17 +562,23 @@ struct CatFormView: View {
         }
     }
 
+    /// A failed delete still closes the form: the cat is gone either way (#19). The failure goes
+    /// to `CatsTabView`, which outlives this sheet and shows the note, from `onDisappear`: UIKit
+    /// refuses to present the alert while this sheet is still on screen.
     private func deleteCat() {
-        if case .edit(let cat) = mode {
-            Task {
-                do {
-                    try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
-                    onDelete?()
-                    dismiss()
-                } catch {
-                    print("Failed to delete cat: \(error)")
+        guard case .edit(let cat) = mode else { return }
+        let catName = cat.name
+        Task {
+            do {
+                try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
+            } catch {
+                if let failure = CatDeletionFailure(error: error, catName: catName) {
+                    haptics.notify(.error)
+                    deletionFailureToReport = failure
                 }
             }
+            onDelete?()
+            dismiss()
         }
     }
 }
