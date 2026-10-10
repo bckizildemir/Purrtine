@@ -37,27 +37,70 @@ final class TaskManagementViewModel {
         }
     }
     var selectedDate: Date = Date()
-    var showingTaskTemplate: Bool = false
-    var taskCreationRequest: TaskCreationRequest?
-    
+    var showingTaskTemplate: Bool = false {
+        didSet {
+            if showingTaskTemplate { sheetsOnScreen.insert(.taskTemplate) }
+        }
+    }
+    var taskCreationRequest: TaskCreationRequest? {
+        didSet {
+            if taskCreationRequest != nil { sheetsOnScreen.insert(.taskCreation) }
+        }
+    }
+
     // CareTask Actions
-    var selectedCareTask: CareTask?
-    
+    var selectedCareTask: CareTask? {
+        didSet {
+            if selectedCareTask != nil { sheetsOnScreen.insert(.taskEdit) }
+        }
+    }
+
     // CareTask Completion
-    var taskCompletionRequest: TaskCompletionRequest?
+    var taskCompletionRequest: TaskCompletionRequest? {
+        didSet {
+            if taskCompletionRequest != nil { sheetsOnScreen.insert(.taskCompletion) }
+        }
+    }
 
-    /// A completion saved, but its reminders could not be updated. Drives the reminder warning alert.
-    var isShowingReminderWarning = false
-
-    /// A reminder warning from the completion sheet, held until the sheet has closed.
-    private var hasPendingReminderWarning = false
+    /// A write saved, but its reminders could not be updated. Drives the reminder warning alert.
+    var isShowingReminderWarning = false {
+        didSet {
+            if isShowingReminderWarning == false { showNextPendingAlertAfterAlertCloses() }
+        }
+    }
 
     /// The last one-tap complete or delete that did not save. Kept after the alert closes, so the
     /// alert's text does not change while it animates away.
     private(set) var actionFailure: TaskActionFailure?
 
     /// Drives the alert for `actionFailure`.
-    var isShowingActionFailure = false
+    var isShowingActionFailure = false {
+        didSet {
+            if isShowingActionFailure == false { showNextPendingAlertAfterAlertCloses() }
+        }
+    }
+
+    /// The sheets this screen presents. An alert cannot present from the view under an open sheet.
+    enum Sheet: Hashable {
+        case taskTemplate
+        case taskCreation
+        case taskEdit
+        case taskCompletion
+        case addCat
+    }
+
+    /// Sheets from the moment they are requested until their dismiss callback: a sheet whose state
+    /// was cleared is still on screen while it animates away. A sheet requested while another is up
+    /// presents once that one closes (the template sheet hands over to the creation sheet this way),
+    /// so every entry gets its dismiss callback.
+    private var sheetsOnScreen: Set<Sheet> = []
+
+    /// Alerts raised while a sheet or another alert was up, shown one at a time once nothing is.
+    private var pendingActionFailures: [TaskActionFailure] = []
+    private var hasPendingReminderWarning = false
+
+    /// Shows the next pending alert once the closing alert's binding write has finished. Tests await it.
+    @ObservationIgnored private(set) var nextAlertPresentation: Task<Void, Never>?
 
     // YENİ: UI için işlenmiş ve hazır veriler
     var groupedTasks: [TaskListSection] = []
@@ -136,10 +179,10 @@ final class TaskManagementViewModel {
                 case .remindersStale(let staleError):
                     // The completion committed, so it counts as done; only the reminders are stale.
                     logStaleReminders(after: "Completed", task, staleError)
-                    isShowingReminderWarning = true
+                    raiseReminderWarning()
                 case .notSaved:
                     logger.error("Failed to complete task: \(error.localizedDescription)")
-                    showActionFailure(.completionNotSaved)
+                    raiseActionFailure(.completionNotSaved)
                 }
             }
         }
@@ -229,7 +272,7 @@ final class TaskManagementViewModel {
                 // The completion committed. A retry would record it twice, so the sheet still closes,
                 // and the warning shows once it has.
                 logStaleReminders(after: "Completed", task, staleError)
-                hasPendingReminderWarning = true
+                raiseReminderWarning()
             case .notSaved:
                 throw error
             }
@@ -237,12 +280,68 @@ final class TaskManagementViewModel {
         dismissTaskCompletion()
     }
 
-    /// Call when the completion sheet has closed. Shows the reminder warning its save left pending:
-    /// an alert raised while the sheet is still on screen would not present.
-    func taskCompletionSheetDidDismiss() {
-        guard hasPendingReminderWarning else { return }
-        hasPendingReminderWarning = false
-        isShowingReminderWarning = true
+    // MARK: - Alerts
+
+    /// Call when the view presents the add-cat sheet, which is the view's own state.
+    func addCatSheetWillPresent() {
+        sheetsOnScreen.insert(.addCat)
+    }
+
+    /// Call from each sheet's dismiss callback. Shows an alert that waited for the sheet, once no
+    /// sheet is left on screen.
+    func sheetDidDismiss(_ sheet: Sheet) {
+        // A sheet whose state was replaced rather than cleared is presented again.
+        guard isRequested(sheet) == false else { return }
+        sheetsOnScreen.remove(sheet)
+        showNextPendingAlert()
+    }
+
+    private func isRequested(_ sheet: Sheet) -> Bool {
+        switch sheet {
+        case .taskTemplate: showingTaskTemplate
+        case .taskCreation: taskCreationRequest != nil
+        case .taskEdit: selectedCareTask != nil
+        case .taskCompletion: taskCompletionRequest != nil
+        case .addCat: false
+        }
+    }
+
+    private func raiseReminderWarning() {
+        hasPendingReminderWarning = true
+        showNextPendingAlert()
+    }
+
+    private func raiseActionFailure(_ failure: TaskActionFailure) {
+        // The same message twice in a row would say nothing new.
+        if pendingActionFailures.last != failure {
+            pendingActionFailures.append(failure)
+        }
+        showNextPendingAlert()
+    }
+
+    /// An alert closes inside the write of its own binding. Raising the next alert in that same write
+    /// drops it when it uses the same alert (SwiftUI sees `true` before and after, so no change), and
+    /// that flag then blocks every later alert. The next alert waits for the next main-actor turn.
+    private func showNextPendingAlertAfterAlertCloses() {
+        guard pendingActionFailures.isEmpty == false || hasPendingReminderWarning else { return }
+        nextAlertPresentation = Task { [weak self] in
+            self?.showNextPendingAlert()
+        }
+    }
+
+    /// Shows one pending alert, the action failure first, when no sheet and no other alert is up.
+    /// The rest stay pending until the shown alert closes.
+    private func showNextPendingAlert() {
+        guard sheetsOnScreen.isEmpty, isShowingActionFailure == false, isShowingReminderWarning == false else {
+            return
+        }
+        if pendingActionFailures.isEmpty == false {
+            actionFailure = pendingActionFailures.removeFirst()
+            isShowingActionFailure = true
+        } else if hasPendingReminderWarning {
+            hasPendingReminderWarning = false
+            isShowingReminderWarning = true
+        }
     }
 
     private func logStaleReminders(
@@ -253,11 +352,6 @@ final class TaskManagementViewModel {
         logger.error(
             "\(action) '\(task.title)' but could not update its reminders: \(error.underlyingError.localizedDescription)"
         )
-    }
-
-    private func showActionFailure(_ failure: TaskActionFailure) {
-        actionFailure = failure
-        isShowingActionFailure = true
     }
 
     @discardableResult
@@ -272,12 +366,12 @@ final class TaskManagementViewModel {
                 case .remindersStale(let staleError):
                     // The delete committed; only the reminders are stale.
                     logStaleReminders(after: "Deleted", task, staleError)
-                    isShowingReminderWarning = true
+                    raiseReminderWarning()
                 case .notSaved:
                     // The writer keeps a failed delete staged, and the next successful save commits it,
                     // so the row stays removed.
                     logger.error("Failed to commit task delete: \(error.localizedDescription)")
-                    showActionFailure(.deletePending)
+                    raiseActionFailure(.deletePending)
                 }
             }
         }
