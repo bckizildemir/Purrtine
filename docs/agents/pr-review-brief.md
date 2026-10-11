@@ -16,7 +16,8 @@ Invoke the `code-review` skill and follow it exactly.
 - Spec: the linked issue (`gh issue view <N> -R bckizildemir/Purrtine --comments`) plus the PR body.
 - Standards sources: `CODING_STANDARDS.md`, `CLAUDE.md`, `.claude/rules/*.md`.
 - The skill spawns two sub-agents. Pass `model: "sonnet"` to both.
-- Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate and already passed. It skips
+- Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate. Start the review while CI is still
+  pending; the coordinator checks the CI result before the merge. CI skips
   the UI tests (see "Local tests: only what changed" in CLAUDE.md), so the PR body must list the UI
   tests the author ran. Another agent may hold
   the build lock.

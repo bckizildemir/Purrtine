@@ -48,13 +48,16 @@ Every agent must read this file before implementation and update it before endin
 
 ## Baseline Test Commands
 
-Run this before and after substantial changes:
+Locally, run only the tests you added or changed plus the suites of the files you changed, each with `--only`
+(owner rule, 2026-10-11; see "Local tests: only what changed" in `CLAUDE.md`):
 
 ```sh
-Scripts/xcb.sh test --os 18.5
+Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>
 ```
 
-For a narrower iteration, run the relevant test target or single test class first, then run the full command before handoff when practical.
+CI (`.github/workflows/ci.yml`) runs the full unit suite on each PR, and its result is the gate. CI skips the UI
+tests (verified 2026-10-11), so run a UI test locally only when you added or changed it, on each simulator the task
+names.
 
 ## Coverage Philosophy
 
