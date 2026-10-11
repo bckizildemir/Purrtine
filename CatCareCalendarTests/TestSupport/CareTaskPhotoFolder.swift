@@ -4,14 +4,15 @@ import UIKit
 @testable import CatCareCalendar
 
 /// A throwaway task photo folder and a writer rooted in it. With `blocked`, a regular file sits where
-/// the folder should be, so neither the folder nor a photo can be written.
+/// the folder should be, so neither the folder nor a photo can be written. `makeUUID` names the files
+/// the writer saves; a fixed one makes two saves collide.
 struct CareTaskPhotoFolder {
     let directory: URL
     let log: LogSpy
     let sut: CareTaskPhotoWriter
     private let root: URL
 
-    init(blocked: Bool = false) throws {
+    init(blocked: Bool = false, makeUUID: @escaping @Sendable () -> UUID = { UUID() }) throws {
         root = FileManager.default.temporaryDirectory
             .appending(path: "CareTaskPhotoWriterTests-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -23,7 +24,7 @@ struct CareTaskPhotoFolder {
         }
         let log = LogSpy()
         self.log = log
-        sut = CareTaskPhotoWriter(photosDirectory: directory, logFailure: { log.record($0) })
+        sut = CareTaskPhotoWriter(photosDirectory: directory, makeUUID: makeUUID, logFailure: { log.record($0) })
     }
 
     func storedFileNames() throws -> Set<String> {

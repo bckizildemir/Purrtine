@@ -367,6 +367,35 @@ struct TaskAssistantViewModelTests {
         #expect(try folder.storedFileNames().isEmpty)
     }
 
+    /// A detailed completion that committed keeps its photos, whether the writer then reports stale
+    /// reminders or a cancellation.
+    @Test(arguments: [
+        CancellationError() as any Error,
+        CareTaskRemindersOutOfSyncError(taskIds: [], underlyingError: CocoaError(.featureUnsupported))
+    ])
+    func committedDetailedCompletionKeepsItsPhotoFiles(completeError: any Error) async throws {
+        let fixture = try makeFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        spy.completeError = completeError
+        let sut = TaskAssistantViewModel(taskWriter: spy, photoWriter: folder.sut)
+
+        try await sut.completeDetailedTask(
+            task: fixture.task,
+            selectedCats: [],
+            selectedCaregiver: nil,
+            notes: nil,
+            photos: [try CareTaskPhotoFolder.makeImage()],
+            completedForDate: nil,
+            in: fixture.container.mainContext
+        )
+
+        let completion = try #require(spy.completions.first)
+        #expect(try folder.storedFileNames() == Set(completion.input.photoURLs))
+        #expect(completion.input.photoURLs.count == 1)
+    }
+
     @Test
     func cancellingPendingConfirmationRemovesTheQuestionItAnswered() async throws {
         let fixture = try makeFixture()

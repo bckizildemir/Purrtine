@@ -59,7 +59,8 @@ nonisolated final class CareTaskPhotoWriter: Sendable {
     }
 
     /// Creates the photos folder before each write, so a folder removed since the last write does not
-    /// fail every later one.
+    /// fail every later one. Never replaces a file: a name already taken fails this photo's save, so a
+    /// photo a saved completion owns can be neither overwritten nor removed by a later cleanup.
     private func save(_ photo: UIImage) throws(PhotoSaveError) -> String {
         guard let jpeg = PhotoManager.renderedJPEGData(
             from: photo,
@@ -71,7 +72,7 @@ nonisolated final class CareTaskPhotoWriter: Sendable {
         let fileName = "task_photo_\(makeUUID().uuidString).jpg"
         do {
             try FileManager.default.createDirectory(at: photosDirectory, withIntermediateDirectories: true)
-            try jpeg.write(to: photosDirectory.appending(path: fileName))
+            try jpeg.write(to: photosDirectory.appending(path: fileName), options: .withoutOverwriting)
             return fileName
         } catch {
             logFailure("Task photo not saved: \(String(describing: error))")
