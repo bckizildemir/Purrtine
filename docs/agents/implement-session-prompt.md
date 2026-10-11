@@ -10,7 +10,7 @@ Copy everything under the line into a file in the coordinator's own `$CLAUDE_JOB
   from `.claude/rules/testing.md`; a UI test change names the simulators it must pass on.
 - Keep the Setup, Simulator lock, Tests, and Finish sections as they are.
 - The first line must stay `/mattpocock-skills:implement GitHub issue #<N> in bckizildemir/Purrtine.`
-  The coordinator checks that the session really ran that skill (see `coordinator.md`).
+  The coordinator checks that the session really ran that skill (the `/issue-batch-coordinator` skill, "Implement check").
 
 ---
 
