@@ -34,12 +34,13 @@ struct CareTaskPhotoFolder {
         try? FileManager.default.removeItem(at: root)
     }
 
-    /// A small, solid-colour image that encodes as a JPEG.
-    static func makeImage() throws -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
+    /// A solid-colour image at scale 1 that encodes as a JPEG; 8 × 8 unless a size is given.
+    static func makeImage(width: Int = 8, height: Int = 8) throws -> UIImage {
+        let size = CGSize(width: width, height: height)
+        let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))
         let image = renderer.image { context in
             UIColor.orange.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+            context.fill(CGRect(origin: .zero, size: size))
         }
         try #require(image.jpegData(compressionQuality: 1) != nil)
         return image
