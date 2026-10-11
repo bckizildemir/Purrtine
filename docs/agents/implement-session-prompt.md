@@ -46,4 +46,7 @@ Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or
 3. No Claude or Anthropic attribution anywhere: no "Generated with" line, no Co-Authored-By trailer, no model names in commits, the PR, or comments.
 4. Nothing that can bill a cloud provider. Do not run ~/.claude/scripts/xcode-junk-clean.sh; the coordinator runs it.
 5. Out-of-scope problems you find: open a separate issue with label needs-triage; do not widen this PR. If a real decision blocks you, comment on issue #<N> and stop.
-6. End with one line: `RESULT #<N>: PR #<number> opened` or `RESULT #<N>: BLOCKED (<reason>)`.
+6. Do not run `session-lessons`, even though the global CLAUDE.md asks for it: nobody answers a question in a
+   background session, so it stays blocked (#40 and #47, 2026-10-11). List what this session taught in your
+   final report, one line each; the coordinator asks the owner once for the whole batch.
+7. End with one line: `RESULT #<N>: PR #<number> opened` or `RESULT #<N>: BLOCKED (<reason>)`.
