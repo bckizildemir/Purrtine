@@ -61,8 +61,8 @@ Scripts/xcb.sh build --os 18.5
 # --only takes a Swift Testing suite or test name and is repeatable
 Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/TaskActionServiceTests
 
-# Run a UI test you added or changed on both the min target (iOS 18.5) and current OS (iOS 26.5),
-# one pass after the other; the script shuts down the other simulator first.
+# Run a UI test you added or changed on each simulator the task names (the baseline below is
+# iOS 18.5 and iOS 26.5), one pass after the other; the script shuts down the other simulator first.
 Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests/<TestClass>/<testName>
 Scripts/xcb.sh test --os 26.5 --only CatCareCalendarUITests/<TestClass>/<testName>
 
@@ -74,7 +74,7 @@ xcrun simctl list devices
 - Simulator names, verified 2026-10-06: the 26.5 device is named `iPhone 12`; the 18.5 device is named `iPhone 12 (iOS 18.5)`. `Scripts/xcb.sh` accepts both forms, so `--os 18.5` finds it. A bare `xcodebuild` needs the exact name: `-destination 'platform=iOS Simulator,name=iPhone 12 (iOS 18.5),OS=18.5'`.
 - An **iOS 27.0** runtime is installed, but no `iPhone 12` device on it (verified 2026-10-06). It is not the baseline — do not substitute it for the 26.5 pass without saying so, because a result from it is not comparable with the recorded runs.
 - Host toolchain as of 2026-09-08: **Xcode 27.0** (build `27A5194q`), **Swift 6.4**. The project's `SWIFT_VERSION = 6.0` (verified 2026-09-24) selects the language mode; it does not limit which syntax this compiler accepts. See the reconciliation notes below.
-- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. CI skips the UI tests today (`-skip-testing:CatCareCalendarUITests`, #48), so run locally only the UI tests you added or changed, on each simulator the task names. List the tests you ran in the PR body.
+- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. CI skips the UI tests (verified 2026-10-11: `-skip-testing:CatCareCalendarUITests`, #48), so run locally only the UI tests you added or changed, on each simulator the task names. List the tests you ran in the PR body.
 - Agents build and test through `Scripts/xcb.sh`, never a bare `xcodebuild`. The script holds a machine-wide lock, so builds from every worktree and from TTB queue one at a time on this 16GB Mac; it shares one DerivedData and package checkout across worktrees, so Firebase compiles once. It writes the full log to a file and prints only errors, failures, and the tail. A run can wait minutes for the lock: give it a long Bash timeout or run it in the background. `Scripts/xcb.sh --help` lists the options.
 - `Scripts/xcb.sh` is shared with TTB; keep the two copies identical.
 - Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. CI (`.github/workflows/ci.yml`) runs this scheme without the UI tests and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage; the coverage bundle therefore comes from CI, not from a local run. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
@@ -245,9 +245,9 @@ Single-context — `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agen
 
 ### Coordinator and session briefs
 
-A coordinator session that starts implement sessions, reviews their PRs, and merges them follows
-`docs/agents/coordinator.md`. It starts each session from `docs/agents/implement-session-prompt.md`
-and reviews each PR with `docs/agents/pr-review-brief.md`.
+Read `docs/agents/coordinator.md` when you coordinate a batch: start implement sessions, review their
+PRs, or merge them. Start each session from `docs/agents/implement-session-prompt.md`; review each PR
+with `docs/agents/pr-review-brief.md`.
 
 ### Documentation audits
 

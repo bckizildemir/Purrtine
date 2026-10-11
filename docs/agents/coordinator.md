@@ -45,7 +45,7 @@ one; tell the owner why.
 ## Watching
 
 - `Scripts/agents/watch.sh <bg-id>...` in the background exits when a listed session stops
-  `working`. Monitor tools expire after 30 min: re-arm.
+  `working`. Monitor tools expired after 30 min in the #24–#38 batch (2026-10-10): re-arm.
 - Read a session's last messages with `python3 -I Scripts/agents/last.py <sessionId> <n>`.
   `claude logs` prints terminal codes and is not useful.
 
@@ -53,7 +53,8 @@ one; tell the owner why.
 
 - A `blocked` session cannot receive SendMessage. To continue it: `claude stop <id>`, then from its
   worktree `claude --bg --resume <sessionId> -n purrtine-<N> --permission-mode auto "<message>"`.
-- `claude --bg --resume <id>` with flags starts a copy under a new id, and `claude stop` can lag.
+- Seen in the #24–#38 batch (2026-10-10): `claude --bg --resume <id>` with flags starts a copy under
+  a new id, and `claude stop` can lag.
   After each resume, check `claude agents --json` for two sessions on the same issue, and stop the
   extra one.
 - When an owner decision unblocks a session, post the decision on the issue yourself first, then
@@ -80,13 +81,9 @@ one; tell the owner why.
 
 - **Merge needs the owner's yes for each PR.** Ask in plain words: what the change does for the app
   user, your verdict, the risks, and "Birleştireyim mi?" with your recommendation.
-- After a yes, merge one PR at a time. For each PR:
-  1. `gh pr view <N> --json mergeStateStatus,headRefOid`. If it is BEHIND, run
-     `gh pr update-branch <N>`, then confirm that the only new commit on the head is the merge from
-     `main`.
-  2. Wait for CI green on that head: `gh pr checks <N> --watch`. CI is the real gate; the local
-     Xcode SDK accepts APIs the CI SDK does not.
-  3. `gh pr merge <N> --squash --match-head-commit <the head sha CI passed on> --delete-branch`.
+- After a yes, merge one PR at a time with the "Merge step" in `docs/agents/pr-review-brief.md`:
+  update the branch if it is BEHIND, wait for CI green on the new head (CI is the real gate; the
+  local Xcode SDK accepts APIs the CI SDK does not), then merge with `--match-head-commit`.
 
 ## Standing rules
 

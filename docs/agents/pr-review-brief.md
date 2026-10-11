@@ -16,8 +16,9 @@ Invoke the `mattpocock-skills:code-review` skill and follow it exactly.
 - Spec: the linked issue (`gh issue view <N> -R bckizildemir/Purrtine --comments`) plus the PR body.
 - Standards sources: `CODING_STANDARDS.md`, `CLAUDE.md`, `.claude/rules/*.md`.
 - The skill spawns two sub-agents. Pass `model: "sonnet"` to both.
-- Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate and already passed; it skips
-  the UI tests (#48), so the PR body must list the UI tests the author ran. Another agent may hold
+- Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate and already passed. It skips
+  the UI tests (see "Local tests: only what changed" in CLAUDE.md), so the PR body must list the UI
+  tests the author ran. Another agent may hold
   the build lock.
 
 ## 2. Decide
@@ -58,7 +59,8 @@ the blocking findings at the top. Report and stop.
 
 Merge one PR at a time. For each PR, in order:
 1. `gh pr view <N> --json mergeStateStatus,headRefOid`. If `BEHIND`: `gh pr update-branch <N>`, then
-   `gh pr checks <N> --watch`. If `DIRTY`: stop; a fixer session resolves it and a different session
+   `gh pr checks <N> --watch`, and confirm that the only new commit is the merge from `main`; merge
+   at that new head sha. If `DIRTY`: stop; a fixer session resolves it and a different session
    reviews the resolution.
 2. `gh pr merge <N> --squash --match-head-commit <sha> --delete-branch --subject "<subject> (#<N>)" --body "<2-4 lines, Closes #<issue>>"`
 3. Clean up the worktree from the repo root: `git worktree unlock <worktree>`, `git worktree remove
