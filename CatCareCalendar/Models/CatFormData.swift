@@ -1,4 +1,5 @@
 import Foundation
+import os
 import PhotosUI
 import SwiftUI
 
@@ -15,6 +16,8 @@ enum CatFormMode {
 /// Unified form data structure for cat creation and editing forms.
 /// Handles all state management for name, age, gender, photos, and additional details.
 struct CatFormData {
+    private static let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "CatForm")
+
     // MARK: - Essential Fields
     var name: String = ""
     var gender: Gender = .unknown
@@ -214,7 +217,9 @@ extension CatFormData {
             self.capturedImage = image
         case .data:
             // The form only ever hands onboarding a prepared or a camera photo, and the form
-            // cannot hold plain data without passing it off as prepared.
+            // cannot hold plain data without passing it off as prepared. A release build drops the
+            // photo, so the log is its only trace.
+            Self.logger.error("Onboarding photo dropped: the form cannot show an unprepared photo")
             assertionFailure("Onboarding holds an unprepared photo the form cannot show")
         case nil:
             break
