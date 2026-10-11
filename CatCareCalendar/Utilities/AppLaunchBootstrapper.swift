@@ -176,11 +176,9 @@ enum AppLaunchBootstrapper {
             // end-of-day via `effectiveDueDate`, the task bucketed as `.tomorrow` and
             // dropped off Home + the assistant's due-today quick actions.
             //
-            // Clamp the due datetime to end-of-today so it can never spill into
-            // tomorrow, and carry it as an explicit `scheduledTime` so the schedule
+            // `laterToday` clamps the due datetime to end-of-today so it can never spill
+            // into tomorrow; carry it as an explicit `scheduledTime` so the schedule
             // resolves to this exact instant rather than 23:59:59 of the next day.
-            // At any wall-clock time `endOfToday >= now`, so the task stays today and
-            // non-overdue whether the suite runs at 09:00 or 23:59.
             let pendingDue = laterToday(byAddingHours: 2, to: now, calendar: calendar)
             taskFixtures.append(
                 UITestTaskFixture(
@@ -456,8 +454,8 @@ enum AppLaunchBootstrapper {
         }
     }
 
-    /// `now` plus `hours`, clamped to the last second of `now`'s day. At any wall-clock
-    /// time the result is on today and not before `now`.
+    /// `now` plus `hours`, clamped to the last second of `now`'s day, so the result is
+    /// always on `now`'s day. It is later than `now` except inside that day's last second.
     private static func laterToday(byAddingHours hours: Int, to now: Date, calendar: Calendar) -> Date {
         let startOfToday = calendar.startOfDay(for: now)
         let endOfToday = calendar.date(
