@@ -334,7 +334,7 @@ isolation reconciled with the `nonisolated` `XCTestCase` declaration it override
 on it would serialise a parallel Swift Testing suite for no benefit.
 
 This stage is the best value in the whole migration: one setting, one file, about 99.5% of the
-test-side diagnostics gone. Run the CI-parity UI test pass (iPhone 12 / iOS 18.5 and iOS 26.5,
+test-side diagnostics gone. Run the dual-simulator UI test pass (iPhone 12 / iOS 18.5 and iOS 26.5,
 sequentially, `-disable-concurrent-destination-testing`) to confirm the tests still pass, because
 `@MainActor` changes when the test bodies run.
 
@@ -444,7 +444,7 @@ safe to interleave.
 **3 · Stage 1 changes when test code runs.** Adding `@MainActor` semantics to
 `CriticalFlowsUITests` is not a no-op at runtime. 40 test methods change isolation. The build
 succeeds, which is what was measured; that the tests still *pass* was not measured, and it must be
-confirmed with the sequential dual-destination CI-parity run before the stage lands.
+confirmed with the sequential dual-simulator UI test run before the stage lands.
 
 **4 · One measurement rests on a toolchain bug being fixable.** Stage 3's whole premise is that the
 app target can sit in warning mode without failing the build. Today it fails, on

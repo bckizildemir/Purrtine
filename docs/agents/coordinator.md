@@ -13,5 +13,5 @@ The process is the user-level `/issue-batch-coordinator` skill (`~/.claude/skill
 
 ## Standing rules
 
-- TriQ shares the `iPhone 12` (iOS 26.5) simulator and may ignore `/tmp/purrtine-sim.lock`. The prompt template tells sessions how to detect a TriQ run and repeat a measurement.
-- A batch needs no `decision-check` run.
+- TriQ shares the `iPhone 12` (iOS 26.5) simulator and may ignore `/tmp/purrtine-sim.lock`. The prompt template tells sessions how to detect a TriQ run and repeat a measurement. (Set 2026-10-11.)
+- A batch needs no `decision-check` run. (Set 2026-10-11.)
