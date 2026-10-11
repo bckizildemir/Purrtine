@@ -8,5 +8,8 @@
       "mcp__xcodebuildmcp__screenshot",
       "mcp__xcodebuildmcp__snapshot_ui"
     ]
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": false
   }
 }

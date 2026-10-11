@@ -9,12 +9,12 @@ Copy everything under the line into a file in the coordinator's own `$CLAUDE_JOB
   that hands off between alerts, sheets, or a disappearing view names the `-keep-animations` check
   from `.claude/rules/testing.md`; a UI test change names the simulators it must pass on.
 - Keep the Setup, Simulator lock, Tests, and Finish sections as they are.
-- The first line must stay `/mattpocock-skills:implement GitHub issue #<N> in bckizildemir/Purrtine.`
+- The first line must stay `/implement GitHub issue #<N> in bckizildemir/Purrtine.`
   The coordinator checks that the session really ran that skill (the `/issue-batch-coordinator` skill, "Implement check").
 
 ---
 
-/mattpocock-skills:implement GitHub issue #<N> in bckizildemir/Purrtine.
+/implement GitHub issue #<N> in bckizildemir/Purrtine.
 
 The spec is the Agent Brief on the issue — in the issue body or in a comment: run `gh issue view <N> -R bckizildemir/Purrtine --comments` (use /opt/homebrew/bin/gh if gh is not on PATH). The brief is the contract. The maintainer's decisions in the brief are final.
 
