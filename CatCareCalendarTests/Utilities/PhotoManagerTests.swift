@@ -324,6 +324,83 @@ struct PhotoManagerTests {
         #expect(try centreRGB(of: cgImage).allSatisfy { $0 <= 2 })
     }
 
+    /// No test input makes ImageIO fail to downsample data that `UIImage` can still decode, so the
+    /// fallback is tested on its own: a full-size decode must still be capped and encoded upright.
+    @Test
+    func theFullDecodeFallbackCapsThePhotoAtThePixelLimit() throws {
+        let png = try makeImageData(width: 2_600, height: 1_300)
+
+        let jpeg = try #require(
+            PhotoManager.fullDecodeJPEGData(from: png, maxPixelSize: PhotoManager.photoMaxPixelSize)
+        )
+        let saved = try #require(UIImage(data: jpeg))
+
+        #expect(jpeg.starts(with: [0xFF, 0xD8]))
+        let cap = PhotoManager.photoMaxPixelSize
+        #expect(saved.size == CGSize(width: cap, height: cap / 2))
+    }
+
+    @Test
+    func theFullDecodeFallbackGivesNilForDataItCannotDecode() {
+        #expect(PhotoManager.fullDecodeJPEGData(from: Data("photo".utf8), maxPixelSize: 64) == nil)
+    }
+
+    @Test
+    func aPreparedJPEGFailsNoCheck() async throws {
+        let prepared = try #require(
+            await PhotoManager.preparedJPEGData(from: try makeImageData(width: 64, height: 64))
+        )
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(prepared, maxPixelSize: 64) == nil)
+        #expect(PhotoManager.isPreparedJPEG(prepared, maxPixelSize: 64))
+    }
+
+    @Test
+    func dataThatIsNotOneCompleteJPEGFailsTheFormatCheck() throws {
+        let png = try makeImageData(width: 64, height: 64)
+        let jpeg = try makeJPEG(width: 64, height: 64)
+        let truncated = jpeg.prefix(jpeg.count / 2)
+
+        for data in [png, truncated, Data("photo".utf8)] {
+            #expect(PhotoManager.preparedJPEGCheckFailure(data, maxPixelSize: 64) == .notASingleCompleteJPEG)
+            #expect(PhotoManager.isPreparedJPEG(data, maxPixelSize: 64) == false)
+        }
+    }
+
+    @Test
+    func aJPEGLargerThanTheCapFailsTheSizeCheckWithItsPixelSize() throws {
+        let jpeg = try makeJPEG(width: 96, height: 48)
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .tooLarge(width: 96, height: 48))
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func aRotatedJPEGFailsTheUprightCheckWithItsOrientation() throws {
+        let jpeg = try makeJPEG(width: 64, height: 32, properties: [kCGImagePropertyOrientation: 6])
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .notUpright(orientation: 6))
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func aJPEGWithGPSDataFailsTheLocationCheck() throws {
+        let gps: [CFString: Any] = [kCGImagePropertyGPSLatitude: 41.0, kCGImagePropertyGPSLongitude: 29.0]
+        let jpeg = try makeJPEG(width: 64, height: 64, properties: [kCGImagePropertyGPSDictionary: gps])
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .hasLocation)
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func eachCheckFailureNamesItsCheckForTheLog() {
+        #expect(PreparedJPEGCheckFailure.notASingleCompleteJPEG.description == "not a single complete JPEG")
+        #expect(PreparedJPEGCheckFailure.tooLarge(width: 4_032, height: 3_024).description
+            == "too large: 4032 x 3024 pixels")
+        #expect(PreparedJPEGCheckFailure.notUpright(orientation: 6).description == "not upright: orientation 6")
+        #expect(PreparedJPEGCheckFailure.hasLocation.description == "has GPS data")
+    }
+
     @Test
     func bulkDeletionOnlyRemovesFilesOwnedByTheRequestedCat() throws {
         let fixture = try makeFixture()
@@ -436,6 +513,18 @@ struct PhotoManagerTests {
         }
         try #require(drawn)
         return Array(rgba.prefix(3))
+    }
+
+    /// A JPEG of `width` × `height` pixels, written by ImageIO with `properties`.
+    private func makeJPEG(width: Int, height: Int, properties: [CFString: Any] = [:]) throws -> Data {
+        let cgImage = try #require(UIImage(data: try makeImageData(width: width, height: height))?.cgImage)
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
+        )
+        CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
+        try #require(CGImageDestinationFinalize(destination))
+        return output as Data
     }
 
     /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.

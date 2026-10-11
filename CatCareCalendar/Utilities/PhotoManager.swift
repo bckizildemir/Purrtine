@@ -42,9 +42,21 @@ nonisolated final class PhotoManager: Sendable {
             from: data,
             maxPixelSize: maxPixelSize
         ) else {
-            return UIImage(data: data)?.jpegData(compressionQuality: compressionQuality)
+            return fullDecodeJPEGData(from: data, maxPixelSize: maxPixelSize, compressionQuality: compressionQuality)
         }
         return UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality)
+    }
+
+    /// The fallback for data ImageIO cannot downsample but `UIImage` can decode: the image is decoded
+    /// at full size, then capped at `maxPixelSize` and encoded upright, so it is never stored larger
+    /// than the downsample path would store it. `nil` when the data cannot be decoded.
+    static func fullDecodeJPEGData(
+        from data: Data,
+        maxPixelSize: Int,
+        compressionQuality: CGFloat = saveCompressionQuality
+    ) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        return renderedJPEGData(from: image, maxPixelSize: maxPixelSize, compressionQuality: compressionQuality)
     }
 
     /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once. The drawing
@@ -79,6 +91,11 @@ nonisolated final class PhotoManager: Sendable {
     /// nothing is decoded. A sanity check for `.prepared` data, not a reason to skip the re-encode:
     /// other metadata (EXIF, IPTC, XMP) can still be in a JPEG that passes it.
     static func isPreparedJPEG(_ data: Data, maxPixelSize: Int) -> Bool {
+        preparedJPEGCheckFailure(data, maxPixelSize: maxPixelSize) == nil
+    }
+
+    /// The first check of `isPreparedJPEG` that `data` fails, or `nil` when it passes them all.
+    static func preparedJPEGCheckFailure(_ data: Data, maxPixelSize: Int) -> PreparedJPEGCheckFailure? {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
               CGImageSourceGetType(source) as String? == UTType.jpeg.identifier,
@@ -86,13 +103,21 @@ nonisolated final class PhotoManager: Sendable {
               CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int,
-              let height = properties[kCGImagePropertyPixelHeight] as? Int else {
-            return false
+              let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              width > 0, height > 0 else {
+            return .notASingleCompleteJPEG
+        }
+        guard max(width, height) <= maxPixelSize else {
+            return .tooLarge(width: width, height: height)
         }
         let orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
-        let hasLocation = properties[kCGImagePropertyGPSDictionary] != nil
-        return width > 0 && height > 0 && max(width, height) <= maxPixelSize
-            && orientation == 1 && hasLocation == false
+        guard orientation == 1 else {
+            return .notUpright(orientation: orientation)
+        }
+        guard properties[kCGImagePropertyGPSDictionary] == nil else {
+            return .hasLocation
+        }
+        return nil
     }
 
     /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores, so that
@@ -161,8 +186,8 @@ nonisolated final class PhotoManager: Sendable {
     /// Writes data that `preparedJPEGData` made as it is, without a second decode and encode. Data
     /// that does not look prepared is re-encoded as `savePhoto` does.
     func savePreparedPhoto(_ data: Data, for catId: UUID) throws -> String {
-        guard PhotoManager.isPreparedJPEG(data, maxPixelSize: PhotoManager.photoMaxPixelSize) else {
-            Self.logger.error("Prepared photo does not look prepared; it is re-encoded")
+        if let failure = PhotoManager.preparedJPEGCheckFailure(data, maxPixelSize: PhotoManager.photoMaxPixelSize) {
+            Self.logger.error("Prepared photo does not look prepared (\(failure, privacy: .public)); it is re-encoded")
             return try savePhoto(data, for: catId)
         }
         return try writeJPEG(data, for: catId)
