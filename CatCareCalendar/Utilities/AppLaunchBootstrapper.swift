@@ -89,10 +89,12 @@ enum AppLaunchBootstrapper {
 
     static func seedInitialDataIfNeeded(
         in context: ModelContext,
-        using configuration: AppLaunchConfiguration = .current
+        using configuration: AppLaunchConfiguration = .current,
+        now: Date = Date(),
+        calendar: Calendar = .current
     ) {
         guard configuration.isUITesting else { return }
-        let plan = seedPlan(for: configuration.seedScenarios)
+        let plan = seedPlan(for: configuration.seedScenarios, now: now, calendar: calendar)
         guard plan.requiresSeedCat || plan.taskFixtures.isEmpty == false else { return }
 
         let standardCatScenarios: Set<UITestSeedScenario> = [
@@ -129,7 +131,9 @@ enum AppLaunchBootstrapper {
                 seedSharedTaskCatDeletionScenarioIfNeeded(
                     in: context,
                     primaryCat: cat,
-                    caregiver: caregiver
+                    caregiver: caregiver,
+                    now: now,
+                    calendar: calendar
                 )
             }
 
@@ -177,11 +181,7 @@ enum AppLaunchBootstrapper {
             // resolves to this exact instant rather than 23:59:59 of the next day.
             // At any wall-clock time `endOfToday >= now`, so the task stays today and
             // non-overdue whether the suite runs at 09:00 or 23:59.
-            let endOfToday = calendar.date(
-                byAdding: DateComponents(day: 1, second: -1),
-                to: startOfToday
-            ) ?? now
-            let pendingDue = min(calendar.date(byAdding: .hour, value: 2, to: now) ?? now, endOfToday)
+            let pendingDue = laterToday(byAddingHours: 2, to: now, calendar: calendar)
             taskFixtures.append(
                 UITestTaskFixture(
                     scenario: .pendingTask,
@@ -419,7 +419,9 @@ enum AppLaunchBootstrapper {
     private static func seedSharedTaskCatDeletionScenarioIfNeeded(
         in context: ModelContext,
         primaryCat: Cat,
-        caregiver: Caregiver
+        caregiver: Caregiver,
+        now: Date,
+        calendar: Calendar
     ) {
         let secondCat = secondTestCatIfNeeded(in: context)
 
@@ -440,7 +442,9 @@ enum AppLaunchBootstrapper {
         if findTask(named: soloTaskTitle, in: context) == nil {
             let soloTask = makeTask(
                 title: soloTaskTitle,
-                scheduledDate: Date().addingTimeInterval(3 * 60 * 60),
+                // Clamped to today: the calendar opens on today, and from 21:00 a plain
+                // `now + 3h` put the task on tomorrow, out of the UI tests' reach (#41).
+                scheduledDate: laterToday(byAddingHours: 3, to: now, calendar: calendar),
                 category: .grooming,
                 cats: [primaryCat],
                 caregiver: caregiver
@@ -450,6 +454,17 @@ enum AppLaunchBootstrapper {
                 context.insert(schedule)
             }
         }
+    }
+
+    /// `now` plus `hours`, clamped to the last second of `now`'s day. At any wall-clock
+    /// time the result is on today and not before `now`.
+    private static func laterToday(byAddingHours hours: Int, to now: Date, calendar: Calendar) -> Date {
+        let startOfToday = calendar.startOfDay(for: now)
+        let endOfToday = calendar.date(
+            byAdding: DateComponents(day: 1, second: -1),
+            to: startOfToday
+        ) ?? now
+        return min(calendar.date(byAdding: .hour, value: hours, to: now) ?? now, endOfToday)
     }
 
     @discardableResult
