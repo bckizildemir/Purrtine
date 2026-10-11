@@ -57,19 +57,14 @@ open CatCareCalendar.xcodeproj
 # Build from CLI
 Scripts/xcb.sh build --os 18.5
 
-# Fast local loop: unit tests only (no UI test build, no coverage)
-Scripts/xcb.sh test --scheme CatCareCalendarTests
-
-# Run a single test (Swift Testing suite/test name)
+# Local loop: the unit scheme (no UI test build, no coverage), only the suites you touched;
+# --only takes a Swift Testing suite or test name and is repeatable
 Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/TaskActionServiceTests
 
-# Run full test suite (unit + UI, with coverage) once, before the PR
-Scripts/xcb.sh test --os 18.5
-
-# Run UI tests on both the min target (iOS 18.5) and current OS (iOS 26.5),
+# Run a UI test you added or changed on both the min target (iOS 18.5) and current OS (iOS 26.5),
 # one pass after the other; the script shuts down the other simulator first.
-Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests
-Scripts/xcb.sh test --os 26.5 --only CatCareCalendarUITests
+Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests/<TestClass>/<testName>
+Scripts/xcb.sh test --os 26.5 --only CatCareCalendarUITests/<TestClass>/<testName>
 
 # List available simulators (verify device exists before CI-parity runs)
 xcrun simctl list devices
@@ -79,9 +74,10 @@ xcrun simctl list devices
 - Simulator names, verified 2026-10-06: the 26.5 device is named `iPhone 12`; the 18.5 device is named `iPhone 12 (iOS 18.5)`. `Scripts/xcb.sh` accepts both forms, so `--os 18.5` finds it. A bare `xcodebuild` needs the exact name: `-destination 'platform=iOS Simulator,name=iPhone 12 (iOS 18.5),OS=18.5'`.
 - An **iOS 27.0** runtime is installed, but no `iPhone 12` device on it (verified 2026-10-06). It is not the baseline — do not substitute it for the 26.5 pass without saying so, because a result from it is not comparable with the recorded runs.
 - Host toolchain as of 2026-09-08: **Xcode 27.0** (build `27A5194q`), **Swift 6.4**. The project's `SWIFT_VERSION = 6.0` (verified 2026-09-24) selects the language mode; it does not limit which syntax this compiler accepts. See the reconciliation notes below.
+- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. CI skips the UI tests today (`-skip-testing:CatCareCalendarUITests`, #48), so run locally only the UI tests you added or changed, on each simulator the task names. List the tests you ran in the PR body.
 - Agents build and test through `Scripts/xcb.sh`, never a bare `xcodebuild`. The script holds a machine-wide lock, so builds from every worktree and from TTB queue one at a time on this 16GB Mac; it shares one DerivedData and package checkout across worktrees, so Firebase compiles once. It writes the full log to a file and prints only errors, failures, and the tail. A run can wait minutes for the lock: give it a long Bash timeout or run it in the background. `Scripts/xcb.sh --help` lists the options.
 - `Scripts/xcb.sh` is shared with TTB; keep the two copies identical.
-- Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. Run the full scheme once before you open a PR: CI (`.github/workflows/test-coverage.yml`) runs it and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
+- Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. CI (`.github/workflows/ci.yml`) runs this scheme without the UI tests and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage; the coverage bundle therefore comes from CI, not from a local run. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
 - When work is split across subagents: only one of them may build, run, or test on a simulator at a time, and xcodebuildmcp session defaults do not reach subagents — pass `simulatorId` and `bundleId` in the prompt. `Localizable.xcstrings`, `project.pbxproj`, `Theme.swift`, `CatCardStyle.swift`, and `NavigationRouter.swift` are single-owner files: subagents report the changes they need, and the coordinating agent applies them (then runs `LocalizationParityTests` after catalog edits).
 
 ## Architecture
@@ -189,6 +185,13 @@ First-run setup each session:
   with `session_set_defaults` (e.g. the booted iPhone 12 / iOS 26.5) plus `bundleId`
   `com.berkecankizildemir.CatCareCalendar`. `screenshot`/`snapshot_ui` also require `simulatorId`.
 
+Reading the app's UI (measured 2026-10-11, iPhone 12 / iOS 26.5):
+- Call `open_sim` before `snapshot_ui` or `axe describe-ui`. With the Simulator window closed, both
+  return an empty tree (0 elements), even on the app's home screen. `snapshot_ui` uses the bundled axe.
+- `tap` takes an element ref from `snapshot_ui`, not coordinates.
+- The system photo picker runs out of process, so neither tool sees its contents. Leave photo
+  picking to the unit tests until #52 lands, and say in the PR that you did not pick a photo by hand.
+
 Memory/footprint checks the MCP doesn't cover: measure the running app with
 `vmmap --summary <pid> | grep "Physical footprint"` (find the pid via
 `pgrep -f "CatCareCalendar.app/CatCareCalendar"`).
@@ -239,6 +242,12 @@ The five canonical triage roles, used verbatim as label strings. All five exist 
 ### Domain docs
 
 Single-context — `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Coordinator and session briefs
+
+A coordinator session that starts implement sessions, reviews their PRs, and merges them follows
+`docs/agents/coordinator.md`. It starts each session from `docs/agents/implement-session-prompt.md`
+and reviews each PR with `docs/agents/pr-review-brief.md`.
 
 ### Documentation audits
 
