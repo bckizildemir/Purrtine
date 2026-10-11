@@ -10,6 +10,7 @@ struct CatFormView: View {
     let onDelete: (() -> Void)?
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(\.haptics) private var haptics
     @Environment(\.careTaskWriter) private var careTaskWriter
     @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
@@ -174,9 +175,7 @@ struct CatFormView: View {
         }
         .alert(String(localized: .catAddCameraPermissionTitle), isPresented: $formData.showingCameraPermissionAlert) {
             Button(String(localized: .catAddSettings)) {
-                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(settingsURL)
-                }
+                openURL.openAppSettings()
             }
             Button(String(localized: .actionCancel), role: .cancel) { }
         } message: {

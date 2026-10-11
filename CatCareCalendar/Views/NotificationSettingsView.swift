@@ -3,6 +3,7 @@ import UserNotifications
 
 struct NotificationSettingsView: View {
     @Environment(\.notificationManager) private var notificationManager
+    @Environment(\.openURL) private var openURL
 
     @State private var settings = NotificationSettings.default
     @State private var hasLoadedSettings = false
@@ -33,7 +34,7 @@ struct NotificationSettingsView: View {
         .accessibilityIdentifier("notificationSettings.view")
         .alert(String(localized: .notificationSettingsAlertTitle), isPresented: $showingPermissionAlert) {
             Button(String(localized: .notificationSettingsAlertOpenSettings)) {
-                openAppSettings()
+                openURL.openAppSettings()
             }
             Button(String(localized: .actionCancel), role: .cancel) { }
         } message: {
@@ -94,11 +95,6 @@ struct NotificationSettingsView: View {
                 showingPermissionAlert = true
             }
         }
-    }
-
-    private func openAppSettings() {
-        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(settingsURL)
     }
 }
 
