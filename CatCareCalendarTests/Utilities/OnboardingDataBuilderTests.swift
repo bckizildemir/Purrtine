@@ -366,6 +366,48 @@ struct OnboardingDataBuilderTests {
         #expect(max(saved.size.width, saved.size.height) == CGFloat(PhotoManager.photoMaxPixelSize))
     }
 
+    /// A photo-library pick reaches onboarding as a `.prepared` JPEG; it is written as it is and the
+    /// saved cat names the file.
+    @Test
+    func aPreparedPhotoIsWrittenAndTheSavedCatNamesTheFile() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        CaregiverBootstrapper.ensureDefaultCaregiverExists(in: context)
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "OnboardingDataBuilderTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let photoManager = PhotoManager(photosDirectory: directory)
+        let sut = OnboardingDataBuilder(
+            taskWriter: CareTaskWriter(scheduler: scheduler),
+            savePhoto: { photo, catID in try await photoManager.save(photo, for: catID) }
+        )
+        let size = CGSize(width: 64, height: 64)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let picked = try #require(
+            UIGraphicsImageRenderer(size: size, format: format).image { rendererContext in
+                UIColor.systemOrange.setFill()
+                rendererContext.fill(CGRect(origin: .zero, size: size))
+            }.pngData()
+        )
+        let prepared = try #require(await PhotoManager.preparedJPEGData(from: picked))
+        var tempData = TempCatData()
+        tempData.name = "Luna"
+        tempData.photo = .prepared(prepared)
+
+        let cat = try #require(
+            try await sut.createCatAndTasks(from: tempData, selectedTasks: [.feeding], in: context)
+        )
+
+        let stored = try #require(cat.photoURLs.first)
+        #expect(cat.photoURLs.count == 1)
+        // `getPhotoURL` resolves only a file that exists in the temporary photos directory.
+        let url = try #require(photoManager.getPhotoURL(from: stored))
+        #expect(try Data(contentsOf: url) == prepared)
+        let savedCat = try #require(try context.fetch(FetchDescriptor<Cat>()).first)
+        #expect(savedCat.photoURLs == [stored])
+    }
+
     /// Nothing was saved, so the photo written for this attempt is not kept either.
     @Test
     func aFailedFirstCommitDeletesThePhotoItWrote() async throws {

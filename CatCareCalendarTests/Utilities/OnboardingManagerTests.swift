@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import UIKit
 @testable import CatCareCalendar
 
 /// `OnboardingManager` is `@MainActor`, so the suite is too. This matches
@@ -42,7 +41,7 @@ struct OnboardingManagerTests {
         defer { suite.removePersistentDomain(forName: suiteName) }
         let sut = OnboardingManager(userDefaults: suite)
         sut.tempCatData.name = "Mochi"
-        sut.tempCatData.photo = .image(UIImage())
+        sut.tempCatData.photo = .prepared(Data())
 
         sut.completeOnboarding()
 
