@@ -47,23 +47,9 @@ nonisolated final class PhotoManager: Sendable {
         return UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality)
     }
 
-    static func downsampledJPEGData(
-        from image: UIImage,
-        maxPixelSize: Int,
-        compressionQuality: CGFloat = saveCompressionQuality
-    ) -> Data? {
-        guard let data = image.jpegData(compressionQuality: 1.0) else { return nil }
-        return downsampledJPEGData(
-            from: data,
-            maxPixelSize: maxPixelSize,
-            compressionQuality: compressionQuality
-        )
-    }
-
-    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once, where
-    /// `downsampledJPEGData(from: UIImage)` encodes, decodes and encodes again. The drawing applies
-    /// the image orientation, so the JPEG is upright. `nil` when the image has no pixels or cannot be
-    /// encoded.
+    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once. The drawing
+    /// applies the image orientation, so the JPEG is upright. The canvas is opaque, so a transparent
+    /// area comes out black. `nil` when the image has no pixels or cannot be encoded.
     static func renderedJPEGData(
         from image: UIImage,
         maxPixelSize: Int,

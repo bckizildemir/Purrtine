@@ -61,7 +61,7 @@ nonisolated final class CareTaskPhotoWriter: Sendable {
     /// Creates the photos folder before each write, so a folder removed since the last write does not
     /// fail every later one.
     private func save(_ photo: UIImage) throws(PhotoSaveError) -> String {
-        guard let jpeg = PhotoManager.downsampledJPEGData(
+        guard let jpeg = PhotoManager.renderedJPEGData(
             from: photo,
             maxPixelSize: PhotoManager.photoMaxPixelSize
         ) else {

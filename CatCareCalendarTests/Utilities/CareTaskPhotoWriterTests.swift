@@ -28,6 +28,25 @@ struct CareTaskPhotoWriterTests {
         #expect(try fixture.storedFileNames() == Set(result.fileNames))
     }
 
+    /// A camera capture keeps its orientation: the stored JPEG is upright, within the pixel limit.
+    @Test
+    func aCameraPhotoIsSavedUprightWithinThePixelLimit() async throws {
+        let fixture = try CareTaskPhotoFolder()
+        defer { fixture.remove() }
+        let landscape = try CareTaskPhotoFolder.makeImage(width: 2_600, height: 1_300)
+        let portrait = UIImage(cgImage: try #require(landscape.cgImage), scale: 1, orientation: .right)
+
+        let result = await fixture.sut.save([portrait])
+
+        let fileName = try #require(result.fileNames.first)
+        let data = try Data(contentsOf: fixture.directory.appending(path: fileName))
+        let saved = try #require(UIImage(data: data))
+        #expect(data.starts(with: [0xFF, 0xD8]))
+        #expect(saved.imageOrientation == .up)
+        #expect(saved.size.height > saved.size.width)
+        #expect(max(saved.size.width, saved.size.height) == CGFloat(PhotoManager.photoMaxPixelSize))
+    }
+
     @Test
     func aBlockedFolderThrowsWriteFailedAndLogsIt() async throws {
         let fixture = try CareTaskPhotoFolder(blocked: true)
