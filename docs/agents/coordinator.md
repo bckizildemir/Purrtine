@@ -15,4 +15,3 @@ The process is the user-level `/issue-batch-coordinator` skill (`~/.claude/skill
 
 - TriQ shares the `iPhone 12` (iOS 26.5) simulator and may ignore `/tmp/purrtine-sim.lock`. The prompt template tells sessions how to detect a TriQ run and repeat a measurement.
 - A batch needs no `decision-check` run.
-- Known time-of-day failure (#41, open as of 2026-10-11): `CriticalFlowsUITests.testCalendarOneTapCompletionWithStaleRemindersWarns` fails when it runs after 21:00 local time, because its seeded task falls on tomorrow. A failure of that test after 21:00 is #41, not a regression of the PR under review.

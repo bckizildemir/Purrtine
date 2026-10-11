@@ -175,6 +175,38 @@ struct AppLaunchBootstrapperTests {
         #expect(sharedTask.assignedCats.count == 2)
         #expect(soloTask.assignedCats.map(\.name) == ["UI Test Cat"])
     }
+
+    @Test(arguments: [(9, 0), (21, 30), (23, 59)])
+    func soloTaskFallsOnTheLaunchDayAtAnyTimeOfDay(hour: Int, minute: Int) throws {
+        // The calendar opens on today and the UI tests wait for "UI Solo Task" there.
+        // A plain `now + 3h` moved the task to tomorrow from 21:00 on (#41).
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+        let startOfDay = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_710_000_000))
+        let now = try #require(
+            calendar.date(byAdding: DateComponents(hour: hour, minute: minute), to: startOfDay)
+        )
+
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        CaregiverBootstrapper.ensureDefaultCaregiverExists(in: context)
+        let configuration = AppLaunchConfiguration(
+            arguments: ["app", "-ui-testing", "-seed-scenario", "shared_task_cat_deletion"]
+        )
+
+        AppLaunchBootstrapper.seedInitialDataIfNeeded(
+            in: context,
+            using: configuration,
+            now: now,
+            calendar: calendar
+        )
+
+        let tasks = try context.fetch(FetchDescriptor<CareTask>())
+        let soloTask = try #require(tasks.first(where: { $0.title == "UI Solo Task" }))
+        let schedule = try #require(soloTask.schedules.first)
+        #expect(calendar.isDate(schedule.scheduledDate, inSameDayAs: now))
+        #expect(schedule.scheduledDate >= now)
+    }
 }
 
 private extension Calendar {
