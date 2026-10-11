@@ -44,7 +44,7 @@ struct TaskAssistantMessageBubbleView: View {
                     .foregroundStyle(textColor)
 
                 if message.offersOpenSettings {
-                    Button(String(localized: .onboardingTaskSetupReminderRowOpenSettings), action: openSettings)
+                    Button(String(localized: .onboardingTaskSetupReminderRowOpenSettings), action: openURL.openAppSettings)
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                         .accessibilityHint(Text(.taskAssistantOpenSettingsHint))
@@ -53,11 +53,6 @@ struct TaskAssistantMessageBubbleView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-    }
-
-    private func openSettings() {
-        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-        openURL(settingsURL)
     }
 
     private var backgroundColor: Color {
