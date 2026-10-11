@@ -444,7 +444,7 @@ safe to interleave.
 **3 · Stage 1 changes when test code runs.** Adding `@MainActor` semantics to
 `CriticalFlowsUITests` is not a no-op at runtime. 40 test methods change isolation. The build
 succeeds, which is what was measured; that the tests still *pass* was not measured, and it must be
-confirmed with the sequential dual-destination UI test run before the stage lands.
+confirmed with the sequential dual-simulator UI test run before the stage lands.
 
 **4 · One measurement rests on a toolchain bug being fixable.** Stage 3's whole premise is that the
 app target can sit in warning mode without failing the build. Today it fails, on
