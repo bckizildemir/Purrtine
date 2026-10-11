@@ -228,8 +228,17 @@ TTB is the other iOS project on this machine. It shares the same hook script; th
 repo's `CLAUDE.md` holds its own version reconciliation. The two repos cannot contaminate each other: `.claude/skills/` loads only for its own repo, and
 only `~/.claude/skills` is shared.
 
-`CODING_STANDARDS.md` points review agents (for example `mattpocock-skills:code-review`, whose
+`CODING_STANDARDS.md` points review agents (for example `code-review`, whose
 standards agent reads that file) at this file's conventions and the Swift skills.
+
+### Matt Pocock skills
+
+Matt Pocock's 27 skills (`implement`, `code-review`, `tdd`, `grilling`, …) are project skills in
+`.claude/skills/`, copied there by `npx skills` and pinned in `skills-lock.json` (2026-10-11,
+v1.3.1). Call them by bare name: `/implement`, not `/mattpocock-skills:implement`. The old
+`mattpocock-skills` plugin is turned off for this repo in `.claude/settings.json`, so each skill
+loads once. Matt's `code-review` replaces the built-in `/code-review` in this repo, and
+`implement` calls it by that name. Update with `npx skills@latest update -p`, then review the diff.
 
 ### Issue tracker
 

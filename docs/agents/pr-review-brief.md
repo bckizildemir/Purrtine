@@ -9,7 +9,7 @@ your prompt. The repo root is `/Users/berkecankizildemir/iCloud Drive (Archive)/
 
 ## 1. Review
 
-Invoke the `mattpocock-skills:code-review` skill and follow it exactly.
+Invoke the `code-review` skill and follow it exactly.
 
 - Fixed point: `origin/main`. Run `git fetch origin` first. Do the diff and log from the PR worktree
   (`git -C <worktree> diff origin/main...HEAD`), or from refs: `git diff origin/main...origin/<branch>`.
