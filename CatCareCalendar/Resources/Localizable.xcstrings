@@ -1701,19 +1701,19 @@
         }
       }
     },
-    "cat.add.photo_gallery" : {
+    "cat.add.photo_library" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Photo Gallery"
+            "value" : "Photo Library"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Foto Galerisi"
+            "value" : "Fotoğraf Arşivi"
           }
         }
       }
