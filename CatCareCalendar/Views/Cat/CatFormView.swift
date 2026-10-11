@@ -154,7 +154,7 @@ struct CatFormView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .photosPicker(isPresented: $formData.showingPhotoLibrary, selection: $formData.selectedPhoto, matching: .images)
+        .photosPicker(isPresented: $formData.isShowingPhotoLibrary, selection: $formData.selectedPhoto, matching: .images)
         .alert(String(localized: .catEditDeleteConfirmationTitle), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: .actionCancel), role: .cancel) { }
             Button(String(localized: .actionDelete), role: .destructive) {

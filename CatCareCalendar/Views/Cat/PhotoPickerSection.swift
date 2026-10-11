@@ -20,10 +20,11 @@ struct PhotoPickerSection: View {
     var body: some View {
         VStack(spacing: 12) {
             Menu {
-                Button(String(localized: .catAddCamera), systemImage: "camera", action: onTakePhoto)
-                    .disabled(!CameraPermissionHelper.isCameraAvailable)
+                if CameraPermissionHelper.isCameraAvailable {
+                    Button(String(localized: .catAddCamera), systemImage: "camera", action: onTakePhoto)
+                }
                 Button(String(localized: .catAddPhotoLibrary), systemImage: "photo.on.rectangle") {
-                    formData.showingPhotoLibrary = true
+                    formData.isShowingPhotoLibrary = true
                 }
                 if hasAnyPhoto {
                     Button(
@@ -57,7 +58,7 @@ struct PhotoPickerSection: View {
     private func chooseAnotherPhoto() {
         formData.photoProblem = nil
         formData.selectedPhoto = nil
-        formData.showingPhotoLibrary = true
+        formData.isShowingPhotoLibrary = true
     }
 
     /// A removed photo stops counting at once, before Save deletes the stored file.

@@ -38,7 +38,7 @@ struct CatFormData {
     /// `pendingPhoto` saves it as it is.
     var preparedPhotoData: Data?
     var capturedImage: UIImage?
-    var showingPhotoLibrary = false
+    var isShowingPhotoLibrary = false
     var showingCamera = false
     var showingCameraPermissionAlert = false
     /// True while a photo-library pick loads; the form cannot be saved until it ends.
