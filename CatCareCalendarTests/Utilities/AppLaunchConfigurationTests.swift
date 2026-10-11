@@ -16,6 +16,16 @@ struct AppLaunchConfigurationTests {
         #expect(configuration.launchRoute == expectedRoute)
     }
 
+    /// `-keep-animations` counts only under `-ui-testing`, like the other UI-test injections (#31).
+    @Test(arguments: [
+        (["app", "-ui-testing", "-keep-animations"], true),
+        (["app", "-ui-testing"], false),
+        (["app", "-keep-animations"], false)
+    ])
+    func keepsAnimationsOnlyWhenAskedUnderUITesting(arguments: [String], expected: Bool) {
+        #expect(AppLaunchConfiguration(arguments: arguments).keepsAnimations == expected)
+    }
+
     @Test
     func parsesTaskFilterAndOnboardingStep() {
         let configuration = AppLaunchConfiguration(
