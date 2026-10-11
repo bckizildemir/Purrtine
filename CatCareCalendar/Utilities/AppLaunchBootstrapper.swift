@@ -41,7 +41,13 @@ enum AppLaunchBootstrapper {
     static func prepareProcessState(using configuration: AppLaunchConfiguration = .current) {
         guard configuration.isUITesting else { return }
 
+        #if DEBUG
+        if configuration.keepsAnimations == false {
+            UIView.setAnimationsEnabled(false)
+        }
+        #else
         UIView.setAnimationsEnabled(false)
+        #endif
 
         let defaults = UserDefaults.standard
         let onboardingManager = OnboardingManager.shared

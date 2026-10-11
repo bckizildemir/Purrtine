@@ -75,6 +75,9 @@ struct AppLaunchConfiguration {
     /// UI-test-only injection: makes the commit in `CatDeletionService.delete` throw, so the UI
     /// tests can reach the "delete not saved yet" alert. Debug builds only, gated like the one above.
     var failsCatDeleteCommit: Bool { isUITesting && hasArgument("-fail-cat-delete-commit") }
+    /// UI-test-only: keeps UIKit animations on, which `-ui-testing` otherwise turns off, so a UI test
+    /// can reach a race between a closing presentation and the next one (#31). Debug builds only.
+    var keepsAnimations: Bool { isUITesting && hasArgument("-keep-animations") }
     #endif
     var disablesCloudServices: Bool { isUITesting || isUnitTesting || isRunningForPreviews }
     var resetsOnboarding: Bool { hasArgument("-reset-onboarding") }
