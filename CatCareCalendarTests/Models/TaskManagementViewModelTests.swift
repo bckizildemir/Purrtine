@@ -340,6 +340,26 @@ struct TaskManagementViewModelTests {
         #expect(completion.input.photoURLs.count == 1)
     }
 
+    /// A completion cancelled after its commit stands, so it keeps its photos.
+    @Test
+    func cancelledCompletionKeepsItsPhotoFiles() async throws {
+        let fixture = try makeCompletionFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        spy.completeError = CancellationError()
+        let sut = TaskManagementViewModel(taskWriter: spy, photoWriter: folder.sut)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+        let photo = try CareTaskPhotoFolder.makeImage()
+
+        try await sut.submitCompletion(of: fixture.task, by: nil, photos: [photo])
+
+        let completion = try #require(spy.completions.first)
+        #expect(try folder.storedFileNames() == Set(completion.input.photoURLs))
+        #expect(completion.input.photoURLs.count == 1)
+    }
+
     @Test
     func completeWithoutPhotoCommitsTheCompletionWithoutTheFailedPhoto() async throws {
         let fixture = try makeCompletionFixture()
