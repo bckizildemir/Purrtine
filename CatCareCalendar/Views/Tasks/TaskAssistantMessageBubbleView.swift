@@ -44,7 +44,9 @@ struct TaskAssistantMessageBubbleView: View {
                     .foregroundStyle(textColor)
 
                 if message.offersOpenSettings {
-                    Button(String(localized: .onboardingTaskSetupReminderRowOpenSettings), action: openURL.openAppSettings)
+                    Button(String(localized: .onboardingTaskSetupReminderRowOpenSettings)) {
+                        openURL.openAppSettings()
+                    }
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                         .accessibilityHint(Text(.taskAssistantOpenSettingsHint))
