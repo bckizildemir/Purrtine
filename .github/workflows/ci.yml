@@ -7,6 +7,9 @@ name: CI
 # If the repo is private again, CI proves nothing. Then test locally with only what
 # changed: `Scripts/xcb.sh test --scheme CatCareCalendarTests --only <Suite>` for the
 # changed tests and the suites of the changed files, and `cd functions && npm test`.
+# The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests in
+# parallel on every PR, on the newest iOS runtime of the runner only (owner decision,
+# 2026-10-12; no iOS 18.5 pass in CI). A UI test that passes only on retry is listed in the log.
 on:
   push:
     branches: [main]
@@ -93,6 +96,67 @@ jobs:
             TestResults/CatCareCalendar.xcresult
             test.log
             release.log
+          if-no-files-found: ignore
+
+  ui-tests:
+    name: UI tests
+    if: ${{ !github.event.repository.private }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ci-spm
+          key: spm-${{ hashFiles('CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      - name: List simulator runtimes
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      # The simulator is the first iPhone on the newest available iOS runtime.
+      # A failed test runs once more. A test that passes only on retry stays in the log.
+      - name: Run UI tests
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          echo "Simulator: $UDID"
+          xcrun simctl list devices available | grep "$UDID"
+          mkdir -p TestResults
+          xcodebuild test \
+            -project CatCareCalendar.xcodeproj \
+            -scheme CatCareCalendar \
+            -testPlan CatCareCalendar \
+            -destination "id=$UDID" \
+            -only-testing:CatCareCalendarUITests \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
+            -enableCodeCoverage NO \
+            -resultBundlePath TestResults/CatCareCalendarUITests.xcresult \
+            -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            > ui-test.log 2>&1 || { grep -E 'error:|failed|Failing tests' ui-test.log | head -80; exit 1; }
+          echo "UI tests that failed at least once (passed on retry if the run is green):"
+          grep -E "Test case .* failed" ui-test.log | sort -u || true
+          grep -E 'Executed|TEST SUCCEEDED' ui-test.log | tail -n 5
+
+      - name: Upload UI test results and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: |
+            TestResults/CatCareCalendarUITests.xcresult
+            ui-test.log
           if-no-files-found: ignore
 
   functions:
