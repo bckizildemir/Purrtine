@@ -100,7 +100,7 @@ struct TaskCompletionView: View {
             initialSnapshot = currentSnapshot
         }
         .confirmationDialog(String(localized: .catAddPhotoSelect), isPresented: $showingPhotoSourceDialog, titleVisibility: .visible) {
-            Button(String(localized: .catAddPhotoGallery)) {
+            Button(String(localized: .catAddPhotoLibrary)) {
                 showingLibraryPicker = true
             }
             if CameraPermissionHelper.isCameraAvailable {
