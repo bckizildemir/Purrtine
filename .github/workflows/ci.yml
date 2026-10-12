@@ -7,9 +7,12 @@ name: CI
 # If the repo is private again, CI proves nothing. Then test locally with only what
 # changed: `Scripts/xcb.sh test --scheme CatCareCalendarTests --only <Suite>` for the
 # changed tests and the suites of the changed files, and `cd functions && npm test`.
-# The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests in
-# parallel on every PR, on the newest iOS runtime of the runner only (owner decision,
-# 2026-10-12; no iOS 18.5 pass in CI). A UI test that passes only on retry is listed in the log.
+# The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests, on the
+# iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
+# pass in CI). It runs in parallel with `app` on every push to main and manual run. On a PR it runs
+# only when the PR changes CatCareCalendar/**, CatCareCalendarUITests/**, *.xcodeproj/** or
+# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. A UI test that
+# passes only on retry is listed in the job log.
 on:
   push:
     branches: [main]
@@ -24,6 +27,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect UI-test paths
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide if the UI tests must run
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA"...HEAD | tee changed.txt
+          if grep -qE '^(CatCareCalendar/|CatCareCalendarUITests/|[^/]+\.xcodeproj/|\.github/workflows/)' changed.txt; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"
+            echo "No app, UI-test, project or workflow change: UI tests skipped."
+          fi
   app:
     name: Build, unit tests, coverage, Release build
     if: ${{ !github.event.repository.private }}
@@ -100,7 +132,8 @@ jobs:
 
   ui-tests:
     name: UI tests
-    if: ${{ !github.event.repository.private }}
+    needs: changes
+    if: ${{ !github.event.repository.private && needs.changes.outputs.ui == 'true' }}
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -122,11 +155,26 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devices available
 
-      # The simulator is the first iPhone on the newest available iOS runtime.
+      # The simulator is the first iPhone on the runtime that matches the simulator SDK of the
+      # selected Xcode. If no runtime matches, the newest runtime by version number is used.
       # A failed test runs once more. A test that passes only on retry stays in the log.
       - name: Run UI tests
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          export SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          echo "Simulator SDK: $SDK"
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, os, re, sys
+          d = json.load(sys.stdin)["devices"]
+          def version(r):
+              m = re.search(r"iOS-(\d+(?:-\d+)*)$", r)
+              return tuple(int(n) for n in m.group(1).split("-")) if m else None
+          runtimes = [r for r in d if version(r) and any(x["name"].startswith("iPhone") for x in d[r])]
+          want = tuple(int(n) for n in os.environ["SDK"].split("."))
+          match = [r for r in runtimes if version(r)[:len(want)] == want]
+          runtime = max(match or runtimes, key=version)
+          print("Runtime:", runtime, file=sys.stderr)
+          print(next(x["udid"] for x in d[runtime] if x["name"].startswith("iPhone")))
+          ')
           echo "Simulator: $UDID"
           xcrun simctl list devices available | grep "$UDID"
           mkdir -p TestResults
@@ -146,7 +194,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             > ui-test.log 2>&1 || { grep -E 'error:|failed|Failing tests' ui-test.log | head -80; exit 1; }
           echo "UI tests that failed at least once (passed on retry if the run is green):"
-          grep -E "Test case .* failed" ui-test.log | sort -u || true
+          grep -iE "Test case .* failed" ui-test.log | sort -u || true
           grep -E 'Executed|TEST SUCCEEDED' ui-test.log | tail -n 5
 
       - name: Upload UI test results and log
@@ -157,6 +205,7 @@ jobs:
           path: |
             TestResults/CatCareCalendarUITests.xcresult
             ui-test.log
+          retention-days: 14
           if-no-files-found: ignore
 
   functions:

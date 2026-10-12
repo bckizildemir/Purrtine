@@ -18,7 +18,8 @@ Invoke the `code-review` skill and follow it exactly.
 - The skill spawns two sub-agents. Pass `model: "sonnet"` to both.
 - Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate. Start the review while CI is still
   pending; the coordinator checks the CI result before the merge. The `ui-tests` job runs the UI
-  tests in CI (newest iOS runtime only); the author runs locally only the UI tests they added or
+  tests in CI (one iOS runtime only) when the PR touches app code, UI tests, the Xcode project or
+  the workflow; a docs-only PR skips it; the author runs locally only the UI tests they added or
   changed (see "Local tests: only what changed" in CLAUDE.md), and the PR body lists them. Another agent may hold
   the build lock.
 
