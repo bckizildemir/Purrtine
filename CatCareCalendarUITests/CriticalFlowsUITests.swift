@@ -18,6 +18,7 @@ final class CriticalFlowsUITests: XCTestCase {
     }
 
     func testOnboardingHappyPathCreatesStarterTask() {
+        XCTFail("deliberate failure to check the ui-tests job")
         let app = makeApp(additionalArguments: ["-reset-onboarding"])
         app.launch()
 
