@@ -6,7 +6,10 @@ struct CaregiverManagementView: View {
     @Query private var caregivers: [Caregiver]
     
     @State private var showingAddCaregiver = false
-    
+    /// Set by the Add Caregiver sheet while it closes; shown from `onDismiss`, once it has left.
+    @State private var hasPendingAvatarNotSavedNote = false
+    @State private var showingAvatarNotSavedNote = false
+
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
@@ -29,11 +32,23 @@ struct CaregiverManagementView: View {
                     Image(systemName: "plus")
                         .foregroundStyle(.blue)
                 }
+                .accessibilityIdentifier("caregiverList.addButton")
             }
         }
-        .sheet(isPresented: $showingAddCaregiver) {
-            AddCaregiverView()
+        .sheet(isPresented: $showingAddCaregiver, onDismiss: showPendingAvatarNotSavedNote) {
+            AddCaregiverView {
+                hasPendingAvatarNotSavedNote = true
+            }
         }
+        .alert(String(localized: .caregiverAddPhotoNotSaved), isPresented: $showingAvatarNotSavedNote) {
+            Button(String(localized: .actionOk)) { }
+        }
+    }
+
+    private func showPendingAvatarNotSavedNote() {
+        guard hasPendingAvatarNotSavedNote else { return }
+        hasPendingAvatarNotSavedNote = false
+        showingAvatarNotSavedNote = true
     }
     
     @ViewBuilder

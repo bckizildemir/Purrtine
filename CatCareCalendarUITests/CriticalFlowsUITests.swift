@@ -1044,6 +1044,49 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["UI Test Task"].waitForExistence(timeout: 5))
     }
 
+    /// #39: a caregiver whose photo did not save still saves, the sheet closes, and the caregiver
+    /// list shows the note once the sheet has left. Animations stay on, so the note has to wait for
+    /// the closing sheet.
+    func testAddCaregiverAvatarFailureShowsNoteOnTheListAfterTheSheetCloses() {
+        let app = makeApp(
+            additionalArguments: [
+                "-complete-onboarding",
+                "-launch-route", "settings",
+                "-fail-caregiver-avatar-save",
+                "-keep-animations"
+            ]
+        )
+        app.launch()
+
+        let settingsView = app.descendants(matching: .any)["settings.view"].firstMatch
+        XCTAssertTrue(settingsView.waitForExistence(timeout: 5))
+        let caregiversRow = app.buttons["settings.caregivers.row"]
+        for _ in 0..<6 where !caregiversRow.exists || !caregiversRow.isHittable {
+            settingsView.swipeUp()
+        }
+        XCTAssertTrue(caregiversRow.waitForExistence(timeout: 5))
+        caregiversRow.tap()
+
+        let addButton = app.buttons["caregiverList.addButton"]
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        addButton.tap()
+
+        let nameField = app.textFields["Caregiver name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.tap()
+        nameField.typeText("UI Avatar Caregiver")
+        let saveButton = app.buttons["addCaregiver.saveButton"]
+        waitUntilHittable(saveButton)
+        saveButton.tap()
+
+        let note = app.alerts["Caregiver saved, but the photo did not save."]
+        XCTAssertTrue(note.waitForExistence(timeout: 10))
+        XCTAssertFalse(nameField.exists)
+        note.buttons.firstMatch.tap()
+        XCTAssertTrue(note.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["UI Avatar Caregiver"].waitForExistence(timeout: 5))
+    }
+
     func testSettingsShortcutsNavigateToCatsAndHistory() {
         let app = makeApp(
             additionalArguments: [
