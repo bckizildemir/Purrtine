@@ -2,9 +2,11 @@ name: CI
 
 # Every job runs only on a public repo, where GitHub-hosted runners are free.
 # On a private repo macOS minutes are billed, so the jobs skip themselves there.
-# A run whose jobs all skip still shows as "success": while the repo is private,
-# CI proves nothing. Test locally instead: `Scripts/xcb.sh test` and
-# `cd functions && npm test`. After the flip, check the job conclusions, not the run's.
+# A run whose jobs all skip still shows as "success": check the job conclusions,
+# not the run's. The repo is public, so the jobs run and their result is the gate.
+# If the repo is private again, CI proves nothing. Then test locally with only what
+# changed: `Scripts/xcb.sh test --scheme CatCareCalendarTests --only <Suite>` for the
+# changed tests and the suites of the changed files, and `cd functions && npm test`.
 on:
   push:
     branches: [main]
