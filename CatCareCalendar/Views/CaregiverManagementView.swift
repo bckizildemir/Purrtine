@@ -32,6 +32,7 @@ struct CaregiverManagementView: View {
                     Image(systemName: "plus")
                         .foregroundStyle(.blue)
                 }
+                .accessibilityLabel(String(localized: .caregiverAddNew))
                 .accessibilityIdentifier("caregiverList.addButton")
             }
         }
