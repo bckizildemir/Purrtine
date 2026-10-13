@@ -9,7 +9,7 @@ The process is the user-level `/issue-batch-coordinator` skill (`~/.claude/skill
 | Prompt template | `docs/agents/implement-session-prompt.md` |
 | Review brief | `docs/agents/pr-review-brief.md` |
 | Simulator lock | `/tmp/purrtine-sim.lock` (take and release as the prompt template says) |
-| Test simulators | `iPhone 12` on iOS 26.5 (manual checks, default) and `iPhone 12 (iOS 18.5)` on iOS 18.5; run passes one after the other, never boot both |
+| Test simulators | `iPhone 12` on iOS 26.5 (default) and `iPhone 12 (iOS 18.5)` on iOS 18.5 only when CLAUDE.md "Which iOS versions" calls for it; run passes one after the other, never boot both |
 
 ## Standing rules
 
