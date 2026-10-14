@@ -252,7 +252,7 @@ The five canonical triage roles, used verbatim as label strings. All five exist 
 
 ### Domain docs
 
-Single-context — `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context — `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ### Coordinator and session briefs
 

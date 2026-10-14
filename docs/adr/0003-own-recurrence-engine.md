@@ -13,7 +13,7 @@ America/Scoresbysund, Australia/Lord_Howe, Asia/Beirut and others). Nobody has m
 type against those cases, and a wrong answer here stops a task's reminders silently.
 
 The Swift type is named `CareRecurrenceRule`, not `RecurrenceRule`, so that code search and readers do
-not confuse it with `Calendar.RecurrenceRule`. The domain term in `CONTEXT.md` stays
+not confuse it with `Calendar.RecurrenceRule`. The domain term in `GLOSSARY.md` stays
 "Recurrence Rule".
 
 ## Consequences
