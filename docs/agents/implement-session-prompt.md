@@ -5,10 +5,8 @@ Copy everything under the line into a file in the coordinator's own `$CLAUDE_JOB
 
 - Replace every `<N>` with the issue number.
 - Write the `## Context` section for the issue, or delete it. Examples: a measure-first change names
-  the `ios-memory-perf` skill and the before and after numbers to record in the PR body; a change
-  that hands off between alerts, sheets, or a disappearing view names the `-keep-animations` check
-  from `.claude/rules/testing.md`; a UI test change names the simulators it must pass on.
-- Keep the Setup, Simulator lock, Tests, and Finish sections as they are.
+  the `ios-memory-perf` skill and the before and after numbers to record in the PR body.
+- Keep the Setup, Simulator, Tests, and Finish sections as they are.
 - The first line must stay `/implement GitHub issue #<N> in bckizildemir/Purrtine.`
   The coordinator checks that the session really ran that skill (the `/issue-batch-coordinator` skill, "Implement check").
 
@@ -27,21 +25,14 @@ Commit at each green step, so an interruption (for example a usage limit) loses 
 - Follow the repo CLAUDE.md fully, especially: invoke the mandatory Swift skills before editing Swift files; build and test only through `Scripts/xcb.sh` (it waits for a machine-wide build lock, so use a long timeout or run it in the background); new strings go in Localizable.xcstrings with en + tr and you run LocalizationParityTests.
 - When the implement skill tells you to run code-review, use the fixed point `origin/main` and pass `model: "sonnet"` to its two sub-agents. Fix what it finds that is in scope.
 
-## Simulator lock (other sessions share this Mac and its simulators)
-Before ANY use of a simulator — every `Scripts/xcb.sh test` run, and any xcodebuildmcp or simctl install/launch/screenshot/UI check/measurement — take the simulator lock, and release it as soon as you finish:
-- take: `until mkdir /tmp/purrtine-sim.lock 2>/dev/null; do sleep 30; done; echo "#<N> $(date +%H:%M)" > /tmp/purrtine-sim.lock/owner`
-- release: `rm -rf /tmp/purrtine-sim.lock`
-- If the owner file is older than 60 minutes, the lock is stale: remove it and take it.
-- Take the simulator lock BEFORE you call xcb.sh test, never the other way round. `Scripts/xcb.sh build` alone does not need it.
-- Run the bash steps in one Bash call per lock hold where you can, and always release, also after a failure.
-Simulator for manual checks: iPhone 12 on iOS 26.5. Never boot two simulators.
-A TriQ session may also use this simulator and may ignore the lock. Before and after each measurement or manual check, run `cat ~/Library/Caches/xcb/build.lock/owner 2>/dev/null` and `xcrun simctl list devices booted`; if a TriQ build or test ran, or another simulator was booted, during a measurement, discard it and measure again. Hold the simulator lock for the whole before/after measurement pair, so both runs see the same conditions.
+## Simulator
+Follow "Verify trial" in CLAUDE.md: no UI tests and no `-ui-testing` runs.
 
 ## Tests
-Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or changed plus the suites of the files you changed, each with `--only` (`Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>`), and UI tests on iOS 26.5, plus iOS 18.5 when the "Which iOS versions" rule in CLAUDE.md calls for it or this prompt names it. Read the CI result after you open the PR; it is the gate. List exactly which tests you ran, with results, in the PR body.
+Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or changed plus the suites of the files you changed, each with `--only` (`Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>`). Read the CI result after you open the PR; it is the gate. List exactly which tests you ran, with results, in the PR body.
 
 ## Finish
-1. Commit, push the branch, and open ONE PR to `main` with `gh pr create`. The body: what changed and why, the tests you ran with results, what you checked in the simulator (en and tr), and `Closes #<N>`.
+1. Commit, push the branch, and open ONE PR to `main` with `gh pr create`. Write the body with the `pr` skill (call the Skill tool with "pr"), and also include: the tests you ran with results, the `verify-purrtine` proof (or that no simulator check ran), and `Closes #<N>`.
 2. Do NOT merge. Do not touch other PRs, other worktrees, or `main`.
 3. No Claude or Anthropic attribution anywhere: no "Generated with" line, no Co-Authored-By trailer, no model names in commits, the PR, or comments.
 4. Nothing that can bill a cloud provider. Do not run ~/.claude/scripts/xcode-junk-clean.sh; the coordinator runs it.
