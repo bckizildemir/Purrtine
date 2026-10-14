@@ -9,7 +9,7 @@ Home → Routine Status. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) wit
 
 - `complete-tap` ticks the row's circle button ("Complete task | Görevi tamamla").
 - `complete-swipe` uses the row's leading swipe action "Complete | Tamamla" (swipe right; a left swipe
-  shows Delete). It shows only while the task can be completed. Read from source, not driven yet.
+  shows Delete). It shows only while the task can be completed. Proved 2026-10-14 (second pass).
 - `complete-history` shows the completion as a History row with date, time and cat.
 - `complete-home` shows it in Home → Routine Status ("Last done today, Due tomorrow").
 
@@ -40,6 +40,11 @@ Preconditions:
   `history.row.Daily Feeding` with today's date, the time and `Miso`. `vp shot history`, `vp tree history`.
 - **Home.** `vp tap --label Home --element-type RadioButton`. `home.routineStatus.row.Daily Feeding` reads
   `Daily Feeding, Miso, Last done today, Due tomorrow`. `vp shot home-after`, `vp tree home-after`.
+- **Swipe path.** On another pending row (`Refresh Water`), read the frame of `taskRow.Refresh Water`
+  and swipe right a short way: `axe swipe --start-x 100 --start-y <row mid-y> --end-x 220 --end-y <row mid-y> --duration 0.4 --udid $UDID`.
+  A `Button | Complete` (id `checkmark.circle.fill`, the SF Symbol name) shows at the row's leading edge;
+  `vp tap --label Complete --element-type Button`. The row moves under `Tomorrow` like the circle path.
+  A long swipe completes at once (full swipe is on). `vp shot swipe-completed`, `vp tree swipe-completed`.
 - **Side effect: reminders.** Completion runs a full reminder resync. `vp reminders` still shows the
   task's title with a count above 0 (its later days); the total stays at the 60 cap.
 - **Record.** `echo "feature=complete-task entry=tasks-row-circle result=pass" >> <evidence>/run.txt`.

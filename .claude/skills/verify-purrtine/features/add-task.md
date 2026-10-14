@@ -38,8 +38,8 @@ Preconditions:
 - **Pick the cat.** `vp tap --id taskAdd.catsButton` opens a selection sheet:
   `taskCatsSelection.assignAllToggle`, one `taskCatsSelection.cat.<name>` row per cat, and
   `taskCatsSelection.doneButton` (disabled until a cat is picked). `vp tap --id taskCatsSelection.cat.Miso`,
-  then `vp tap --id taskCatsSelection.doneButton`. The Cats row now has the value `Miso`. (The
-  2026-10-14 pass saved no tree of this sheet; the next pass adds `vp tree task-cats-sheet` here.)
+  then `vp tap --id taskCatsSelection.doneButton`. The Cats row now has the value `Miso`. Save
+  `vp tree task-cats-sheet` while the sheet is open (done in the second pass, 2026-10-14).
 - **Repeat daily.** `vp tap --label 'Repeat, Once' --element-type PopUpButton`, then
   `vp tap --label Daily --element-type Button` (options: Once, Daily, Weekly, Every 2 Weeks, Monthly,
   Custom). The row reads `Repeat, Every day`. A daily task always has a next occurrence, so it gets
