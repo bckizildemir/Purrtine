@@ -38,7 +38,7 @@ Simulator for manual checks: iPhone 12 on iOS 26.5. Never boot two simulators.
 A TriQ session may also use this simulator and may ignore the lock. Before and after each measurement or manual check, run `cat ~/Library/Caches/xcb/build.lock/owner 2>/dev/null` and `xcrun simctl list devices booted`; if a TriQ build or test ran, or another simulator was booted, during a measurement, discard it and measure again. Hold the simulator lock for the whole before/after measurement pair, so both runs see the same conditions.
 
 ## Tests
-Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or changed plus the suites of the files you changed, each with `--only` (`Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>`), and UI tests only on the simulators this prompt names. Read the CI result after you open the PR; it is the gate. List exactly which tests you ran, with results, in the PR body.
+Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or changed plus the suites of the files you changed, each with `--only` (`Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>`), and UI tests on iOS 26.5, plus iOS 18.5 when the "Which iOS versions" rule in CLAUDE.md calls for it or this prompt names it. Read the CI result after you open the PR; it is the gate. List exactly which tests you ran, with results, in the PR body.
 
 ## Finish
 1. Commit, push the branch, and open ONE PR to `main` with `gh pr create`. The body: what changed and why, the tests you ran with results, what you checked in the simulator (en and tr), and `Closes #<N>`.

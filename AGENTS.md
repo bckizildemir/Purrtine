@@ -61,16 +61,23 @@ Scripts/xcb.sh build --os 18.5
 # --only takes a Swift Testing suite or test name and is repeatable
 Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/TaskActionServiceTests
 
-# Run a UI test you added or changed on each simulator the task names (the baseline below is
-# iOS 18.5 and iOS 26.5), one pass after the other; the script shuts down the other simulator first.
-Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests/<TestClass>/<testName>
+# Run a UI test you added or changed on iOS 26.5; add the iOS 18.5 pass only when the
+# "Which iOS versions" rule below calls for it. The script shuts down the other simulator first.
 Scripts/xcb.sh test --os 26.5 --only CatCareCalendarUITests/<TestClass>/<testName>
+Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests/<TestClass>/<testName>
 
 # List available simulators (verify the device exists before a simulator run)
 xcrun simctl list devices
 ```
 
-- Simulator baseline for verification: **iPhone 12, iOS 18.5** (min-target pass) and **iPhone 12, iOS 26.5** (current-OS pass). Run the two passes sequentially — never boot both simulators at the same time; this machine (16GB M2 MacBook Air) can't afford two runtimes resident at once.
+- Simulator baseline for verification: **iPhone 12, iOS 26.5** (current-OS pass, the default) and **iPhone 12, iOS 18.5** (min-target pass). Run the two passes sequentially — never boot both simulators at the same time; this machine (16GB M2 MacBook Air) can't afford two runtimes resident at once.
+- **Which iOS versions** (owner rule, 2026-10-13). Manual checks and local UI tests run on iOS 26.5. App logic does not differ between the two OS versions, and the unit tests in CI cover it; what differs is system chrome. Add the iOS 18.5 pass when the change:
+  - adds or edits an `if #available` / `@available` branch;
+  - changes the navigation bar, a toolbar, or a glass effect;
+  - changes how a sheet, menu, alert, or picker is presented;
+  - adopts an API introduced in iOS 26 or later.
+
+  State in the PR body whether you ran the 18.5 pass and which of these triggered it. Before each TestFlight release, run the full UI suite once on iOS 18.5. A scheduled CI job for iOS 18.5 is on hold until the CI UI tests stop failing intermittently (#71).
 - Simulator names, verified 2026-10-06: the 26.5 device is named `iPhone 12`; the 18.5 device is named `iPhone 12 (iOS 18.5)`. `Scripts/xcb.sh` accepts both forms, so `--os 18.5` finds it. A bare `xcodebuild` needs the exact name: `-destination 'platform=iOS Simulator,name=iPhone 12 (iOS 18.5),OS=18.5'`.
 - An **iOS 27.0** runtime is installed, but no `iPhone 12` device on it (verified 2026-10-06). It is not the baseline — do not substitute it for the 26.5 pass without saying so, because a result from it is not comparable with the recorded runs.
 - Host toolchain as of 2026-09-08: **Xcode 27.0** (build `27A5194q`), **Swift 6.4**. The project's `SWIFT_VERSION = 6.0` (verified 2026-09-24) selects the language mode; it does not limit which syntax this compiler accepts. See the reconciliation notes below.
