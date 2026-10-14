@@ -68,4 +68,5 @@ behavior, then exactly four H2 sections in this order: `Sub-features`, `How to g
 - [Complete a task](./complete-task.md) — tick a task in the Tasks list and see it in History and Home. Proved 2026-10-14.
 
 A maintenance pass drives all four in this order on one device: onboarding, add-cat, add-task,
-complete-task (last full pass: 2026-10-14, evidence `~/verify-evidence/purrtine/2026-10-14-225439-0158/`).
+complete-task (last full pass: 2026-10-14, second pass, every recipe as written; evidence
+`~/verify-evidence/purrtine/2026-10-14-233836-4c55/`).
