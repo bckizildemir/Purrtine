@@ -2,7 +2,8 @@
 
 A user ticks a task as done in the Tasks list. A recurring task moves on to its next date (the row
 stays `Pending` under "Tomorrow" for a daily task); the completion shows in More → History and in
-Home → Routine Status. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) with the daily
+Home → Routine Status. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) and on 2026-10-15 (iPhone 12, iOS 27.0, English,
+`~/verify-evidence/purrtine/2026-10-15-014147-3a31/`, circle and swipe) with the daily
 "Daily Feeding" task.
 
 ## Sub-features
@@ -30,7 +31,7 @@ Preconditions:
 - **Open the Tasks tab.** `vp tap --label Tasks --element-type RadioButton`.
 - **Before.** `taskRow.complete.Daily Feeding` has the value "Pending | Bekliyor" and
   `taskRow.Daily Feeding` reads `Daily Feeding, Miso, Today`. `vp shot tasks-before`, `vp tree tasks-before`.
-- **Complete.** `vp tap --id 'taskRow.complete.Daily Feeding'`
+- **Complete.** `vp tap --once --id 'taskRow.complete.Daily Feeding'`
   (Turkish: `taskRow.complete.Günlük Besleme` — the identifier carries the localized title). No sheet,
   confirm or undo shows (one cat). The row moves under the heading `Tomorrow`: `taskRow.Daily Feeding`
   reads `Daily Feeding, Miso, Tomorrow`, and its button value stays `Pending`, because the task now waits
@@ -46,7 +47,7 @@ Preconditions:
   `axe swipe --start-x 100 --start-y <row mid-y> --end-x 220 --end-y <row mid-y> --duration 0.4 --udid $UDID`.
   A `Button | Complete` shows at the row's leading edge (its id read `checkmark.circle.fill`, the SF Symbol
   name, in `vp ui` on 2026-10-14; the source sets no identifier, so tap by label).
-  `vp shot swipe-revealed`, `vp tree swipe-revealed`, then `vp tap --label Complete --element-type Button`.
+  `vp shot swipe-revealed`, `vp tree swipe-revealed`, then `vp tap --once --label Complete --element-type Button`.
   The row moves under `Tomorrow` like the circle path. `vp shot swipe-completed`, `vp tree swipe-completed`.
   A long swipe completes at once (full swipe is on; from source, not driven).
 - **Side effect: reminders.** Completion runs a full reminder resync. `vp reminders` still shows the
