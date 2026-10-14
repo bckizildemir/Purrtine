@@ -426,7 +426,9 @@ enum AppLaunchBootstrapper {
         if findTask(named: sharedTaskTitle, in: context) == nil {
             let sharedTask = makeTask(
                 title: sharedTaskTitle,
-                scheduledDate: Date().addingTimeInterval(2 * 60 * 60),
+                // Clamped to today, like the solo task: from 22:00 a plain `now + 2h` put
+                // the task on tomorrow, out of the UI tests' reach (#62).
+                scheduledDate: laterToday(byAddingHours: 2, to: now, calendar: calendar),
                 category: .feeding,
                 cats: [primaryCat, secondCat],
                 caregiver: caregiver
