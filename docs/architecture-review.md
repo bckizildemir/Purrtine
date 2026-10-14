@@ -40,7 +40,7 @@ Architecture terms come from `/codebase-design` and are used exactly: **module, 
 implementation, depth, deep, shallow, seam, adapter, leverage, locality**. Not "component", "service",
 "layer", "wrapper", "API" or "boundary".
 
-Domain terms come from [`CONTEXT.md`](../CONTEXT.md), which currently names three: *Quick Action*,
+Domain terms come from [`GLOSSARY.md`](../GLOSSARY.md), which currently names three: *Quick Action*,
 *Assistant Suggestion*, *Task Assistant*. Where the domain has no name for a concept, this report says
 so rather than inventing one. Two concepts worth naming during grilling: the recurrence rule
 (candidate 2) and the in-flight task form state (candidate 3).
