@@ -17,9 +17,7 @@ Invoke the `code-review` skill and follow it exactly.
 - Standards sources: `CODING_STANDARDS.md`, `CLAUDE.md`, `.claude/rules/*.md`.
 - The skill spawns two sub-agents. Pass `model: "sonnet"` to both.
 - Do not build or run tests. CI (`.github/workflows/ci.yml`) is the gate. Start the review while CI is still
-  pending; the coordinator checks the CI result before the merge. CI skips
-  the UI tests (see "Local tests: only what changed" in CLAUDE.md), so the PR body must list the UI
-  tests the author ran. Another agent may hold
+  pending; the coordinator checks the CI result before the merge. Another agent may hold
   the build lock.
 
 ## 2. Decide
@@ -30,10 +28,8 @@ A **critical** finding is one of these:
 - a broken binding repo rule from CLAUDE.md (for example a care-task save outside `CareTaskWriting`,
   a direct `UNUserNotificationCenter.current()` outside `Utilities/`, an edit to schema V1,
   a user-facing string not in `Localizable.xcstrings` with en + tr),
-- a change that hands off between alerts, sheets, or a disappearing view, and the PR names no check
-  with animations on (`-ui-testing -keep-animations`, see "Animations-off blind spot" in
-  `.claude/rules/testing.md`). `-ui-testing` turns animations off, so UI tests alone never see such
-  a race; #27 and #31 hid there. Ask the author for that check.
+- a user-visible change whose PR has no `verify-purrtine` proof, once that skill exists (see "Verify
+  trial" in CLAUDE.md). Ask the author for that proof.
 
 Style smells, naming, and judgement calls are NOT critical.
 

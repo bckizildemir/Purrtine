@@ -182,7 +182,7 @@ These docs should pull the project toward the target state, but implementation w
 
 ### Simulator Baseline
 - Verification device: `iPhone 12`
-- Verification OS versions: `iOS 18.5` and `iOS 26.5`, run sequentially
+- Verification OS versions: `iOS 18.5` and `iOS 26.5`
 
 ---
 
