@@ -77,12 +77,6 @@ For each hit, confirm the `#Preview { ... }` block containing the call is wrappe
 
 More generally: if the archive step fails with "cannot find X in scope" for a Release-only build, suspect a DEBUG-gated symbol used from a call site that isn't itself DEBUG-gated, and look for the same pattern elsewhere in the codebase rather than patching just the one file the compiler happened to complain about first.
 
-Then run the full UI suite once on the minimum OS — PRs test iOS 18.5 only for version-specific changes (CLAUDE.md, "Which iOS versions"), so this is the pass that catches the rest. Take the simulator lock first (`docs/agents/implement-session-prompt.md`), and archive only after it is green:
-
-```bash
-Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests
-```
-
 ## Step 5 — Archive and export
 
 ```bash
