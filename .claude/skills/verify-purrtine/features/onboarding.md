@@ -3,8 +3,8 @@
 A first launch on a fresh device shows a four-step onboarding: welcome, notification permission,
 the first cat, and starter tasks. When the user finishes, the app saves one cat and one task per
 ticked starter, schedules their reminders, and lands on the Home tab. Every other feature starts
-from the data this journey creates. Proved end to end on 2026-10-14 (iPhone 12, iOS 26.5, English)
-and the Turkish welcome screen on the same day.
+from the data this journey creates. Proved end to end three times on 2026-10-14 (iPhone 12, iOS 26.5,
+English; the last in the maintenance pass) and the Turkish welcome screen on the same day.
 
 ## Sub-features
 

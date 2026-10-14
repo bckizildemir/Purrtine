@@ -1,6 +1,6 @@
 ---
 name: verify-purrtine
-description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding path (proved) and the add-cat, add-task and complete-task paths (unproved drafts), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
+description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
 ---
 
 # verify-purrtine
@@ -189,6 +189,10 @@ and the same screen size as the recorded runs. Measure again before you change t
   writes the device language (`en-US` or `tr-TR`) and reboots, so the language you asked for is the
   one the app sees. `$V doctor` prints it.
 - **Lost taps.** See Drive: use `$V tap`.
+- **Tabs keep their stack.** A tab reopens on the last screen pushed in it (More → My Cats stays open
+  after Add a cat). Read `$V ui` and tap `BackButton` before you use the tab's root shortcuts.
+- **Autocorrect.** Text fields keep the keyboard's autocorrect, and a save takes its suggestion
+  (`Tarcin` saved as `Tar in`). Type real dictionary words.
 - **No Simulator window needed.** On 2026-10-14 axe read the full tree with no Simulator app running,
   and `open -a Simulator` fails on this Mac (Xcode 27 has no `Simulator.app` in its usual place). The
   older note "an empty tree when the Simulator window is closed" did not reproduce; if `$V doctor`
@@ -198,9 +202,10 @@ and the same screen size as the recorded runs. Measure again before you change t
   has no camera. Do not claim a photo path.
 - **Debug-only screens exist.** More → Developer Tools (`settings.developerTools`) and its notification
   history are in every Debug build. Never use them for data or proof.
-- **Cloud tier.** This checkout has no `GoogleService-Info.plist`, so Firebase stays off and the Whiskers
-  assistant never calls the cloud. A checkout with the plist would call a paid function; `$V doctor`
-  warns, and then you leave the assistant's cloud fallback alone.
+- **Cloud tier.** `GoogleService-Info.plist` is gitignored, so a fresh worktree has none and Firebase
+  stays off. The owner's main checkout has it (seen 2026-10-14): the build then signs in to Firebase at
+  launch, and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
+  assistant's cloud fallback alone in such a build.
 - **The hold blocks every build on the Mac.** Keep a drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.
