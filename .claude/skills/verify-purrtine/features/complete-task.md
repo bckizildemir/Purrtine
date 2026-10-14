@@ -44,7 +44,7 @@ Preconditions:
   and swipe right a short way: `axe swipe --start-x 100 --start-y <row mid-y> --end-x 220 --end-y <row mid-y> --duration 0.4 --udid $UDID`.
   A `Button | Complete` (id `checkmark.circle.fill`, the SF Symbol name) shows at the row's leading edge;
   `vp tap --label Complete --element-type Button`. The row moves under `Tomorrow` like the circle path.
-  A long swipe completes at once (full swipe is on). `vp shot swipe-completed`, `vp tree swipe-completed`.
+  A long swipe completes at once (full swipe is on; from source, not driven). `vp shot swipe-completed`, `vp tree swipe-completed`.
 - **Side effect: reminders.** Completion runs a full reminder resync. `vp reminders` still shows the
   task's title with a count above 0 (its later days); the total stays at the 60 cap.
 - **Record.** `echo "feature=complete-task entry=tasks-row-circle result=pass" >> <evidence>/run.txt`.
