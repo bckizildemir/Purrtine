@@ -1,8 +1,7 @@
 # Add a cat
 
 A user adds another cat after onboarding. The cat appears in More → My Cats and can be picked as a
-task's cat. Not yet driven by a verify run (drafted 2026-10-14 from the source); the first run that
-drives it corrects this file.
+task's cat. Partly driven 2026-10-14, see the open notes under Gotchas; the next full run corrects this file.
 
 ## Sub-features
 
@@ -22,7 +21,7 @@ drives it corrects this file.
 Preconditions:
 
 - Onboarding is done and the Home tab shows (`home.view` in the tree).
-- No cat named `Tarçın` exists.
+- No cat named `Tarcin` exists.
 
 - **Open My Cats.** `vp tap --label More --element-type RadioButton`
   (Turkish: `Daha Fazla`), then `vp tap --id settings.shortcut.cats`.
@@ -34,7 +33,7 @@ Preconditions:
 - **Save.** `vp shot cat-form-filled`, then `vp tap --id catForm.saveButton`. The sheet
   closes.
 - **Proof.** The My Cats list holds both cats. `vp shot cats-list` and `vp tree cats-list`; the tree
-  has a label with `Tarçın`.
+  has a label with the typed name (`Tarcin`; see the open note about autocorrect).
 - **Cancel path.** Open the sheet again, type `Discard`, tap `catForm.cancelButton` (label `Close`). A sheet asks
   "Are you sure you want to discard your changes?"; tap `Discard Changes`. The list has no `Discard` card.
 

@@ -48,6 +48,8 @@ $V doctor                      # must exit 0
 - `start` creates `verify-purrtine-<run-id>` (iPhone 12, iOS 26.5 — see "Device
   choice"), boots it, sets its system language, reboots it, and makes the evidence folder
   `~/verify-evidence/purrtine/<YYYY-MM-DD>-<run-id>/` with `run.txt` (device, language, git rev).
+- If a `build` is killed with SIGKILL its trap cannot run: run `$V cleanup` afterwards. SIGINT and
+  SIGTERM stop the heartbeat and exit non-zero.
 - `build` can wait up to an hour for the xcb build lock. Run it in the background
   (`run_in_background`), not in the foreground with a 10-minute timeout, and read its output when it
   finishes. An unchanged tree builds in about 40 s. A killed `build` stops its heartbeat loop.
@@ -130,7 +132,7 @@ Proof standards:
   for every state you assert on.
 - Prove a save from a second view (the list, Home, History), not from the sheet that closed.
 - Side effects: a scheduled reminder is proved by `$V reminders "<task title>" …`, which copies the
-  device's pending notification store into the evidence and counts each title (more than 0 = scheduled).
+  device's pending notification store into the evidence and counts the pending requests per title (more than 0 = scheduled; the app caps the total at 60).
   A delivered banner needs its time to pass; prove it with a shot only when the change is about delivery.
   Say which side effects you did not prove.
 - The system photo picker runs out of process; axe sees none of its cells. Never claim a photo pick.

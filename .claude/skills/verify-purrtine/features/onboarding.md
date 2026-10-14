@@ -57,7 +57,7 @@ Preconditions:
   `vp tree tasks-after-onboarding`.
 - **Side effect: reminders.** `vp reminders "Daily Feeding" "Refresh Water" "Litter Box"`. It copies the
   device's pending notification store into the evidence and counts the titles. Proof: both ticked titles
-  have a count above 0 (60 each on 2026-10-14, the app's 60-reminder cap split across two daily tasks),
+  have a count above 0 (30 each, 60 in all, on 2026-10-14: the app's 60-reminder cap split across two daily tasks),
   and `Litter Box` has 0.
 - **Record.** `echo "feature=onboarding entry=first-launch result=pass" >> <evidence>/run.txt`.
 

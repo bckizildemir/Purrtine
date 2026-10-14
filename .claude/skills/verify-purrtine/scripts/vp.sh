@@ -12,7 +12,7 @@
 #   tree NAME                             accessibility tree -> evidence/NN-NAME.json
 #   ui                                    compact tree: type | label | id | value | frame
 #   tap AXE-TAP-ARGS...                   axe tap (physical style), retried once if the screen did not change
-#   reminders [TITLE...]                  pending local notifications -> evidence; count per title
+#   reminders [TITLE...]                  pending local notifications -> evidence; requests per title
 #   memory                                physical footprint of the device's processes
 #   revive                                boot the device again after another session shut it down
 #   cleanup                               delete the device, drop the lock, keep the evidence
@@ -125,7 +125,8 @@ hold_alive() {
 
 next_evidence_name() {
   local dir="$1" name="$2" n
-  n=$(find "$dir" -maxdepth 1 -type f \( -name '*.png' -o -name '*.json' \) | wc -l | tr -d ' ')
+  # Every evidence file counts (png, json, plist), run.txt does not, so numbers never repeat.
+  n=$(find "$dir" -maxdepth 1 -type f ! -name run.txt | wc -l | tr -d ' ')
   printf '%s/%02d-%s' "$dir" $((n + 1)) "$name"
 }
 
@@ -189,7 +190,9 @@ cmd_build() {
   ( while [[ -d "$LOCK_DIR" ]]; do touch "$LOCK_DIR/heartbeat" 2>/dev/null; sleep 60; done ) &
   local beat=$! status=0
   # A killed parent must not leave the heartbeat loop running.
-  trap 'kill "$beat" 2>/dev/null' EXIT INT TERM
+  trap 'kill "$beat" 2>/dev/null' EXIT
+  trap 'kill "$beat" 2>/dev/null; exit 130' INT
+  trap 'kill "$beat" 2>/dev/null; exit 143' TERM
   # Build against this run's own device, so the build never names a shared simulator.
   set +e
   XCB_SIMULATOR="$name" Scripts/xcb.sh build 2>&1 | tee "$out"
@@ -396,10 +399,12 @@ cmd_reminders() {
     rm -f "$n"; n="${n%.json}.plist"; cp "$pending" "$n"
   fi
   say "pending store copied to $n"
-  local title
-  for title in "$@"; do
-    printf '%5s strings mention "%s"\n' "$(plutil -convert xml1 -o - "$pending" | grep -o "$title" | wc -l | tr -d ' ')" "$title"
-  done
+  # Count real pending requests whose text holds each title (a request holds its title twice,
+  # so a plain text match would double the number).
+  if [[ $# -gt 0 ]]; then
+    /usr/bin/python3 -I "$(dirname "${BASH_SOURCE[0]}")/count-pending.py" "$pending" "$@" \
+      || say "WARN could not parse the pending store; read $n by hand"
+  fi
 }
 
 tree_hash() { axe describe-ui --udid "$(state udid)" 2>/dev/null | shasum | cut -c1-12; }
