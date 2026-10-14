@@ -9,7 +9,7 @@ Home → Routine Status. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) wit
 
 - `complete-tap` ticks the row's circle button ("Complete task | Görevi tamamla").
 - `complete-swipe` uses the row's leading swipe action "Complete | Tamamla" (swipe right; a left swipe
-  shows Delete). Read from source, not driven yet.
+  shows Delete). It shows only while the task can be completed. Read from source, not driven yet.
 - `complete-history` shows the completion as a History row with date, time and cat.
 - `complete-home` shows it in Home → Routine Status ("Last done today, Due tomorrow").
 
@@ -52,4 +52,6 @@ Preconditions:
   with any rename.
 - A tab keeps its navigation stack: the More tab reopens on the last screen pushed in it. Go back with
   `BackButton` before you tap a More shortcut.
-- A late-day run makes no difference: completing an overdue occurrence still moves the task to its next day.
+- An occurrence that went overdue earlier today moves to Tomorrow when completed. An older overdue
+  occurrence moves to the day after its own scheduled day, so a task overdue for several days stays
+  overdue (`TaskActionService.swift`). A fresh run's onboarding tasks are due today, so the recipe holds.

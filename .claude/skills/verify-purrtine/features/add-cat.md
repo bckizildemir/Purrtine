@@ -44,7 +44,8 @@ Preconditions:
 
 - Type a real dictionary word as the name (`Milo`, `Luna`). The name field keeps the keyboard's
   autocorrect, and the save takes its suggestion: on 2026-10-14 `Tarcin` showed the suggestion `Tar in`
-  above the keyboard (`vp ui` lists it as a `GenericElement`), and a save stored `Tar in`. axe cannot
+  above the keyboard (`vp ui` lists it as a `GenericElement`), and a save stored `Tar in`
+  (`~/verify-evidence/purrtine/2026-10-14-215623-2414/19-cats-list.json`). axe cannot
   type `ç`/`ı` ("No keycode found"). Whether cat names should skip autocorrect is a product question,
   not a skill fix.
 - The toolbar labels `Done`/`Close` come from the iOS 26 system button roles; iOS 18 shows `Save`/`Close`.

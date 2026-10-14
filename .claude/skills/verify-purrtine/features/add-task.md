@@ -19,7 +19,7 @@ daily task: the list shows it, and its reminders share the app's 60-reminder cap
 - Tasks | Görevler tab → "+" (top bar) → "Custom Task | Özel Görev" or "Add from Template | Şablondan Ekle".
 - Home tab → "+" → "Add Task | Görev Ekle".
 - Home tab → Quick Actions (Feeding, Water, Litter open a template; Custom Task opens the empty form).
-- A cat card's menu → add a task: the only entry that preselects a cat.
+- Long-press a cat card → add a task: the only entry that preselects a cat.
 
 ## Driving it with axe
 
@@ -38,7 +38,8 @@ Preconditions:
 - **Pick the cat.** `vp tap --id taskAdd.catsButton` opens a selection sheet:
   `taskCatsSelection.assignAllToggle`, one `taskCatsSelection.cat.<name>` row per cat, and
   `taskCatsSelection.doneButton` (disabled until a cat is picked). `vp tap --id taskCatsSelection.cat.Miso`,
-  then `vp tap --id taskCatsSelection.doneButton`. The Cats row now has the value `Miso`.
+  then `vp tap --id taskCatsSelection.doneButton`. The Cats row now has the value `Miso`. (The
+  2026-10-14 pass saved no tree of this sheet; the next pass adds `vp tree task-cats-sheet` here.)
 - **Repeat daily.** `vp tap --label 'Repeat, Once' --element-type PopUpButton`, then
   `vp tap --label Daily --element-type Button` (options: Once, Daily, Weekly, Every 2 Weeks, Monthly,
   Custom). The row reads `Repeat, Every day`. A daily task always has a next occurrence, so it gets
