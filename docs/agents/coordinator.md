@@ -8,10 +8,7 @@ The process is the user-level `/issue-batch-coordinator` skill (`~/.claude/skill
 | Session name prefix | `purrtine-` (sessions `purrtine-<N>`, worktrees `issue-<N>`) |
 | Prompt template | `docs/agents/implement-session-prompt.md` |
 | Review brief | `docs/agents/pr-review-brief.md` |
-| Simulator lock | `/tmp/purrtine-sim.lock` (take and release as the prompt template says) |
-| Test simulators | `iPhone 12` on iOS 26.5 (default) and `iPhone 12 (iOS 18.5)` on iOS 18.5 only when CLAUDE.md "Which iOS versions" calls for it; run passes one after the other, never boot both |
 
 ## Standing rules
 
-- TriQ shares the `iPhone 12` (iOS 26.5) simulator and may ignore `/tmp/purrtine-sim.lock`. The prompt template tells sessions how to detect a TriQ run and repeat a measurement. (Set 2026-10-11.)
 - A batch needs no `decision-check` run. (Set 2026-10-11.)
