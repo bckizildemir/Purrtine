@@ -6,7 +6,7 @@ enum NotificationSchedulingError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized:
-            return "Notifications are not authorized for scheduling."
+            String(localized: .errorNotificationSchedulingUnauthorized)
         }
     }
 }

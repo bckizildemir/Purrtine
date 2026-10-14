@@ -99,6 +99,30 @@ struct OnboardingTaskSetupModelTests {
         #expect(cats.count == 1)
     }
 
+    /// Onboarding is over, so the session-long manager no longer holds the photo.
+    @Test
+    func goodSaveDropsThePendingPhoto() async throws {
+        onboardingManager.tempCatData.photo = .prepared(Data("photo".utf8))
+        let sut = makeSUT()
+
+        let outcome = await sut.finish()
+
+        #expect(outcome == .completed)
+        #expect(onboardingManager.tempCatData.photo == nil)
+    }
+
+    /// Nothing was saved, so "Try again" still needs the photo.
+    @Test
+    func failedCommitKeepsThePendingPhotoForTheRetry() async throws {
+        onboardingManager.tempCatData.photo = .prepared(Data("photo".utf8))
+        let sut = makeFailingSUT()
+
+        let outcome = await sut.finish()
+
+        #expect(outcome == .notSaved)
+        #expect(onboardingManager.tempCatData.photo == .prepared(Data("photo".utf8)))
+    }
+
     @Test
     func failedCommitKeepsTheCaregiverInOnboardingWithTheAlertUp() async throws {
         let sut = makeFailingSUT()

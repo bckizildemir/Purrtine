@@ -57,32 +57,21 @@ open CatCareCalendar.xcodeproj
 # Build from CLI
 Scripts/xcb.sh build --os 18.5
 
-# Fast local loop: unit tests only (no UI test build, no coverage)
-Scripts/xcb.sh test --scheme CatCareCalendarTests
-
-# Run a single test (Swift Testing suite/test name)
+# Local loop: the unit scheme (no UI test build, no coverage), only the suites you touched;
+# --only takes a Swift Testing suite or test name and is repeatable
 Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/TaskActionServiceTests
 
-# Run full test suite (unit + UI, with coverage) once, before the PR
-Scripts/xcb.sh test --os 18.5
-
-# Run UI tests on both the min target (iOS 18.5) and current OS (iOS 26.5),
-# one pass after the other; the script shuts down the other simulator first.
-Scripts/xcb.sh test --os 18.5 --only CatCareCalendarUITests
-Scripts/xcb.sh test --os 26.5 --only CatCareCalendarUITests
-
-# List available simulators (verify device exists before CI-parity runs)
+# List available simulators (verify the device exists before a simulator run)
 xcrun simctl list devices
 ```
 
-- Simulator baseline for verification: **iPhone 12, iOS 18.5** (min-target pass) and **iPhone 12, iOS 26.5** (current-OS pass). Run the two passes sequentially — never boot both simulators at the same time; this machine (16GB M2 MacBook Air) can't afford two runtimes resident at once.
-- Simulator names, verified 2026-10-06: the 26.5 device is named `iPhone 12`; the 18.5 device is named `iPhone 12 (iOS 18.5)`. `Scripts/xcb.sh` accepts both forms, so `--os 18.5` finds it. A bare `xcodebuild` needs the exact name: `-destination 'platform=iOS Simulator,name=iPhone 12 (iOS 18.5),OS=18.5'`.
-- An **iOS 27.0** runtime is installed, but no `iPhone 12` device on it (verified 2026-10-06). It is not the baseline — do not substitute it for the 26.5 pass without saying so, because a result from it is not comparable with the recorded runs.
+- **Verify trial** (owner, 2026-10-14). UI tests, the `-ui-testing` launch mode, simulator checks, and iOS-version passes are paused while the owner tries the verification skill. Prove what a user sees with `verify-purrtine` (`.claude/skills/verify-purrtine/`, made with `/create-verification-skill`); until it exists, say in the PR that no simulator check ran. The paused rules are parked outside the repo at `~/.claude/parked/2026-10-14-verify-trial/`; they do not apply during the trial.
 - Host toolchain as of 2026-09-08: **Xcode 27.0** (build `27A5194q`), **Swift 6.4**. The project's `SWIFT_VERSION = 6.0` (verified 2026-09-24) selects the language mode; it does not limit which syntax this compiler accepts. See the reconciliation notes below.
+- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. The jobs skip themselves on a private repo, and a run whose jobs all skip still shows "success" (header comment of `ci.yml`); the repo is public (verified 2026-10-12), so the jobs run. CI skips the UI tests (verified 2026-10-11: `-skip-testing:CatCareCalendarUITests`, #48). List the tests you ran in the PR body.
 - Agents build and test through `Scripts/xcb.sh`, never a bare `xcodebuild`. The script holds a machine-wide lock, so builds from every worktree and from TTB queue one at a time on this 16GB Mac; it shares one DerivedData and package checkout across worktrees, so Firebase compiles once. It writes the full log to a file and prints only errors, failures, and the tail. A run can wait minutes for the lock: give it a long Bash timeout or run it in the background. `Scripts/xcb.sh --help` lists the options.
 - `Scripts/xcb.sh` is shared with TTB; keep the two copies identical.
-- Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. Run the full scheme once before you open a PR: CI (`.github/workflows/test-coverage.yml`) runs it and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
-- When work is split across subagents: only one of them may build, run, or test on a simulator at a time, and xcodebuildmcp session defaults do not reach subagents — pass `simulatorId` and `bundleId` in the prompt. `Localizable.xcstrings`, `project.pbxproj`, `Theme.swift`, `CatCardStyle.swift`, and `NavigationRouter.swift` are single-owner files: subagents report the changes they need, and the coordinating agent applies them (then runs `LocalizationParityTests` after catalog edits).
+- Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. CI (`.github/workflows/ci.yml`) runs this scheme without the UI tests and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage; the coverage bundle therefore comes from CI, not from a local run. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
+- When work is split across subagents: `Localizable.xcstrings`, `project.pbxproj`, `Theme.swift`, `CatCardStyle.swift`, and `NavigationRouter.swift` are single-owner files: subagents report the changes they need, and the coordinating agent applies them (then runs `LocalizationParityTests` after catalog edits).
 
 ## Architecture
 
@@ -110,7 +99,7 @@ The app is local-first, and everything above works with no network. One feature 
 ### Notifications
 - Route all local notification scheduling through `NotificationManager` — do not schedule/cancel `UNNotificationRequest`s directly from views or other services. Re-sync notifications whenever a task or its schedule changes.
 - Treat any direct `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified 2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes `.current()` as a default argument). The DEBUG Notification History screen in `Views/Settings/SettingsDebugViews.swift` reads delivered and pending test notifications through `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and `pendingTestNotificationRequests()` (#8). `NotificationPermissionView` asks for permission through `NotificationManager.requestPermission()`, so an onboarding grant calls `requestFullReminderResync()` like any other. The same method is the named way to ask for one full reminder resync for a non-settings reason; `OnboardingTaskSetupModel` calls it when onboarding saves with stale reminders.
-- Care-task writes from views, view models, and services go through `CareTaskWriting` (`Utilities/CareTaskWriting.swift`, implemented by `CareTaskWriter`): `save`, `delete`, `complete`, `snooze`, and `refreshReminders(for:in:)` for a change outside the task, such as a cat rename or delete. Each verb commits, then awaits one full capped resync of every care-task reminder (`TaskNotificationScheduling.resyncAllCareTaskReminders()` → `NotificationResyncCoordinator.resync()`) before it returns; there is no per-task scheduling entry point, because only a pass over every task can keep the pending total at 60 of iOS's 64 slots (#80, `CareTaskReminderSelection`). App activation tops the set up through `NotificationManager.handleAppActivation()`. A failure after the commit throws `CareTaskRemindersOutOfSyncError` ("saved, reminders stale"); callers catch `CancellationError` first, then that error, then everything else ("not saved"). One exception (#7): a failed `delete` commit stays staged, because it cannot be undone; the writer drops the task's snoozes at once and watches `ModelContext.didSave`, so the later save that commits the delete runs one full resync. Do not add a `modelContext.save()` or a `TaskNotificationScheduling` call for a care task outside the writer — `TaskFormPersistence` and `TaskActionService` change models without committing, on purpose. Seeding paths, verified 2026-09-23: `OnboardingDataBuilder` inserts the cat and its starter tasks, then saves each task through the writer, so the first `save` commits them all together; `DebugDataService` commits, then calls `refreshReminders`. Two still commit tasks directly and schedule nothing, on purpose: `PreviewData` (previews must not schedule) and `AppLaunchBootstrapper.seedInitialDataIfNeeded` (runs only under `-ui-testing`, where real notifications are off, from the synchronous `App.init`). Views read the writer from `@Environment(\.careTaskWriter)`, which `CatCareCalendarApp` injects; view models and services take it in `init`. Verified 2026-09-23: `git grep -n 'NotificationManager.shared' -- CatCareCalendar/Views` prints nothing.
+- Care-task writes from views, view models, and services go through `CareTaskWriting` (`Utilities/CareTaskWriting.swift`, implemented by `CareTaskWriter`): `save`, `delete`, `complete`, `snooze`, and `refreshReminders(for:in:)` for a change outside the task, such as a cat rename or delete. Each verb commits, then awaits one full capped resync of every care-task reminder (`TaskNotificationScheduling.resyncAllCareTaskReminders()` → `NotificationResyncCoordinator.resync()`) before it returns; there is no per-task scheduling entry point, because only a pass over every task can keep the pending total at 60 of iOS's 64 slots (#80, `CareTaskReminderSelection`). App activation tops the set up through `NotificationManager.handleAppActivation()`. A failure after the commit throws `CareTaskRemindersOutOfSyncError` ("saved, reminders stale"); callers catch `CancellationError` first, then that error, then everything else ("not saved") — sort the error with `CareTaskWriteFailure` (`Utilities/CareTaskWriteFailure.swift`) instead of writing a new copy of this catch order. One exception (#7): a failed `delete` commit stays staged, because it cannot be undone; the writer drops the task's snoozes at once and watches `ModelContext.didSave`, so the later save that commits the delete runs one full resync. Do not add a `modelContext.save()` or a `TaskNotificationScheduling` call for a care task outside the writer — `TaskFormPersistence` and `TaskActionService` change models without committing, on purpose. Seeding paths, verified 2026-09-23: `OnboardingDataBuilder` inserts the cat and its starter tasks, then saves each task through the writer, so the first `save` commits them all together; `DebugDataService` commits, then calls `refreshReminders`. Two still commit tasks directly and schedule nothing, on purpose: `PreviewData` (previews must not schedule) and `AppLaunchBootstrapper.seedInitialDataIfNeeded` (runs only under `-ui-testing`, where real notifications are off, from the synchronous `App.init`). Views read the writer from `@Environment(\.careTaskWriter)`, which `CatCareCalendarApp` injects; view models and services take it in `init`. Verified 2026-09-23: `git grep -n 'NotificationManager.shared' -- CatCareCalendar/Views` prints nothing.
 - `UserNotificationCenterClient` is the injectable protocol wrapping `UNUserNotificationCenter`; tests use `FakeUserNotificationCenterClient` / `NotificationSchedulerSpy` from `CatCareCalendarTests/TestSupport/` instead of hitting the real notification center.
 
 ### SwiftData conventions
@@ -174,22 +163,9 @@ The `swift-style-guide` skill holds this guide, the extended Swift/SwiftUI style
 
 This repository contains an Xcode project written with Swift and SwiftUI. The full generic Swift/SwiftUI/SwiftData API-preference guide (Role, Core/Swift/SwiftUI/SwiftData instructions, project structure, PR instructions) has moved to the `swift-style-guide` skill (`~/.claude/skills/swift-style-guide/SKILL.md`, shared with TTB), so it no longer needs to sit in every session's context. It does **not** load on its own — it is model-invoked, and no hook names it. Invoke it from the routing table at the top of this file, the same way as the other Swift skills. It is a personal skill, so a machine without `~/.claude/skills/swift-style-guide/` does not have it; if that path is missing, say so instead of assuming the guide applied. The reconciliation notes above still apply on top of it.
 
-### xcodebuildmcp (run and UI verification)
+### Memory footprint
 
-The connected Apple-tooling MCP server for this project is **`xcodebuildmcp`**. Use it to install,
-launch, and drive the app on the simulator. Builds and tests go through `Scripts/xcb.sh`, because
-xcodebuildmcp's `build_*`/`test_*` tools bypass the machine-wide build lock: build with the script,
-then `install_app_sim` and `launch_app_sim` with the `.app` path and simulator it prints.
-**Do not** use the separate "iOS Simulator control" tool (`mcp__Claude_Code_iOS_Simulator__*`) —
-in practice its tap/gesture input fails to reach the app when Xcode is also driving a simulator
-(input-focus / dual-simulator conflict); route simulator interaction through `xcodebuildmcp` instead.
-
-First-run setup each session:
-- Call `session_show_defaults` before the first build/run/test. If `simulatorId` is unset, set it
-  with `session_set_defaults` (e.g. the booted iPhone 12 / iOS 26.5) plus `bundleId`
-  `com.berkecankizildemir.CatCareCalendar`. `screenshot`/`snapshot_ui` also require `simulatorId`.
-
-Memory/footprint checks the MCP doesn't cover: measure the running app with
+Measure the running app with
 `vmmap --summary <pid> | grep "Physical footprint"` (find the pid via
 `pgrep -f "CatCareCalendar.app/CatCareCalendar"`).
 
@@ -225,8 +201,19 @@ TTB is the other iOS project on this machine. It shares the same hook script; th
 repo's `CLAUDE.md` holds its own version reconciliation. The two repos cannot contaminate each other: `.claude/skills/` loads only for its own repo, and
 only `~/.claude/skills` is shared.
 
-`CODING_STANDARDS.md` points review agents (for example `mattpocock-skills:code-review`, whose
+`CODING_STANDARDS.md` points review agents (for example `code-review`, whose
 standards agent reads that file) at this file's conventions and the Swift skills.
+
+### Matt Pocock skills
+
+Matt Pocock's 27 skills (`implement`, `code-review`, `tdd`, `grilling`, …) are project skills in
+`.claude/skills/`, copied there by `npx skills` and pinned in `skills-lock.json` (2026-10-11,
+v1.3.1). Call them by bare name: `/implement`, not `/mattpocock-skills:implement`. The old
+`mattpocock-skills` plugin is turned off for this repo in `.claude/settings.json`, so each skill
+loads once. Matt's `code-review` replaces the built-in `/code-review` in this repo, and
+`implement` calls it by that name. Update with `npx skills@latest update -p`, then review the diff.
+Add one with `npx skills@latest add mattpocock/skills -a claude-code --copy -y -s <name> <name>`:
+names are space-separated; a comma-separated list installs nothing and prints no error.
 
 ### Issue tracker
 
@@ -238,7 +225,13 @@ The five canonical triage roles, used verbatim as label strings. All five exist 
 
 ### Domain docs
 
-Single-context — `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context — `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Coordinator and session briefs
+
+Read `docs/agents/coordinator.md` when you coordinate a batch: start implement sessions, review their
+PRs, or merge them. Start each session from `docs/agents/implement-session-prompt.md`; review each PR
+with `docs/agents/pr-review-brief.md`.
 
 ### Documentation audits
 

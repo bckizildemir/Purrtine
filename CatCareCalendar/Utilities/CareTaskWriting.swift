@@ -25,8 +25,7 @@ import SwiftData
 /// No explicit `@MainActor`: the app target sets `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, and
 /// every verb takes SwiftData models, which must stay on the actor that owns their context.
 protocol CareTaskWriting {
-    /// Inserts `task` if it is new, commits, and resyncs the reminders. Covers create, edit, and
-    /// duplicate.
+    /// Inserts `task` if it is new, commits, and resyncs the reminders. Covers create and edit.
     func save(_ task: CareTask, in context: ModelContext) async throws
 
     /// Deletes `task`, commits, and resyncs the reminders, which drops the task's. A failed commit

@@ -20,7 +20,8 @@ final class NotificationSchedulerSpy: TaskNotificationScheduling {
     var resyncError: StubError?
     /// Makes the resync throw `CancellationError`, as a cancelled resync pass does.
     var isResyncCancelled = false
-    var snoozeError: StubError?
+    /// Any error, so a test can throw what the real scheduler throws (`NotificationSchedulingError`).
+    var snoozeError: (any Error)?
     private var observedContainer: ModelContainer?
 
     /// Records the store's active schedules at each successful resync in `resyncedInfos`.

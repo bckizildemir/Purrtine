@@ -159,12 +159,18 @@ struct CatDeletionServiceTests {
     }
 
     /// A failed commit throws the commit error itself. Nothing was written, so no photo is deleted
-    /// and no reminder is touched; the delete stays staged for the next save (#7 behaviour).
-    @Test
-    func commitFailureThrowsTheCommitErrorAndTouchesNothingElse() async throws {
+    /// and no reminder is touched; the delete stays staged for the next save, not rolled back
+    /// (#7 behaviour).
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/31", id: 31))
+    func commitFailureThrowsTheCommitErrorAndLeavesTheDeleteStaged() async throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
-        let (cat, _) = try insertCatWithTask(in: context)
+        let (cat, sharedTask) = try insertCatWithTask(in: context)
+        let remainingCat = Cat(name: "Luna")
+        context.insert(remainingCat)
+        sharedTask.assignedCats.append(remainingCat)
+        try context.save()
+        let catModelId = cat.persistentModelID
         let writer = CareTaskWriterSpy()
         var deletedPhotos: [String] = []
         let sut = CatDeletionService(
@@ -179,13 +185,154 @@ struct CatDeletionServiceTests {
 
         #expect(deletedPhotos.isEmpty)
         #expect(writer.refreshedTaskIds.isEmpty)
+        // Staged, not rolled back: the cat is still deleted in the context, and the shared task,
+        // which survives, no longer lists it.
+        #expect(context.hasChanges)
+        #expect(context.deletedModelsArray.contains { $0.persistentModelID == catModelId })
+        #expect(try context.fetch(FetchDescriptor<Cat>()).map(\.name) == ["Luna"])
+        #expect(sharedTask.isDeleted == false)
+        #expect(sharedTask.assignedCats.map(\.name) == ["Luna"])
+        // Lands the delete, so the watch it armed stops observing before the test ends.
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+    }
+
+    // MARK: - Landed deletes
+
+    /// A failed delete stays staged, so some later save commits it. That save, whoever makes it, must
+    /// delete the cat's photos and bring the reminders in line, the way a landed task delete does (#7).
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func theSaveThatLandsAFailedCatDeleteDeletesItsPhotosAndResyncsOnce() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, _) = try insertCatWithTask(in: context, photoURLs: ["mochi-1.jpg", "mochi-2.jpg"])
+        let spy = NotificationSchedulerSpy()
+        spy.observe(container)
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(cat, from: context)
+
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+
+        #expect(deletedPhotos == ["mochi-1.jpg", "mochi-2.jpg"])
+        #expect(spy.resyncAttemptCount == 1)
+        #expect(spy.lastResyncedInfos.isEmpty)
+        #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
+        #expect(try context.fetch(FetchDescriptor<CareTask>()).isEmpty)
+    }
+
+    /// A save notification that names no staged cat — such as one from a save that did not commit
+    /// the delete — leaves the photos and the reminders alone.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func aSaveThatDoesNotLandTheCatDeleteDeletesNothingAndDoesNotResync() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, _) = try insertCatWithTask(in: context)
+        let spy = NotificationSchedulerSpy()
+        spy.observe(container)
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(cat, from: context)
+
+        NotificationCenter.default.post(name: ModelContext.didSave, object: context)
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+
+        #expect(deletedPhotos.isEmpty)
+        #expect(spy.resyncAttemptCount == 0)
+        // Lands the delete, so the watch stops observing before the test ends.
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+        #expect(deletedPhotos == ["mochi.jpg"])
+        #expect(spy.resyncAttemptCount == 1)
+    }
+
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func aSaveAfterTheFailedCatDeleteLandedDoesNothingMore() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (cat, _) = try insertCatWithTask(in: context)
+        let otherCat = Cat(name: "Luna")
+        context.insert(otherCat)
+        try context.save()
+        let spy = NotificationSchedulerSpy()
+        spy.observe(container)
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(cat, from: context)
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+
+        otherCat.name = "Miso"
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+
+        #expect(deletedPhotos == ["mochi.jpg"])
+        #expect(spy.resyncAttemptCount == 1)
+    }
+
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func oneSaveThatLandsTwoFailedCatDeletesResyncsOnceAndDeletesBothCatsPhotos() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let (mochi, _) = try insertCatWithTask(in: context)
+        let (luna, _) = try insertCatWithTask(in: context, name: "Luna", photoURLs: ["luna.jpg"])
+        let spy = NotificationSchedulerSpy()
+        spy.observe(container)
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(mochi, from: context)
+        _ = try? await sut.delete(luna, from: context)
+
+        try context.save()
+        await CatDeletionService.pendingFollowUp(in: context)?.value
+
+        #expect(deletedPhotos.sorted() == ["luna.jpg", "mochi.jpg"])
+        #expect(spy.resyncAttemptCount == 1)
+        #expect(try context.fetch(FetchDescriptor<Cat>()).isEmpty)
+    }
+
+    /// A cat that was never committed has no delete to land: no later save posts its identifier,
+    /// so a watch for it would observe until the process ends.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/25", id: 25))
+    func aFailedDeleteOfANeverSavedCatLeavesNothingToWatch() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let cat = Cat(name: "Mochi", photoURLs: ["mochi.jpg"])
+        context.insert(cat)
+        let spy = NotificationSchedulerSpy()
+        var deletedPhotos: [String] = []
+        let sut = failingService(scheduler: spy, deletePhoto: { deletedPhotos.append($0) })
+        _ = try? await sut.delete(cat, from: context)
+
+        try context.save()
+
+        #expect(CatDeletionService.pendingFollowUp(in: context) == nil)
+        #expect(deletedPhotos.isEmpty)
+        #expect(spy.resyncAttemptCount == 0)
     }
 
     // MARK: - Helpers
 
-    private func insertCatWithTask(in context: ModelContext) throws -> (Cat, CareTask) {
-        let cat = Cat(name: "Mochi", photoURLs: ["mochi.jpg"])
-        let task = CareTask(title: "Brush Mochi", category: .grooming)
+    /// A service whose own commit always fails, so its delete stays staged for a later plain save.
+    private func failingService(
+        scheduler: NotificationSchedulerSpy,
+        deletePhoto: @escaping (String) -> Void
+    ) -> CatDeletionService {
+        CatDeletionService(
+            taskWriter: CareTaskWriter(scheduler: scheduler),
+            deletePhoto: deletePhoto,
+            saveContext: { _ in throw CommitFailure() }
+        )
+    }
+
+    private func insertCatWithTask(
+        in context: ModelContext,
+        name: String = "Mochi",
+        photoURLs: [String] = ["mochi.jpg"]
+    ) throws -> (Cat, CareTask) {
+        let cat = Cat(name: name, photoURLs: photoURLs)
+        let task = CareTask(title: "Brush \(name)", category: .grooming)
         task.assignedCats = [cat]
         context.insert(cat)
         context.insert(task)

@@ -195,6 +195,48 @@ struct TaskAssistantViewModelTests {
         #expect(sut.messages.last?.text == TaskActionError.caregiverUnavailable.localizedDescription)
     }
 
+    /// With notifications off, the snooze cannot be scheduled. The chat says so in the caregiver's
+    /// language and offers the way to fix it: the app's page in the Settings app.
+    @Test
+    func postponeWithNotificationsOffReportsLocalizedFailureThatOffersSettings() async throws {
+        let fixture = try makeFixture()
+        let spy = NotificationSchedulerSpy()
+        spy.snoozeError = NotificationSchedulingError.unauthorized
+        let sut = TaskAssistantViewModel(taskWriter: CareTaskWriter(scheduler: spy))
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Postpone?",
+            action: .postpone(task: fixture.task, minutes: 30)
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.container.mainContext)
+
+        let message = try #require(sut.messages.last)
+        #expect(message.style == .failure)
+        #expect(message.text == String(localized: .errorNotificationSchedulingUnauthorized))
+        #expect(message.offersOpenSettings)
+    }
+
+    /// Settings cannot fix any other snooze failure, so its bubble offers no button.
+    @Test
+    func postponeWithOtherFailureDoesNotOfferSettings() async throws {
+        let fixture = try makeFixture()
+        let spy = NotificationSchedulerSpy()
+        spy.snoozeError = NotificationSchedulerSpy.StubError.forcedFailure
+        let sut = TaskAssistantViewModel(taskWriter: CareTaskWriter(scheduler: spy))
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Postpone?",
+            action: .postpone(task: fixture.task, minutes: 30)
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.container.mainContext)
+
+        let message = try #require(sut.messages.last)
+        #expect(message.style == .failure)
+        #expect(message.offersOpenSettings == false)
+    }
+
     /// The completion sheet stays open on a failed save, so the request must survive and the sheet
     /// must learn that nothing was saved.
     @Test
@@ -323,6 +365,35 @@ struct TaskAssistantViewModelTests {
 
         #expect(fixture.task.completions.isEmpty)
         #expect(try folder.storedFileNames().isEmpty)
+    }
+
+    /// A detailed completion that committed keeps its photos, whether the writer then reports stale
+    /// reminders or a cancellation.
+    @Test(arguments: [
+        CancellationError() as any Error,
+        CareTaskRemindersOutOfSyncError(taskIds: [], underlyingError: CocoaError(.featureUnsupported))
+    ])
+    func committedDetailedCompletionKeepsItsPhotoFiles(completeError: any Error) async throws {
+        let fixture = try makeFixture()
+        let folder = try CareTaskPhotoFolder()
+        defer { folder.remove() }
+        let spy = CareTaskWriterSpy()
+        spy.completeError = completeError
+        let sut = TaskAssistantViewModel(taskWriter: spy, photoWriter: folder.sut)
+
+        try await sut.completeDetailedTask(
+            task: fixture.task,
+            selectedCats: [],
+            selectedCaregiver: nil,
+            notes: nil,
+            photos: [try CareTaskPhotoFolder.makeImage()],
+            completedForDate: nil,
+            in: fixture.container.mainContext
+        )
+
+        let completion = try #require(spy.completions.first)
+        #expect(try folder.storedFileNames() == Set(completion.input.photoURLs))
+        #expect(completion.input.photoURLs.count == 1)
     }
 
     @Test

@@ -42,28 +42,26 @@ nonisolated final class PhotoManager: Sendable {
             from: data,
             maxPixelSize: maxPixelSize
         ) else {
-            return UIImage(data: data)?.jpegData(compressionQuality: compressionQuality)
+            return fullDecodeJPEGData(from: data, maxPixelSize: maxPixelSize, compressionQuality: compressionQuality)
         }
         return UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality)
     }
 
-    static func downsampledJPEGData(
-        from image: UIImage,
+    /// The fallback for data ImageIO cannot downsample but `UIImage` can decode: the image is decoded
+    /// at full size, then capped at `maxPixelSize` and encoded upright, so it is never stored larger
+    /// than the downsample path would store it. `nil` when the data cannot be decoded.
+    static func fullDecodeJPEGData(
+        from data: Data,
         maxPixelSize: Int,
         compressionQuality: CGFloat = saveCompressionQuality
     ) -> Data? {
-        guard let data = image.jpegData(compressionQuality: 1.0) else { return nil }
-        return downsampledJPEGData(
-            from: data,
-            maxPixelSize: maxPixelSize,
-            compressionQuality: compressionQuality
-        )
+        guard let image = UIImage(data: data) else { return nil }
+        return renderedJPEGData(from: image, maxPixelSize: maxPixelSize, compressionQuality: compressionQuality)
     }
 
-    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once, where
-    /// `downsampledJPEGData(from: UIImage)` encodes, decodes and encodes again. The drawing applies
-    /// the image orientation, so the JPEG is upright. `nil` when the image has no pixels or cannot be
-    /// encoded.
+    /// Scales `image` down to `maxPixelSize` on its longest edge and encodes it once. The drawing
+    /// applies the image orientation, so the JPEG is upright. The canvas is opaque, so a transparent
+    /// area comes out black. `nil` when the image has no pixels or cannot be encoded.
     static func renderedJPEGData(
         from image: UIImage,
         maxPixelSize: Int,
@@ -88,10 +86,16 @@ nonisolated final class PhotoManager: Sendable {
         return resized.jpegData(compressionQuality: compressionQuality)
     }
 
-    /// Whether `data` is already what `preparedJPEGData` makes: one complete, upright JPEG image no
+    /// Whether `data` looks like what `preparedJPEGData` makes: one complete, upright JPEG image no
     /// larger than `maxPixelSize` on its longest edge, with no location data. Reads the header only;
-    /// nothing is decoded.
+    /// nothing is decoded. A sanity check for `.prepared` data, not a reason to skip the re-encode:
+    /// other metadata (EXIF, IPTC, XMP) can still be in a JPEG that passes it.
     static func isPreparedJPEG(_ data: Data, maxPixelSize: Int) -> Bool {
+        preparedJPEGCheckFailure(data, maxPixelSize: maxPixelSize) == nil
+    }
+
+    /// The first check of `isPreparedJPEG` that `data` fails, or `nil` when it passes them all.
+    static func preparedJPEGCheckFailure(_ data: Data, maxPixelSize: Int) -> PreparedJPEGCheckFailure? {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
               CGImageSourceGetType(source) as String? == UTType.jpeg.identifier,
@@ -99,13 +103,21 @@ nonisolated final class PhotoManager: Sendable {
               CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int,
-              let height = properties[kCGImagePropertyPixelHeight] as? Int else {
-            return false
+              let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              width > 0, height > 0 else {
+            return .notASingleCompleteJPEG
+        }
+        guard max(width, height) <= maxPixelSize else {
+            return .tooLarge(width: width, height: height)
         }
         let orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
-        let hasLocation = properties[kCGImagePropertyGPSDictionary] != nil
-        return width > 0 && height > 0 && max(width, height) <= maxPixelSize
-            && orientation == 1 && hasLocation == false
+        guard orientation == 1 else {
+            return .notUpright(orientation: orientation)
+        }
+        guard properties[kCGImagePropertyGPSDictionary] == nil else {
+            return .hasLocation
+        }
+        return nil
     }
 
     /// Downsamples a picked photo off the caller's actor, to the size `savePhoto` stores, so that
@@ -157,13 +169,10 @@ nonisolated final class PhotoManager: Sendable {
 
     // MARK: - Photo Saving
 
-    /// Writes `data` as a JPEG and returns the stored file name. Data that `preparedJPEGData`
-    /// already made is written as it is; anything else is downsampled first. Every failure is
-    /// logged here, so a caller only decides what the caregiver sees.
+    /// Downsamples and re-encodes `data` as a JPEG, writes it and returns the stored file name. The
+    /// re-encode drops the source metadata. Every failure is logged here, so a caller only decides
+    /// what the caregiver sees.
     func savePhoto(_ data: Data, for catId: UUID) throws -> String {
-        if PhotoManager.isPreparedJPEG(data, maxPixelSize: PhotoManager.photoMaxPixelSize) {
-            return try writeJPEG(data, for: catId)
-        }
         guard let jpeg = PhotoManager.downsampledJPEGData(
             from: data,
             maxPixelSize: PhotoManager.photoMaxPixelSize
@@ -172,6 +181,16 @@ nonisolated final class PhotoManager: Sendable {
             throw PhotoSaveError.unreadableImage
         }
         return try writeJPEG(jpeg, for: catId)
+    }
+
+    /// Writes data that `preparedJPEGData` made as it is, without a second decode and encode. Data
+    /// that does not look prepared is re-encoded as `savePhoto` does.
+    func savePreparedPhoto(_ data: Data, for catId: UUID) throws -> String {
+        if let failure = PhotoManager.preparedJPEGCheckFailure(data, maxPixelSize: PhotoManager.photoMaxPixelSize) {
+            Self.logger.error("Prepared photo does not look prepared (\(failure, privacy: .public)); it is re-encoded")
+            return try savePhoto(data, for: catId)
+        }
+        return try writeJPEG(data, for: catId)
     }
 
     func saveUIImage(_ image: UIImage, for catId: UUID) throws -> String {
@@ -190,6 +209,8 @@ nonisolated final class PhotoManager: Sendable {
     @concurrent
     func save(_ photo: PendingCatPhoto, for catId: UUID) async throws -> String {
         switch photo {
+        case .prepared(let data):
+            try savePreparedPhoto(data, for: catId)
         case .data(let data):
             try savePhoto(data, for: catId)
         case .image(let image):

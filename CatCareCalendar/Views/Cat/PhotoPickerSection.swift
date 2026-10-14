@@ -3,6 +3,7 @@ import SwiftData
 
 /// Photo picker section component for cat forms.
 /// Displays photo circle, placeholder, and add photo button.
+/// Tapping the photo opens a menu of photo sources: camera, photo library, and remove.
 struct PhotoPickerSection: View {
     @Binding var formData: CatFormData
     @Binding var hasChangedPhoto: Bool
@@ -11,16 +12,37 @@ struct PhotoPickerSection: View {
     var existingCat: Cat?
     /// Loads the current photo-library pick again, after a failed load.
     let onRetryPhotoLoad: () -> Void
+    /// Asks for camera permission, then opens the camera.
+    let onTakePhoto: () -> Void
+    /// Clears the photo the form shows.
+    let onRemovePhoto: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            Button(action: { formData.showingPhotoOptions = true }) {
+            Menu {
+                if CameraPermissionHelper.isCameraAvailable {
+                    Button(String(localized: .catAddCamera), systemImage: "camera", action: onTakePhoto)
+                }
+                Button(String(localized: .catAddPhotoLibrary), systemImage: "photo.on.rectangle") {
+                    formData.isShowingPhotoLibrary = true
+                }
+                if hasAnyPhoto {
+                    Button(
+                        String(localized: .catAddRemovePhoto),
+                        systemImage: "trash",
+                        role: .destructive,
+                        action: onRemovePhoto
+                    )
+                }
+            } label: {
                 VStack(spacing: 12) {
                     photoCircle
                     addPhotoLabel
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text(hasAnyPhoto ? .catAddPhotoEdit : .catAddPhotoAdd))
+            .accessibilityIdentifier("catForm.photoMenu")
 
             if let problem = formData.photoProblem {
                 CatPhotoProblemMessage(
@@ -36,7 +58,16 @@ struct PhotoPickerSection: View {
     private func chooseAnotherPhoto() {
         formData.photoProblem = nil
         formData.selectedPhoto = nil
-        formData.showingPhotoOptions = true
+        formData.isShowingPhotoLibrary = true
+    }
+
+    /// A removed photo stops counting at once, before Save deletes the stored file.
+    private var hasAnyPhoto: Bool {
+        formData.hasPhoto || hasStoredPhoto
+    }
+
+    private var hasStoredPhoto: Bool {
+        !hasChangedPhoto && existingCat?.hasPhoto == true
     }
 
     // MARK: - Photo Circle
@@ -48,7 +79,7 @@ struct PhotoPickerSection: View {
                 .frame(width: 140, height: 140)
 
             // Display photo based on priority: captured > selected > existing
-            if let photoData = formData.photoData,
+            if let photoData = formData.preparedPhotoData,
                let uiImage = UIImage(data: photoData) {
                 Image(uiImage: uiImage)
                     .resizable()
@@ -61,7 +92,7 @@ struct PhotoPickerSection: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 140, height: 140)
                     .clipShape(Circle())
-            } else if let cat = existingCat, cat.hasPhoto {
+            } else if let cat = existingCat, hasStoredPhoto {
                 DownsampledImage(url: photoURL(for: cat), targetPointSize: 140) {
                     defaultPhotoPlaceholder
                 }
@@ -72,7 +103,7 @@ struct PhotoPickerSection: View {
             }
 
             // Edit indicator (show if any photo exists)
-            if formData.hasPhoto || (existingCat?.hasPhoto ?? false) {
+            if hasAnyPhoto {
                 editIndicator
             }
 
@@ -154,7 +185,7 @@ struct PhotoPickerSection: View {
     // MARK: - Add Photo Label
     @ViewBuilder
     private var addPhotoLabel: some View {
-        Text(formData.hasPhoto || (existingCat?.hasPhoto ?? false) ? .catAddPhotoEdit : .catAddPhotoAdd)
+        Text(hasAnyPhoto ? .catAddPhotoEdit : .catAddPhotoAdd)
             .font(.headline)
             .foregroundStyle(.primary)
             .padding(.vertical, 8)

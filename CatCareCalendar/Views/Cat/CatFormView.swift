@@ -10,6 +10,7 @@ struct CatFormView: View {
     let onDelete: (() -> Void)?
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(\.haptics) private var haptics
     @Environment(\.careTaskWriter) private var careTaskWriter
     @Environment(\.reportCatDeletionFailure) private var reportCatDeletionFailure
@@ -18,7 +19,7 @@ struct CatFormView: View {
     @State private var formData: CatFormData
     @State private var hasChangedPhoto = false
     @State private var showingDeleteConfirmation = false
-    @State private var deletionFailureToReport: CatDeletionFailure?
+    @State private var deletionFailureHandoff = CatDeletionFailureHandoff()
 
     // MARK: - Focus State
     @FocusState private var focusedField: CatFormData.Field?
@@ -153,9 +154,7 @@ struct CatFormView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .sheet(isPresented: $formData.showingPhotoOptions) {
-            photoOptionsSheet
-        }
+        .photosPicker(isPresented: $formData.isShowingPhotoLibrary, selection: $formData.selectedPhoto, matching: .images)
         .alert(String(localized: .catEditDeleteConfirmationTitle), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: .actionCancel), role: .cancel) { }
             Button(String(localized: .actionDelete), role: .destructive) {
@@ -174,9 +173,7 @@ struct CatFormView: View {
         }
         .alert(String(localized: .catAddCameraPermissionTitle), isPresented: $formData.showingCameraPermissionAlert) {
             Button(String(localized: .catAddSettings)) {
-                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(settingsURL)
-                }
+                openURL.openAppSettings()
             }
             Button(String(localized: .actionCancel), role: .cancel) { }
         } message: {
@@ -194,18 +191,18 @@ struct CatFormView: View {
         } message: {
             Text(.catPhotoNotSavedMessage)
         }
+        .onAppear {
+            deletionFailureHandoff.screenDidAppear()
+        }
         .onDisappear {
-            if let deletionFailureToReport {
-                reportCatDeletionFailure(deletionFailureToReport)
-                self.deletionFailureToReport = nil
-            }
+            deletionFailureHandoff.screenDidLeave()
         }
         .onChange(of: formData.selectedPhoto) { _, newValue in
             loadSelectedPhoto(newValue)
         }
         .onChange(of: formData.capturedImage) { _, newValue in
             if newValue != nil {
-                formData.photoData = nil // Clear photo data when camera image is captured
+                formData.preparedPhotoData = nil // Clear the picked photo when camera image is captured
                 discardPhotoPick()
                 hasChangedPhoto = true
             }
@@ -226,7 +223,9 @@ struct CatFormView: View {
                     formData: $formData,
                     hasChangedPhoto: $hasChangedPhoto,
                     existingCat: existingCat,
-                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) }
+                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) },
+                    onTakePhoto: openCamera,
+                    onRemovePhoto: removePhoto
                 )
 
                 // Essential Fields
@@ -304,144 +303,14 @@ struct CatFormView: View {
         .padding(.top, 20)
     }
 
-    // MARK: - Photo Options Sheet
-    @ViewBuilder
-    private var photoOptionsSheet: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                if case .onboarding = mode {
-                    if #available(iOS 26, *) {
-                        GlassEffectContainer(spacing: 12) {
-                            onboardingPhotoActions
-                        }
-                    } else {
-                        onboardingPhotoActions
-                    }
-                } else {
-                    Text(.catAddPhotoSelect)
-                        .font(.headline)
-                        .padding(.top)
-
-                    VStack(spacing: 16) {
-                        // Photo Library
-                        PhotosPicker(selection: $formData.selectedPhoto, matching: .images) {
-                            Label(String(localized: .catAddPhotoGallery), systemImage: "photo.on.rectangle")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(.blue.opacity(0.1))
-                                .foregroundStyle(.blue)
-                                .cornerRadius(12)
-                        }
-                        .buttonStyle(.plain)
-                        .onChange(of: formData.selectedPhoto) { _, _ in
-                            formData.showingPhotoOptions = false
-                        }
-
-                        // Camera
-                        cameraButton
-
-                    // Remove Photo (if exists)
-                    if formData.hasPhoto || (existingCat?.hasPhoto ?? false) {
-                        removePhotoButton
-                    }
-                    }
-                    .padding()
-                }
-
-                if case .onboarding = mode {
-                    Spacer(minLength: 0)
-                } else {
-                    Spacer()
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    SheetDismissButton {
-                        formData.showingPhotoOptions = false
-                    }
-                }
-            }
-        }
-        .presentationDetents(photoOptionsSheetDetents)
-    }
-
-    private var onboardingPhotoActions: some View {
-        HStack(spacing: 12) {
-            cameraButton
-            photoPickerButton
-        }
-        .padding(.horizontal)
-    }
-
-    private var photoOptionsSheetDetents: Set<PresentationDetent> {
-        if case .onboarding = mode {
-            return [.height(230)]
-        }
-        return [.medium]
-    }
-
-    @ViewBuilder
-    private var cameraButton: some View {
-        Button(action: {
-            formData.showingPhotoOptions = false
-            openCamera()
-        }) {
-            if case .onboarding = mode {
-                OnboardingPhotoActionLabel(
-                    title: String(localized: .catAddCamera),
-                    systemImage: "camera.fill",
-                    tint: .green
-                )
-                .tintedActionChip(tint: .green)
-            } else {
-                Label(String(localized: .catAddCamera), systemImage: "camera")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.green.opacity(0.1))
-                    .foregroundStyle(.green)
-                    .cornerRadius(12)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(!CameraPermissionHelper.isCameraAvailable)
-    }
-
-    @ViewBuilder
-    private var photoPickerButton: some View {
-        PhotosPicker(selection: $formData.selectedPhoto, matching: .images) {
-            OnboardingPhotoActionLabel(
-                title: String(localized: .catAddPhotoGallery),
-                systemImage: "photo.fill",
-                tint: .blue
-            )
-        }
-        .buttonStyle(.plain)
-        .tintedActionChip(tint: .blue)
-        .onChange(of: formData.selectedPhoto) { _, _ in
-            formData.showingPhotoOptions = false
-        }
-    }
-
-    @ViewBuilder
-    private var removePhotoButton: some View {
-        Button(action: {
-            formData.photoData = nil
-            formData.capturedImage = nil
-            discardPhotoPick()
-            hasChangedPhoto = true
-            formData.showingPhotoOptions = false
-        }) {
-            Label(String(localized: .catAddRemovePhoto), systemImage: "trash")
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(.red.opacity(0.1))
-                .foregroundStyle(.red)
-                .cornerRadius(12)
-        }
-    }
-
     // MARK: - Actions
+    private func removePhoto() {
+        formData.preparedPhotoData = nil
+        formData.capturedImage = nil
+        discardPhotoPick()
+        hasChangedPhoto = true
+    }
+
     /// Forgets the photo-library pick, so a load still running for it is dropped when it ends
     /// instead of overwriting the photo the caregiver chose since.
     private func discardPhotoPick() {
@@ -467,9 +336,8 @@ struct CatFormView: View {
 
             switch outcome {
             case .ready(let data):
-                formData.photoData = data
+                formData.preparedPhotoData = data
                 formData.capturedImage = nil // Clear captured image when gallery photo is selected
-                formData.showingPhotoOptions = false
                 hasChangedPhoto = true
             case .loadFailed:
                 formData.photoProblem = .loadFailed
@@ -499,11 +367,8 @@ struct CatFormView: View {
         case .onboarding(let onContinue, _):
             // Save to onboarding manager
             OnboardingManager.shared.tempCatData.name = formData.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let photoData = formData.photoData {
-                OnboardingManager.shared.tempCatData.photoData = photoData
-            } else if let capturedImage = formData.capturedImage {
-                OnboardingManager.shared.tempCatData.photoData = capturedImage.jpegData(compressionQuality: 0.8)
-            }
+            // Kept as it is: a camera photo is encoded once, off the main actor, when onboarding saves.
+            OnboardingManager.shared.tempCatData.photo = formData.pendingPhoto
             onContinue()
 
         case .add:
@@ -563,38 +428,27 @@ struct CatFormView: View {
     }
 
     /// A failed delete still closes the form: the cat is gone either way (#19). The failure goes
-    /// to `CatsTabView`, which outlives this sheet and shows the note, from `onDisappear`: UIKit
-    /// refuses to present the alert while this sheet is still on screen.
+    /// to `CatsTabView`, which outlives this sheet and shows the note, once this sheet has left:
+    /// UIKit refuses to present the alert while the sheet is still on screen. Opened from a cat card,
+    /// the sheet can leave before the delete finishes, because the card leaves with the cat (#31).
     private func deleteCat() {
         guard case .edit(let cat) = mode else { return }
         let catName = cat.name
+        let deletionFailureHandoff = deletionFailureHandoff
+        let reportCatDeletionFailure = reportCatDeletionFailure
         Task {
-            do {
+            let failure = await deletionFailureHandoff.runDelete(
+                ofCatNamed: catName,
+                reporting: reportCatDeletionFailure
+            ) {
                 try await CatDeletionService(taskWriter: careTaskWriter).delete(cat, from: modelContext)
-            } catch {
-                if let failure = CatDeletionFailure(error: error, catName: catName) {
-                    haptics.notify(.error)
-                    deletionFailureToReport = failure
-                }
+            }
+            if failure != nil {
+                haptics.notify(.error)
             }
             onDelete?()
             dismiss()
         }
-    }
-}
-
-private struct OnboardingPhotoActionLabel: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline)
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity, minHeight: 84)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
     }
 }
 

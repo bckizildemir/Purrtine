@@ -535,7 +535,8 @@ final class TaskAssistantViewModel {
                     TaskAssistantMessage(
                         role: .assistant,
                         text: error.localizedDescription,
-                        style: .failure
+                        style: .failure,
+                        offersOpenSettings: error as? NotificationSchedulingError == .unauthorized
                     )
                 )
             }

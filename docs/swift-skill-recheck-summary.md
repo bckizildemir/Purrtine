@@ -186,8 +186,8 @@ This claim covers the five-file pass only. It does **not** extend to the branch-
 below — see "Verification of the fix commits". No test was changed and
 no test was added across the whole pass — every fix was either behaviour-preserving or covered a path
 no test reached. `CatCareCalendarUITests` exercises `TaskEditView` (`taskEdit.titleField`,
-`taskEdit.saveButton`, `taskEdit.caregiverButton`) and was **not** run for file 5; the CI-parity dual
-destination run stays on the `xcodebuild` CLI with `-disable-concurrent-destination-testing`.
+`taskEdit.saveButton`, `taskEdit.caregiverButton`) and was **not** run for file 5; the dual-simulator
+UI test run stays on the `xcodebuild` CLI with `-disable-concurrent-destination-testing`.
 
 ## Notes on the skill setup
 
@@ -266,5 +266,5 @@ xcodebuild -scheme CatCareCalendar \
 - App target build: **BUILD SUCCEEDED** (compile-only, generic iOS Simulator destination).
 - Unit tests: **296 tests in 41 suites passed, 0 failed, 0 skipped** — `TEST SUCCEEDED`.
 
-`CatCareCalendarUITests` was still not run; the CI-parity dual-destination run stays on the
+`CatCareCalendarUITests` was still not run; the dual-simulator UI test run stays on the
 `xcodebuild` CLI with `-disable-concurrent-destination-testing`.

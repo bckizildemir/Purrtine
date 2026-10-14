@@ -32,6 +32,23 @@ struct OnboardingManagerTests {
         #expect(suite.bool(forKey: "hasCompletedOnboarding") == true)
     }
 
+    /// The manager lives for the whole session; it must not keep a full-size camera image after
+    /// onboarding is over.
+    @Test
+    func completingOnboardingDropsThePendingPhotoAndKeepsTheOtherAnswers() throws {
+        let suiteName = suiteName()
+        let suite = try #require(UserDefaults(suiteName: suiteName))
+        defer { suite.removePersistentDomain(forName: suiteName) }
+        let sut = OnboardingManager(userDefaults: suite)
+        sut.tempCatData.name = "Mochi"
+        sut.tempCatData.photo = .prepared(Data())
+
+        sut.completeOnboarding()
+
+        #expect(sut.tempCatData.photo == nil)
+        #expect(sut.tempCatData.name == "Mochi")
+    }
+
     @Test
     func resetOnboardingClearsProgressAndTemporaryState() throws {
         let suiteName = suiteName()

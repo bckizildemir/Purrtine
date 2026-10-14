@@ -7,7 +7,8 @@ import os
 /// later. Every failure is logged; the form decides what the caregiver sees.
 enum CatPhotoIntake {
     enum Outcome: Equatable {
-        /// A downsampled JPEG, ready to show and to save.
+        /// The JPEG that `PhotoManager.preparedJPEGData` made, ready to show and to save as
+        /// `PendingCatPhoto.prepared`.
         case ready(Data)
         /// The photo did not load, for example an iCloud-only photo while the phone is offline.
         case loadFailed

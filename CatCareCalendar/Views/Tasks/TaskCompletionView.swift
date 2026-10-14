@@ -33,6 +33,7 @@ struct TaskCompletionView: View {
     private static let maxPhotoCount = 5
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     /// Serialized form state used to detect unsaved edits against the snapshot
     /// taken after the initial preselection.
@@ -99,7 +100,7 @@ struct TaskCompletionView: View {
             initialSnapshot = currentSnapshot
         }
         .confirmationDialog(String(localized: .catAddPhotoSelect), isPresented: $showingPhotoSourceDialog, titleVisibility: .visible) {
-            Button(String(localized: .catAddPhotoGallery)) {
+            Button(String(localized: .catAddPhotoLibrary)) {
                 showingLibraryPicker = true
             }
             if CameraPermissionHelper.isCameraAvailable {
@@ -136,9 +137,7 @@ struct TaskCompletionView: View {
         }
         .alert(String(localized: .catAddCameraPermissionTitle), isPresented: $showingCameraPermissionAlert) {
             Button(String(localized: .catAddSettings)) {
-                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(settingsURL)
-                }
+                openURL.openAppSettings()
             }
             Button(String(localized: .actionCancel), role: .cancel) {}
         } message: {

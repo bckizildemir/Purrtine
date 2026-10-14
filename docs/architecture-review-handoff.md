@@ -79,10 +79,10 @@ zero.
 - **`docs/adr/` does not exist.** No ADRs constrain any of this. If a candidate is rejected for a
   load-bearing reason, that is the moment to create the directory and record it, so a future
   architecture review does not re-suggest the same thing.
-- **`CONTEXT.md` is thin** — three terms: *Quick Action*, *Assistant Suggestion*, *Task Assistant*. The
+- **`GLOSSARY.md` is thin** — three terms: *Quick Action*, *Assistant Suggestion*, *Task Assistant*. The
   report deliberately did **not** invent names for the unnamed concepts it found. Two are worth naming
   during design: the recurrence rule (candidate 2) and the in-flight task form state (candidate 3). Add
-  them to `CONTEXT.md` when they get named.
+  them to `GLOSSARY.md` when they get named.
 - **`CLAUDE.md` is binding and no candidate contradicts it.** Candidate 1 in particular *strengthens*
   the "all scheduling goes through `NotificationManager`" rule rather than replacing it — what moves
   behind an interface is the obligation to call it, not the scheduling itself.
@@ -91,8 +91,7 @@ zero.
 
 These are in `CLAUDE.md` but they bite hard enough to repeat.
 
-- Simulator baseline is **iPhone 12 / iOS 18.5** and **iPhone 12 / iOS 26.5**, run **sequentially**.
-  Never boot both — this is a 16GB machine.
+- Simulator baseline is **iPhone 12 / iOS 18.5** and **iPhone 12 / iOS 26.5**.
 - Prefer the `xcodebuildmcp` MCP server over raw `xcodebuild`. Call `session_show_defaults` before the
   first build. Do **not** use the `mcp__Claude_Code_iOS_Simulator__*` tools in this repo.
 - Swift Testing (`@Suite`/`@Test`/`#expect`) for unit tests; XCTest only for `CatCareCalendarUITests`.
@@ -111,10 +110,10 @@ full set is a plugin-settings change made from an interactive session.
 | --- | --- | --- |
 | `/codebase-design` | The deep-module vocabulary the report is written in — module, interface, depth, seam, adapter, leverage, locality. Read it before arguing about a candidate. | Yes |
 | `/tdd` | #12–#15 are behaviour changes with clear red tests available. Drive them test-first. | Yes |
-| `/domain-modeling` | When candidate 2 or 3 gets a name, to keep `CONTEXT.md` honest. | Yes |
+| `/domain-modeling` | When candidate 2 or 3 gets a name, to keep `GLOSSARY.md` honest. | Yes |
 | `/code-review` | Two-axis review (Standards + Spec) of the diff before committing. | Yes |
 | `/diagnosing-bugs` | If #12 or #13 reproduces differently than the static evidence predicts. | Yes |
-| `/grill-with-docs` | Would be the first step for #16–#21: sharpens a deepening into a decided design with a `CONTEXT.md` / ADR paper trail. | **No** |
+| `/grill-with-docs` | Would be the first step for #16–#21: sharpens a deepening into a decided design with a `GLOSSARY.md` / ADR paper trail. | **No** |
 | `/to-spec` | Would collapse a grilled deepening into a buildable plan. | **No** |
 | `/implement` | Would drive the per-ticket build loop. | **No** |
 

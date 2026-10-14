@@ -1,4 +1,5 @@
 import Foundation
+import os
 import PhotosUI
 import SwiftUI
 
@@ -15,6 +16,8 @@ enum CatFormMode {
 /// Unified form data structure for cat creation and editing forms.
 /// Handles all state management for name, age, gender, photos, and additional details.
 struct CatFormData {
+    private static let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "CatForm")
+
     // MARK: - Essential Fields
     var name: String = ""
     var gender: Gender = .unknown
@@ -31,9 +34,11 @@ struct CatFormData {
 
     // MARK: - Photo State
     var selectedPhoto: PhotosPickerItem?
-    var photoData: Data?
+    /// The JPEG `CatPhotoIntake` prepared from a photo-library pick. Nothing else is stored here:
+    /// `pendingPhoto` saves it as it is.
+    var preparedPhotoData: Data?
     var capturedImage: UIImage?
-    var showingPhotoOptions = false
+    var isShowingPhotoLibrary = false
     var showingCamera = false
     var showingCameraPermissionAlert = false
     /// True while a photo-library pick loads; the form cannot be saved until it ends.
@@ -84,13 +89,13 @@ extension CatFormData {
 
     /// Whether any photo is currently selected or captured
     var hasPhoto: Bool {
-        photoData != nil || capturedImage != nil
+        preparedPhotoData != nil || capturedImage != nil
     }
 
     /// The selected or captured photo, not written to disk yet.
     var pendingPhoto: PendingCatPhoto? {
-        if let photoData {
-            return .data(photoData)
+        if let preparedPhotoData {
+            return .prepared(preparedPhotoData)
         }
         if let capturedImage {
             return .image(capturedImage)
@@ -205,6 +210,19 @@ extension CatFormData {
         self.ageValue = AgeUtils.validateAge(onboardingData.age)
         self.ageText = self.ageValue.map { String($0) } ?? ""
         self.ageUnit = onboardingData.ageUnit
-        self.photoData = onboardingData.photoData
+        switch onboardingData.photo {
+        case .prepared(let data):
+            self.preparedPhotoData = data
+        case .image(let image):
+            self.capturedImage = image
+        case .data:
+            // The form only ever hands onboarding a prepared or a camera photo, and the form
+            // cannot hold plain data without passing it off as prepared. A release build drops the
+            // photo, so the log is its only trace.
+            Self.logger.error("Onboarding photo dropped: the form cannot show an unprepared photo")
+            assertionFailure("Onboarding holds an unprepared photo the form cannot show")
+        case nil:
+            break
+        }
     }
 }

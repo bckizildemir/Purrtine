@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct TaskAssistantMessageBubbleView: View {
+    @Environment(\.openURL) private var openURL
+
     let message: TaskAssistantMessage
 
     private var isFromUser: Bool { message.role == .user }
@@ -27,7 +29,8 @@ struct TaskAssistantMessageBubbleView: View {
     }
 
     private var content: some View {
-        HStack(spacing: 8) {
+        // First-line alignment keeps the failure icon beside the message, not centred on the button.
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             if message.style == .failure {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.callout)
@@ -35,9 +38,20 @@ struct TaskAssistantMessageBubbleView: View {
                     .accessibilityHidden(true)
             }
 
-            Text(message.text)
-                .font(.body)
-                .foregroundStyle(textColor)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message.text)
+                    .font(.body)
+                    .foregroundStyle(textColor)
+
+                if message.offersOpenSettings {
+                    Button(String(localized: .onboardingTaskSetupReminderRowOpenSettings)) {
+                        openURL.openAppSettings()
+                    }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .accessibilityHint(Text(.taskAssistantOpenSettingsHint))
+                }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

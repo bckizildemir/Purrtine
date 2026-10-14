@@ -40,7 +40,7 @@ struct PhotoManagerTests {
             .deletingLastPathComponent()
             .appending(path: "external-\(UUID().uuidString).jpg")
         defer { try? FileManager.default.removeItem(at: externalURL) }
-        try makeImageData().write(to: externalURL)
+        try makeImageData(width: 16, height: 16).write(to: externalURL)
         let traversalPath = fixture.directory
             .appending(path: "..")
             .appending(path: externalURL.lastPathComponent)
@@ -63,7 +63,7 @@ struct PhotoManagerTests {
             .deletingLastPathComponent()
             .appending(path: "external-\(UUID().uuidString).jpg")
         defer { try? FileManager.default.removeItem(at: externalURL) }
-        try makeImageData().write(to: externalURL)
+        try makeImageData(width: 16, height: 16).write(to: externalURL)
         let symlinkURL = fixture.directory.appending(path: "linked.jpg")
         try FileManager.default.createSymbolicLink(at: symlinkURL, withDestinationURL: externalURL)
 
@@ -81,7 +81,7 @@ struct PhotoManagerTests {
         let catId = UUID()
         let fixture = try makeFixture(makeUUID: { generatedId })
         defer { fixture.cleanup() }
-        let data = try makeImageData()
+        let data = try makeImageData(width: 16, height: 16)
 
         let stored = try fixture.sut.savePhoto(data, for: catId)
         let expected = "cat_\(catId.uuidString)_\(generatedId.uuidString).jpg"
@@ -122,7 +122,7 @@ struct PhotoManagerTests {
         let sut = PhotoManager(photosDirectory: blocker)
 
         let error = try #require(throws: PhotoSaveError.self) {
-            try sut.savePhoto(try makeImageData(), for: UUID())
+            try sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
         }
 
         guard case .writeFailed = error else {
@@ -140,7 +140,7 @@ struct PhotoManagerTests {
         defer { try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.directory.path) }
 
         let error = try #require(throws: PhotoSaveError.self) {
-            try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+            try fixture.sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
         }
 
         guard case .writeFailed = error else {
@@ -155,7 +155,7 @@ struct PhotoManagerTests {
         defer { fixture.cleanup() }
         try FileManager.default.removeItem(at: fixture.directory)
 
-        let stored = try fixture.sut.savePhoto(try makeImageData(), for: UUID())
+        let stored = try fixture.sut.savePhoto(try makeImageData(width: 16, height: 16), for: UUID())
 
         #expect(fixture.sut.getPhotoURL(from: stored) != nil)
     }
@@ -181,10 +181,39 @@ struct PhotoManagerTests {
         // Noise, not a flat colour: a flat image can come out of a second encode byte for byte.
         let prepared = try #require(await PhotoManager.preparedJPEGData(from: try makeNoiseImageData()))
 
-        let stored = try fixture.sut.savePhoto(prepared, for: UUID())
+        let stored = try await fixture.sut.save(.prepared(prepared), for: UUID())
 
         let url = try #require(fixture.sut.getPhotoURL(from: stored))
         #expect(try Data(contentsOf: url) == prepared)
+    }
+
+    /// Only data the app prepared itself is written as it is. Plain data that only looks prepared
+    /// (small, upright, one JPEG image, no location) is re-encoded, which drops its EXIF, IPTC and
+    /// XMP metadata.
+    @Test
+    func plainJPEGDataWithMetadataIsReEncodedWithoutIt() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let jpeg = try makeJPEGWithMetadata()
+        let source = try #require(CGImageSourceCreateWithData(jpeg as CFData, nil))
+        let sourceProperties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        let sourceExif = try #require(sourceProperties[kCGImagePropertyExifDictionary] as? [CFString: Any])
+        let sourceIPTC = try #require(sourceProperties[kCGImagePropertyIPTCDictionary] as? [CFString: Any])
+        try #require(sourceExif[kCGImagePropertyExifLensMake] as? String == "Test Lens Maker")
+        try #require(sourceIPTC[kCGImagePropertyIPTCCity] as? String == "Istanbul")
+        try #require(xmpTagValue(of: source) == "Purrtine Test")
+        try #require(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: PhotoManager.photoMaxPixelSize))
+
+        let stored = try fixture.sut.savePhoto(jpeg, for: UUID())
+
+        let url = try #require(fixture.sut.getPhotoURL(from: stored))
+        let saved = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(saved, 0, nil) as? [CFString: Any])
+        let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
+        #expect(exif[kCGImagePropertyExifLensMake] == nil)
+        #expect(exif[kCGImagePropertyExifUserComment] == nil)
+        #expect(properties[kCGImagePropertyIPTCDictionary] == nil)
+        #expect(xmpTagValue(of: saved) == nil)
     }
 
     /// Onboarding can hand over a full-size camera JPEG; it must still be capped on save.
@@ -214,7 +243,10 @@ struct PhotoManagerTests {
         )
         let gps: [CFString: Any] = [kCGImagePropertyGPSLatitude: 41.0, kCGImagePropertyGPSLongitude: 29.0]
         CGImageDestinationAddImage(destination, cgImage, [kCGImagePropertyGPSDictionary: gps] as CFDictionary)
-        #expect(CGImageDestinationFinalize(destination))
+        try #require(CGImageDestinationFinalize(destination))
+        let input = try #require(CGImageSourceCreateWithData(output, nil))
+        let inputProperties = try #require(CGImageSourceCopyPropertiesAtIndex(input, 0, nil) as? [CFString: Any])
+        try #require(inputProperties[kCGImagePropertyGPSDictionary] != nil)
 
         let stored = try fixture.sut.savePhoto(output as Data, for: UUID())
 
@@ -261,6 +293,114 @@ struct PhotoManagerTests {
         #expect(max(saved.size.width, saved.size.height) == CGFloat(PhotoManager.photoMaxPixelSize))
     }
 
+    /// Caregiver avatars are capped at the smaller avatar limit.
+    @Test
+    func renderedJPEGDataCapsAnAvatarAtTheAvatarPixelLimit() throws {
+        let image = try #require(UIImage(data: try makeImageData(width: 2_600, height: 1_300)))
+
+        let jpeg = try #require(
+            PhotoManager.renderedJPEGData(from: image, maxPixelSize: PhotoManager.avatarMaxPixelSize)
+        )
+        let saved = try #require(UIImage(data: jpeg))
+
+        #expect(jpeg.starts(with: [0xFF, 0xD8]))
+        let cap = PhotoManager.avatarMaxPixelSize
+        #expect(saved.size == CGSize(width: cap, height: cap / 2))
+    }
+
+    /// A JPEG has no alpha channel. Avatars, task photos and cat photos all go through
+    /// `renderedJPEGData`, so a transparent area comes out the same colour on each: black.
+    @Test
+    func renderedJPEGDataTurnsATransparentImageBlack() throws {
+        let size = CGSize(width: 16, height: 16)
+        let format = UIGraphicsImageRendererFormat(for: .init(displayScale: 1))
+        format.opaque = false
+        let transparent = UIGraphicsImageRenderer(size: size, format: format).image { _ in }
+
+        let jpeg = try #require(PhotoManager.renderedJPEGData(from: transparent, maxPixelSize: 64))
+        let cgImage = try #require(UIImage(data: jpeg)?.cgImage)
+
+        #expect([.none, .noneSkipLast, .noneSkipFirst].contains(cgImage.alphaInfo))
+        #expect(try centreRGB(of: cgImage).allSatisfy { $0 <= 2 })
+    }
+
+    /// No test input makes ImageIO fail to downsample data that `UIImage` can still decode, so the
+    /// fallback is tested on its own: a full-size decode must still be capped and encoded upright.
+    @Test
+    func theFullDecodeFallbackCapsThePhotoAtThePixelLimit() throws {
+        let png = try makeImageData(width: 2_600, height: 1_300)
+
+        let jpeg = try #require(
+            PhotoManager.fullDecodeJPEGData(from: png, maxPixelSize: PhotoManager.photoMaxPixelSize)
+        )
+        let saved = try #require(UIImage(data: jpeg))
+
+        #expect(jpeg.starts(with: [0xFF, 0xD8]))
+        let cap = PhotoManager.photoMaxPixelSize
+        #expect(saved.size == CGSize(width: cap, height: cap / 2))
+    }
+
+    @Test
+    func theFullDecodeFallbackGivesNilForDataItCannotDecode() {
+        #expect(PhotoManager.fullDecodeJPEGData(from: Data("photo".utf8), maxPixelSize: 64) == nil)
+    }
+
+    @Test
+    func aPreparedJPEGFailsNoCheck() async throws {
+        let prepared = try #require(
+            await PhotoManager.preparedJPEGData(from: try makeImageData(width: 64, height: 64))
+        )
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(prepared, maxPixelSize: 64) == nil)
+        #expect(PhotoManager.isPreparedJPEG(prepared, maxPixelSize: 64))
+    }
+
+    @Test
+    func dataThatIsNotOneCompleteJPEGFailsTheFormatCheck() throws {
+        let png = try makeImageData(width: 64, height: 64)
+        let jpeg = try makeJPEG(width: 64, height: 64)
+        let truncated = jpeg.prefix(jpeg.count / 2)
+
+        for data in [png, truncated, Data("photo".utf8)] {
+            #expect(PhotoManager.preparedJPEGCheckFailure(data, maxPixelSize: 64) == .notASingleCompleteJPEG)
+            #expect(PhotoManager.isPreparedJPEG(data, maxPixelSize: 64) == false)
+        }
+    }
+
+    @Test
+    func aJPEGLargerThanTheCapFailsTheSizeCheckWithItsPixelSize() throws {
+        let jpeg = try makeJPEG(width: 96, height: 48)
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .tooLarge(width: 96, height: 48))
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func aRotatedJPEGFailsTheUprightCheckWithItsOrientation() throws {
+        let jpeg = try makeJPEG(width: 64, height: 32, properties: [kCGImagePropertyOrientation: 6])
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .notUpright(orientation: 6))
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func aJPEGWithGPSDataFailsTheLocationCheck() throws {
+        let gps: [CFString: Any] = [kCGImagePropertyGPSLatitude: 41.0, kCGImagePropertyGPSLongitude: 29.0]
+        let jpeg = try makeJPEG(width: 64, height: 64, properties: [kCGImagePropertyGPSDictionary: gps])
+
+        #expect(PhotoManager.preparedJPEGCheckFailure(jpeg, maxPixelSize: 64) == .hasLocation)
+        #expect(PhotoManager.isPreparedJPEG(jpeg, maxPixelSize: 64) == false)
+    }
+
+    @Test
+    func eachCheckFailureNamesItsCheckForTheLog() {
+        #expect(PreparedJPEGCheckFailure.notASingleCompleteJPEG.description == "not a single complete JPEG")
+        #expect(PreparedJPEGCheckFailure.tooLarge(width: 4_032, height: 3_024).description
+            == "too large: 4032 x 3024 pixels")
+        #expect(PreparedJPEGCheckFailure.notUpright(orientation: 6).description == "not upright: orientation 6")
+        #expect(PreparedJPEGCheckFailure.hasLocation.description == "has GPS data")
+    }
+
     @Test
     func bulkDeletionOnlyRemovesFilesOwnedByTheRequestedCat() throws {
         let fixture = try makeFixture()
@@ -295,14 +435,6 @@ struct PhotoManagerTests {
         )
     }
 
-    private func makeImageData() throws -> Data {
-        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 16)).image { context in
-            UIColor.systemBlue.setFill()
-            context.fill(CGRect(origin: .zero, size: CGSize(width: 16, height: 16)))
-        }
-        return try #require(image.pngData())
-    }
-
     /// A 2600 × 2600 PNG of random noise, larger than the photo pixel limit.
     private func makeNoiseImageData() throws -> Data {
         let filter = try #require(CIFilter(name: "CIRandomGenerator"))
@@ -313,7 +445,89 @@ struct PhotoManagerTests {
         return try #require(UIImage(cgImage: cgImage).pngData())
     }
 
-    /// An opaque PNG of `width` × `height` pixels.
+    private static let xmpTagPath = "purrtine:CreatorTool"
+
+    /// A 64 × 64 JPEG with no location, but with EXIF (lens maker, user comment), IPTC (city,
+    /// country) and an XMP tag.
+    private func makeJPEGWithMetadata() throws -> Data {
+        let cgImage = try #require(UIImage(data: try makeImageData(width: 64, height: 64))?.cgImage)
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
+        )
+        // A namespace of its own: ImageIO does not write a lone `xmp:` basic tag.
+        let metadata = CGImageMetadataCreateMutable()
+        try #require(
+            CGImageMetadataRegisterNamespaceForPrefix(
+                metadata,
+                "https://example.com/purrtine-test/1.0/" as CFString,
+                "purrtine" as CFString,
+                nil
+            )
+        )
+        try #require(
+            CGImageMetadataSetValueWithPath(metadata, nil, Self.xmpTagPath as CFString, "Purrtine Test" as CFString)
+        )
+        let properties: [CFString: Any] = [
+            kCGImagePropertyExifDictionary: [
+                kCGImagePropertyExifLensMake: "Test Lens Maker",
+                kCGImagePropertyExifUserComment: "A private note"
+            ],
+            kCGImagePropertyIPTCDictionary: [
+                kCGImagePropertyIPTCCity: "Istanbul",
+                kCGImagePropertyIPTCCountryPrimaryLocationName: "Türkiye"
+            ]
+        ]
+        CGImageDestinationAddImageAndMetadata(destination, cgImage, metadata, properties as CFDictionary)
+        try #require(CGImageDestinationFinalize(destination))
+        return output as Data
+    }
+
+    private func xmpTagValue(of source: CGImageSource) -> String? {
+        guard let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil),
+              let tag = CGImageMetadataCopyTagWithPath(metadata, nil, Self.xmpTagPath as CFString) else {
+            return nil
+        }
+        return CGImageMetadataTagCopyValue(tag) as? String
+    }
+
+    /// The red, green and blue values of the centre pixel, drawn into an sRGB bitmap.
+    private func centreRGB(of image: CGImage) throws -> [UInt8] {
+        var rgba = [UInt8](repeating: 255, count: 4)
+        let colorSpace = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let drawn = rgba.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress,
+                width: 1,
+                height: 1,
+                bitsPerComponent: 8,
+                bytesPerRow: 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            context.interpolationQuality = .none
+            let offset = CGPoint(x: -CGFloat(image.width / 2), y: -CGFloat(image.height / 2))
+            let size = CGSize(width: image.width, height: image.height)
+            context.draw(image, in: CGRect(origin: offset, size: size))
+            return true
+        }
+        try #require(drawn)
+        return Array(rgba.prefix(3))
+    }
+
+    /// A JPEG of `width` × `height` pixels, written by ImageIO with `properties`.
+    private func makeJPEG(width: Int, height: Int, properties: [CFString: Any] = [:]) throws -> Data {
+        let cgImage = try #require(UIImage(data: try makeImageData(width: width, height: height))?.cgImage)
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
+        )
+        CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
+        try #require(CGImageDestinationFinalize(destination))
+        return output as Data
+    }
+
+    /// An opaque PNG of `width` × `height` pixels, drawn at scale 1.
     private func makeImageData(width: Int, height: Int) throws -> Data {
         let size = CGSize(width: width, height: height)
         let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))

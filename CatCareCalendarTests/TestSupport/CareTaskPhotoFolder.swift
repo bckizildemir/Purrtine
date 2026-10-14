@@ -4,14 +4,15 @@ import UIKit
 @testable import CatCareCalendar
 
 /// A throwaway task photo folder and a writer rooted in it. With `blocked`, a regular file sits where
-/// the folder should be, so neither the folder nor a photo can be written.
+/// the folder should be, so neither the folder nor a photo can be written. `makeUUID` names the files
+/// the writer saves; a fixed one makes two saves collide.
 struct CareTaskPhotoFolder {
     let directory: URL
     let log: LogSpy
     let sut: CareTaskPhotoWriter
     private let root: URL
 
-    init(blocked: Bool = false) throws {
+    init(blocked: Bool = false, makeUUID: @escaping @Sendable () -> UUID = { UUID() }) throws {
         root = FileManager.default.temporaryDirectory
             .appending(path: "CareTaskPhotoWriterTests-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -23,7 +24,7 @@ struct CareTaskPhotoFolder {
         }
         let log = LogSpy()
         self.log = log
-        sut = CareTaskPhotoWriter(photosDirectory: directory, logFailure: { log.record($0) })
+        sut = CareTaskPhotoWriter(photosDirectory: directory, makeUUID: makeUUID, logFailure: { log.record($0) })
     }
 
     func storedFileNames() throws -> Set<String> {
@@ -34,12 +35,13 @@ struct CareTaskPhotoFolder {
         try? FileManager.default.removeItem(at: root)
     }
 
-    /// A small, solid-colour image that encodes as a JPEG.
-    static func makeImage() throws -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
+    /// A solid-colour image at scale 1 that encodes as a JPEG; 8 × 8 unless a size is given.
+    static func makeImage(width: Int = 8, height: Int = 8) throws -> UIImage {
+        let size = CGSize(width: width, height: height)
+        let renderer = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))
         let image = renderer.image { context in
             UIColor.orange.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+            context.fill(CGRect(origin: .zero, size: size))
         }
         try #require(image.jpegData(compressionQuality: 1) != nil)
         return image
