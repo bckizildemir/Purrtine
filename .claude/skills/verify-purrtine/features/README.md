@@ -28,7 +28,10 @@ is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh
 - Tab bar items are `RadioButton` elements with SF Symbol ids: `vp tap --label Tasks --element-type RadioButton`.
   Labels: Home | Ana Sayfa, Tasks | Görevler, Whiskers | Whiskers, More | Daha Fazla.
 - After each action, read `vp ui` and check the expected element before the next action.
-- Type with `axe type 'text' --udid $UDID` after a tap on the field puts the focus there.
+- Type with `axe type 'text' --udid $UDID` after a tap on the field puts the focus there. Type real
+  dictionary words: the keyboard's autocorrect can change a made-up word on save (see add-cat.md).
+- A tab keeps its navigation stack. Before you tap a shortcut on a tab you used earlier, check `vp ui`
+  and tap `BackButton` until the tab's root shows.
 
 ## Running a feature in Turkish
 
@@ -59,7 +62,10 @@ behavior, then exactly four H2 sections in this order: `Sub-features`, `How to g
 ## Features
 
 - [Onboarding](./onboarding.md) — first launch: welcome, notification permission, first cat, starter
-  tasks, landing on Home. Proved end to end on 2026-10-14.
-- [Add a cat](./add-cat.md) (unproved draft) — a second cat from Home "+" or More → My Cats.
-- [Add a task](./add-task.md) (unproved draft) — a custom task from the Tasks tab "+" menu, with a reminder.
-- [Complete a task](./complete-task.md) (unproved draft) — tick a task in the Tasks list and see it in History.
+  tasks, landing on Home. Proved 2026-10-14.
+- [Add a cat](./add-cat.md) — a second cat from Home "+" or More → My Cats. Proved 2026-10-14.
+- [Add a task](./add-task.md) — a custom daily task from the Tasks tab "+" menu, with reminders. Proved 2026-10-14.
+- [Complete a task](./complete-task.md) — tick a task in the Tasks list and see it in History and Home. Proved 2026-10-14.
+
+A maintenance pass drives all four in this order on one device: onboarding, add-cat, add-task,
+complete-task (last full pass: 2026-10-14, evidence `~/verify-evidence/purrtine/2026-10-14-225439-0158/`).
