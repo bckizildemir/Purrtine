@@ -7,7 +7,7 @@ Every agent must read this file before implementation and update it before endin
 ## Current Audit
 
 - App targets exist for `CatCareCalendar`, `CatCareCalendarTests`, and `CatCareCalendarUITests`.
-- Verification simulators: `iPhone 12` with `iOS 18.5` and `iOS 26.5`, run sequentially.
+- Verification simulators: `iPhone 12` with `iOS 18.5` and `iOS 27.0`.
 - Existing coverage is meaningful: Swift Testing unit/integration tests cover task derivation, task actions, notification actions, launch seeding, routing, settings presentation, history presentation, search, and home routine presentation.
 - Existing UI coverage uses XCTest, which is correct because Swift Testing does not support UI tests.
 - Do not rewrite all tests. Preserve tests that follow the rules and add focused coverage for gaps.

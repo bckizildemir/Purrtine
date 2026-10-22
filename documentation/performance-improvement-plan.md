@@ -227,7 +227,7 @@ Follow the same verify-it-for-real approach we used on the Complete Task fix:
   (this is now the project default per CLAUDE.md).
 
 Regression guard: run the unit suite + `LocalizationParityTests`, and the sequential UI tests on iOS
-18.5 and 26.5, after each phase.
+18.5 and 27.0, after each phase.
 
 ---
 
