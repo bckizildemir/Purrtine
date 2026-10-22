@@ -32,7 +32,7 @@ Follow "Verify trial" in CLAUDE.md: no UI tests and no `-ui-testing` runs.
 Follow "Local tests: only what changed" in CLAUDE.md: run the tests you added or changed plus the suites of the files you changed, each with `--only` (`Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>`). Read the CI result after you open the PR; it is the gate. List exactly which tests you ran, with results, in the PR body.
 
 ## Finish
-1. Commit, push the branch, and open ONE PR to `main` with `gh pr create`. Write the body with the `pr` skill (call the Skill tool with "pr"), and also include: the tests you ran with results, the `verify-purrtine` proof (or that no simulator check ran), and `Closes #<N>`.
+1. Commit, push the branch, and open ONE PR to `main` with `gh pr create`. Write the body with the `pr` skill (call the Skill tool with "pr"), and also include: the tests you ran with results, for a user-visible change the `verify-purrtine` proof (run it through the `sim-verifier` subagent; attach its key screenshots), for a change with nothing user-visible one line that says so, and `Closes #<N>`.
 2. Do NOT merge. Do not touch other PRs, other worktrees, or `main`.
 3. No Claude or Anthropic attribution anywhere: no "Generated with" line, no Co-Authored-By trailer, no model names in commits, the PR, or comments.
 4. Nothing that can bill a cloud provider. Do not run ~/.claude/scripts/xcode-junk-clean.sh; the coordinator runs it.
