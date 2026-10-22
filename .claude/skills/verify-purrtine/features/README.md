@@ -19,9 +19,12 @@ is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh
 
 ## Driving conventions
 
-- Tap with `vp tap <axe selector>`: it uses `axe tap --tap-style physical --wait-timeout 10` and taps
-  once more when the screen did not change (a tap during a transition can be lost). It exits 1 when the
-  screen still did not change; then read `vp ui`.
+- Tap with `vp tap <axe selector>`: it uses `axe tap --tap-style physical --wait-timeout 10`, waits up
+  to 8 s for the screen to change, and taps once more when it did not (a tap during a transition can be
+  lost). It exits 1 when the screen still did not change; then read `vp ui`.
+- A tap that saves, completes, or toggles something uses `vp tap --once …`: no second tap, because a
+  slow save that shows after 8 s plus a second tap would save twice or untick the row. The recipes mark
+  these taps. On a `--once` WARN, read `vp ui` before you tap again.
 - Match by accessibility identifier (`vp tap --id …`) first, by label (`--label`) second, and narrow a
   label with `--element-type`. Coordinates (`axe tap -x … -y … --udid $UDID`) only when an element has
   neither.
