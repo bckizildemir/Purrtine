@@ -1055,6 +1055,23 @@
         }
       }
     },
+    "caregiver.add.not_saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caregiver not saved. Try again."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bakıcı kaydedilmedi. Tekrar deneyin."
+          }
+        }
+      }
+    },
     "caregiver.add.photo_add" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1085,6 +1102,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fotoğrafı Değiştir"
+          }
+        }
+      }
+    },
+    "caregiver.add.photo_not_saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caregiver saved, but the photo did not save."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bakıcı kaydedildi, ancak fotoğraf kaydedilmedi."
           }
         }
       }
