@@ -1,7 +1,8 @@
 # Add a task
 
 A user adds a custom care task for a cat, with a repeat and a reminder. The task shows in the Tasks
-list and, when it is due today, on Home. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) with a
+list and, when it is due today, on Home. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) and on 2026-10-15 (iPhone 12, iOS 27.0, English,
+`~/verify-evidence/purrtine/2026-10-15-014147-3a31/`) with a
 daily task: the list shows it, and its reminders share the app's 60-reminder cap with the other tasks.
 
 ## Sub-features
@@ -38,13 +39,13 @@ Preconditions:
 - **Pick the cat.** `vp tap --id taskAdd.catsButton` opens a selection sheet:
   `taskCatsSelection.assignAllToggle`, one `taskCatsSelection.cat.<name>` row per cat, and
   `taskCatsSelection.doneButton` (disabled until a cat is picked). `vp tree task-cats-sheet`, then
-  `vp tap --id taskCatsSelection.cat.Miso` and `vp tap --id taskCatsSelection.doneButton`. The Cats row
+  `vp tap --once --id taskCatsSelection.cat.Miso` and `vp tap --id taskCatsSelection.doneButton`. The Cats row
   now has the value `Miso`.
 - **Repeat daily.** `vp tap --label 'Repeat, Once' --element-type PopUpButton`, then
   `vp tap --label Daily --element-type Button` (options: Once, Daily, Weekly, Every 2 Weeks, Monthly,
   Custom). The row reads `Repeat, Every day`. A daily task always has a next occurrence, so it gets
   reminders; see Gotchas for a `Once` task.
-- **Save.** `vp shot task-form-filled`, `vp tree task-form-filled`, then `vp tap --id taskAdd.saveButton`.
+- **Save.** `vp shot task-form-filled`, `vp tree task-form-filled`, then `vp tap --once --id taskAdd.saveButton`.
 - **Proof.** The Tasks list holds `taskRow.complete.Brush coat` (value `Pending`) and
   `taskRow.Brush coat` (`Brush coat, Miso, Today`). `vp shot tasks-list` and `vp tree tasks-list`.
 - **Side effect: reminders.** `vp reminders "Brush coat" "Daily Feeding" "Refresh Water"`. On 2026-10-14
