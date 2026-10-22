@@ -91,7 +91,7 @@ zero.
 
 These are in `CLAUDE.md` but they bite hard enough to repeat.
 
-- Simulator baseline is **iPhone 12 / iOS 18.5** and **iPhone 12 / iOS 26.5**.
+- Simulator baseline is **iPhone 12 / iOS 18.5** and **iPhone 12 / iOS 27.0**.
 - Prefer the `xcodebuildmcp` MCP server over raw `xcodebuild`. Call `session_show_defaults` before the
   first build. Do **not** use the `mcp__Claude_Code_iOS_Simulator__*` tools in this repo.
 - Swift Testing (`@Suite`/`@Test`/`#expect`) for unit tests; XCTest only for `CatCareCalendarUITests`.
