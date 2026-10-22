@@ -44,3 +44,5 @@ one asks for confirmation in the conversation; it does not complete work immedia
 **Task Assistant**:
 A conversational surface for finding, opening, postponing, or completing care tasks through the same
 task-action rules used elsewhere in the app.
+The owner also calls it **Whiskers**. The code has no `Whiskers` type; its types start with
+`TaskAssistant`.
