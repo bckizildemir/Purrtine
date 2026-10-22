@@ -1,6 +1,6 @@
 ---
 name: verify-purrtine
-description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
+description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14 on iOS 26.5 and 2026-10-15 on iOS 27.0), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
 ---
 
 # verify-purrtine
@@ -32,7 +32,9 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
   `simulatorId`) and `xcrun simctl`. Never osascript, never scripted mouse clicks: the owner works on
   the same Mac.
 - One fresh simulator per run, one driver. Touch no other simulator — not the shared `iPhone 12`
-  that TriQ and other sessions use. One verify run at a time: `$V start` waits for the verify lock.
+  that TriQ and other sessions use. One verify run at a time: `$V start` waits for the verify lock,
+  and also while a TriQ verify run holds `/tmp/verify-triq.lock` (heartbeat newer than 45 minutes).
+  TriQ's `vt.sh` waits for ours the same way.
 
 ## Launch
 
@@ -45,7 +47,7 @@ $V launch                      # prints "com.berkecankizildemir.CatCareCalendar:
 $V doctor                      # must exit 0
 ```
 
-- `start` creates `verify-purrtine-<run-id>` (iPhone 12, iOS 26.5 — see "Device
+- `start` creates `verify-purrtine-<run-id>` (iPhone 12, iOS 27.0; `--os 26.5` for the older — see "Device
   choice"), boots it, sets its system language, reboots it, and makes the evidence folder
   `~/verify-evidence/purrtine/<YYYY-MM-DD>-<run-id>/` with `run.txt` (device, language, git rev).
 - If a `build` is killed with SIGKILL its trap cannot run: run `$V cleanup` afterwards. SIGINT and
@@ -60,10 +62,12 @@ $V doctor                      # must exit 0
 
 ### Why hold
 
-`Scripts/xcb.sh test` shuts down **every other booted simulator** before it runs, and other sessions
-(TriQ especially) run it often (`shut_down_other_simulators` in `Scripts/xcb.sh`). On 2026-10-14 this
-run's device was shut down three times in 30 minutes by other sessions. `$V hold` takes the same machine-wide lock that xcb uses, owned by a watcher process,
-so their tests wait while you drive. It ends at `$V cleanup`, or after 30 minutes
+A build or test from another session competes with the drive for this Mac's memory and CPU, and
+before #80 (2026-10-15) `Scripts/xcb.sh test` also shut down every other booted simulator. On
+2026-10-14 this run's device was shut down three times in 30 minutes that way. Since #80,
+`shut_down_other_simulators` skips devices named `verify-*`, so a test no longer stops this run's
+device. `$V hold` takes the same machine-wide lock that xcb uses, owned by a watcher process, so their
+builds and tests wait while you drive. It ends at `$V cleanup`, or after 30 minutes
 (`VP_HOLD_MAX=<seconds>` to change). Take it after `build` — `build` needs that lock itself — and
 keep the drive short. If the device was shut down before the hold, `$V install` boots it again.
 
@@ -79,7 +83,8 @@ the same PR. `$V status` and `$V doctor` report whether the watcher process is a
 running, the app's command line (and fails on any test launch argument), the device language, and
 the number of labelled accessibility elements. Run it first whenever anything looks off.
 
-- `FAIL device is not booted` → another session's `xcb.sh test` shut it down. `$V revive` boots it
+- `FAIL device is not booted` → another session shut it down (`simctl shutdown all`, or an `xcb.sh`
+  older than #80). `$V revive` boots it
   and relaunches the app; the app's data on the device stays. Retake the last step's evidence.
 - `WARN app is not running` → `$V launch`.
 - `WARN another simulator is booted` → owner decision: warn and continue. The run never shuts down a
@@ -96,7 +101,8 @@ the number of labelled accessibility elements. Run it first whenever anything lo
 ```bash
 UDID=$(cat /tmp/verify-purrtine.lock/udid)
 $V ui                                             # Type | Label | Id | Value | frame [disabled]
-$V tap --id onboarding.welcome.continueButton     # axe tap, physical style, one retry if nothing changed
+$V tap --id onboarding.welcome.continueButton     # axe tap, physical style, waits 8 s, one retry if nothing changed
+$V tap --once --id catForm.saveButton             # a tap that saves: never a second tap
 $V tap --label Tasks --element-type RadioButton   # tab bar items are RadioButtons
 $V tap --id catForm.nameField && axe type 'Miso' --udid $UDID
 axe tap -x 195 -y 420 --tap-style physical --udid $UDID   # only when an element has no id or label
@@ -106,8 +112,10 @@ axe tap -x 195 -y 420 --tap-style physical --udid $UDID   # only when an element
   `--element-type`.
 - Use `$V tap`, not a bare `axe tap`. Measured 2026-10-14: the default tap style left the welcome
   screen unchanged twice, and a physical tap right after a screen change was lost once. `$V tap`
-  taps with `--tap-style physical --wait-timeout 10` and taps once more only when the tree did not
-  change. `axe tap` itself exits 0 even when nothing happened.
+  taps with `--tap-style physical --wait-timeout 10`, waits up to 8 s for the tree to change, and taps
+  once more only when it did not. `axe tap` itself exits 0 even when nothing happened.
+- A tap that saves, completes, or toggles uses `$V tap --once`. A slow save can show after the wait,
+  and a second tap would then save twice or untick a row. On its WARN, read `$V ui` before any retap.
 - System alerts show in `$V ui` as SpringBoard elements: the notification prompt is a `Sheet` with
   buttons `Allow` and `Don’t Allow` (curly apostrophe; Turkish `İzin Ver`).
 - xcodebuildmcp works too: pass `simulatorId=$UDID` to `snapshot_ui`, `tap` (element refs from
@@ -157,8 +165,14 @@ device no longer exists or nobody touched it for 45 minutes (`VP_STALE_MINUTES`)
 
 ## Device choice
 
-The default is **iPhone 12, iOS 26.5** (`VP_DEVICE` or `--device` to override). Measured
-2026-10-14 on this 16 GB M2 Air with `$V memory` (summed physical footprint of every process under the
+The default is **iPhone 12, iOS 27.0**, the newest iOS (owner decision 2026-10-15; it was 26.5).
+Override the model with `VP_DEVICE` or `--device`, and the version with `VP_OS` or `--os 26.5`; `start`
+fails when this Mac has no runtime for that version (`xcrun simctl list runtimes`), and `build` passes
+the version to `Scripts/xcb.sh` as `XCB_OS`. On 2026-10-13 a shared iOS 27.0 device's SpringBoard
+crashed 11 times in two minutes at boot, then ran stable; if a fresh device loops like that, run
+`$V cleanup` and start again, or use `--os 26.5` and say so in the report.
+
+The model choice was measured on iOS 26.5, 2026-10-14, on this 16 GB M2 Air with `$V memory` (summed physical footprint of every process under the
 device's `launchd_sim`), same protocol for both: fresh device, language set and rebooted, app launched
 on the welcome screen, 2 minutes settle, then 6 samples 15 s apart.
 
@@ -173,10 +187,10 @@ and the same screen size as the recorded runs. Measure again before you change t
 
 ## Gotchas
 
-- **Other sessions shut the device down.** `Scripts/xcb.sh test` shuts down every other booted
-  simulator (its "one simulator at a time" rule), and on 2026-10-14 a TriQ session's scratchpad script
-  ran `xcrun simctl shutdown all` before each of its own launches. `$V hold` stops the first; nothing
-  in this repo stops the second. `$V doctor` names the shutdown; `$V revive` boots the device again
+- **Other sessions shut the device down.** Before #80, `Scripts/xcb.sh test` shut down every other
+  booted simulator; it now skips devices named `verify-*`. On 2026-10-14 a TriQ session's scratchpad
+  script also ran `xcrun simctl shutdown all` before each of its own launches; nothing in this repo
+  stops that. `$V doctor` names the shutdown; `$V revive` boots the device again
   and relaunches the app with its data. A step that was in flight is lost: redo it from the last
   screen you proved. Onboarding saves nothing until "Start Tracking", so an onboarding cut short starts
   again at the welcome screen.
@@ -214,7 +228,7 @@ and the same screen size as the recorded runs. Measure again before you change t
 
 ## Helpers
 
-- `scripts/vp.sh` — the run: `start [--device NAME] [--lang en|tr]`, `build`, `hold`, `install`,
+- `scripts/vp.sh` — the run: `start [--device NAME] [--os 27.0|26.5] [--lang en|tr]`, `build`, `hold`, `install`,
   `launch`, `doctor`, `ui`, `tap AXE-ARGS…`, `shot NAME`, `tree NAME`, `reminders TITLE…`, `memory`,
   `revive`, `cleanup`, `status`. `$V` alone prints this list.
 - `scripts/sim-memory.sh UDID` — summed physical footprint (and RSS) of every process of one booted

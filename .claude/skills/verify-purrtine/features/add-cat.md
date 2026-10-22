@@ -1,7 +1,8 @@
 # Add a cat
 
 A user adds another cat after onboarding. The cat appears in More → My Cats and can be picked as a
-task's cat. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English): save from My Cats and the cancel path.
+task's cat. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) and again on 2026-10-15 (iPhone 12, iOS 27.0, English,
+`~/verify-evidence/purrtine/2026-10-15-014147-3a31/`): save from My Cats and the cancel path.
 
 ## Sub-features
 
@@ -32,7 +33,7 @@ Preconditions:
   placeholder `Fluffy`.
 - **Enter the name.** `vp tap --id catForm.nameField`, then `axe type 'Milo' --udid $UDID`.
   `catForm.saveButton` becomes enabled.
-- **Save.** `vp shot cat-form-filled`, then `vp tap --id catForm.saveButton`. The sheet closes.
+- **Save.** `vp shot cat-form-filled`, then `vp tap --once --id catForm.saveButton`. The sheet closes.
 - **Proof.** The My Cats list holds `cats.card.Milo` (`Milo, Unknown`) and `cats.card.Miso`.
   `vp shot cats-list` and `vp tree cats-list`.
 - **Cancel path.** Open the sheet again, type `Discard`, `vp tap --id catForm.cancelButton` (label `Close`
@@ -48,7 +49,7 @@ Preconditions:
   (`~/verify-evidence/purrtine/2026-10-14-215623-2414/19-cats-list.json`). axe cannot
   type `ç`/`ı` ("No keycode found"). Whether cat names should skip autocorrect is a product question,
   not a skill fix.
-- The toolbar labels `Done`/`Close` come from the iOS 26 system button roles; iOS 18 shows `Save`/`Close`.
+- The toolbar labels `Done`/`Close` come from the iOS 26 and 27 system button roles; iOS 18 shows `Save`/`Close`.
   Use the identifiers.
 - The Home "+" menu has no identifier, only the label "Add | Ekle": `vp tap --label Add --element-type Button`
   on the Home tab (the Tasks tab "+" has the same label, so be on Home).

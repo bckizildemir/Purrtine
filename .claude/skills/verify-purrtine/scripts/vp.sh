@@ -2,7 +2,8 @@
 # vp.sh - one verify-purrtine run: a fresh simulator, the real app, evidence that survives.
 #
 # Subcommands (run from the repo root, in this order):
-#   start [--device NAME] [--lang en|tr]  take the verify lock, create + boot a fresh device
+#   start [--device NAME] [--os 27.0|26.5] [--lang en|tr]
+#                                         take the verify lock, create + boot a fresh device
 #   build                                 Scripts/xcb.sh build against that device, copy the .app
 #   hold                                  take the machine-wide xcb lock for the drive (see below)
 #   install                               install the copied .app on the device
@@ -11,7 +12,8 @@
 #   shot NAME                             screenshot -> evidence/NN-NAME.png
 #   tree NAME                             accessibility tree -> evidence/NN-NAME.json
 #   ui                                    compact tree: type | label | id | value | frame
-#   tap AXE-TAP-ARGS...                   axe tap (physical style), retried once if the screen did not change
+#   tap [--once] AXE-TAP-ARGS...          axe tap (physical style); waits up to 8 s for a change, then taps
+#                                         once more unless --once (use --once on taps that save data)
 #   reminders [TITLE...]                  pending local notifications -> evidence; requests per title
 #   memory                                physical footprint of the device's processes
 #   revive                                boot the device again after another session shut it down
@@ -20,19 +22,24 @@
 #
 # State lives in the lock directory, so every Bash call (a new shell) finds the same run.
 #
-# Why hold: Scripts/xcb.sh shuts down every other booted simulator before each `test`, so
-# another session's test kills this run's device mid-drive. While `hold` is in force, xcb
-# runs from other sessions wait for the lock, exactly as they wait for a build. A watcher
-# process owns the lock; it lets go when cleanup removes the verify lock, or after
-# VP_HOLD_MAX seconds (default 1800), whichever comes first. The hold depends on xcb's lock
+# Why hold: a build or test from another session competes with the drive for this Mac's memory
+# and CPU. (Since #80, Scripts/xcb.sh no longer shuts down devices named verify-* before a test.)
+# While `hold` is in force, xcb runs from other sessions wait for the lock, exactly as they
+# wait for a build. A watcher process owns the lock; it lets go when cleanup removes the
+# verify lock, or after VP_HOLD_MAX seconds (default 1800), whichever comes first. The hold depends on xcb's lock
 # format (pid + owner files in $XCB_LOCK_DIR): change Scripts/xcb.sh's lock and this file together.
+#
+# TriQ runs the same kind of skill (verify-triq, /tmp/verify-triq.lock). Its runs and ours share
+# the xcb lock and this Mac's memory, so `start` waits while a fresh TriQ lock exists. TriQ's
+# vt.sh waits for ours the same way.
 
 set -euo pipefail
 
 LOCK_DIR="${VP_LOCK_DIR:-/tmp/verify-purrtine.lock}"
+TRIQ_LOCK_DIR="/tmp/verify-triq.lock"
 LOCK_TIMEOUT="${VP_LOCK_TIMEOUT:-3600}"
 STALE_MINUTES="${VP_STALE_MINUTES:-45}"
-RUNTIME_ID="com.apple.CoreSimulator.SimRuntime.iOS-26-5"
+DEFAULT_OS="${VP_OS:-27.0}"
 DEFAULT_DEVICE="${VP_DEVICE:-iPhone 12}"
 BUNDLE_ID="com.berkecankizildemir.CatCareCalendar"
 EVIDENCE_ROOT="$HOME/verify-evidence/purrtine"
@@ -93,8 +100,34 @@ remove_stale_lock() {
   rm -rf "$LOCK_DIR"
 }
 
+# A TriQ verify run is in progress: its lock exists and was touched in the last STALE_MINUTES
+# (vt.sh keeps a heartbeat file, like ours). A stale lock or a leftover booted verify-triq-*
+# device without a lock only gets a warning: that run crashed, and its own vt.sh start or
+# cleanup removes it. We never touch TriQ's lock or devices.
+triq_busy() {
+  [[ -d "$TRIQ_LOCK_DIR" ]] || return 1
+  if [[ -f "$TRIQ_LOCK_DIR/heartbeat" ]]; then
+    [[ -z "$(find "$TRIQ_LOCK_DIR/heartbeat" -mmin +"$STALE_MINUTES" 2>/dev/null)" ]] && return 0
+  elif [[ -z "$(find "$TRIQ_LOCK_DIR" -maxdepth 0 -mmin +2 2>/dev/null)" ]]; then
+    return 0
+  fi
+  say "WARN stale TriQ verify lock ($TRIQ_LOCK_DIR, no heartbeat for ${STALE_MINUTES} min): not waiting for it"
+  return 1
+}
+
 acquire_lock() {
   local waited=0
+  while triq_busy; do
+    if (( waited % 60 == 0 )); then
+      say "waiting for the TriQ verify run to end (${waited}s) - $(cat "$TRIQ_LOCK_DIR/owner" 2>/dev/null || echo unknown)"
+    fi
+    (( waited < LOCK_TIMEOUT )) || fail "gave up waiting for the TriQ verify run after ${LOCK_TIMEOUT}s"
+    sleep 15
+    waited=$((waited + 15))
+  done
+  if xcrun simctl list devices booted 2>/dev/null | grep -q 'verify-triq-'; then
+    say "WARN a verify-triq-* device is booted with no live TriQ lock; not touched"
+  fi
   until mkdir "$LOCK_DIR" 2>/dev/null; do
     if lock_is_stale; then remove_stale_lock; continue; fi
     if (( waited % 60 == 0 )); then
@@ -131,15 +164,21 @@ next_evidence_name() {
 }
 
 cmd_start() {
-  local device="$DEFAULT_DEVICE" lang="en"
+  local device="$DEFAULT_DEVICE" os="$DEFAULT_OS" lang="en"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --device) device="${2:?}"; shift 2 ;;
+      --os) os="${2:?}"; shift 2 ;;
       --lang) lang="${2:?}"; shift 2 ;;
       *) fail "unknown option: $1" ;;
     esac
   done
   [[ "$lang" == en || "$lang" == tr ]] || fail "--lang takes en or tr"
+  [[ "$os" =~ ^[0-9]+\.[0-9]+$ ]] || fail "--os takes a version such as 27.0 or 26.5"
+  local runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-${os//./-}"
+  # Read the list first: under pipefail, `simctl | grep -q` can fail when grep stops reading early.
+  local runtimes; runtimes="$(xcrun simctl list runtimes)"
+  [[ "$runtimes" == *"$runtime_id"* ]] || fail "no iOS $os simulator runtime on this Mac"
   acquire_lock
 
   local run_id evidence name udid
@@ -151,13 +190,14 @@ cmd_start() {
   echo "$evidence" > "$LOCK_DIR/evidence"
   echo "$name" > "$LOCK_DIR/device_name"
   echo "$lang" > "$LOCK_DIR/lang"
-  printf 'run %s, device %s (%s), lang %s, repo %s, since %s\n' "$run_id" "$name" "$device" "$lang" \
+  echo "$os" > "$LOCK_DIR/os"
+  printf 'run %s, device %s (%s, iOS %s), lang %s, repo %s, since %s\n' "$run_id" "$name" "$device" "$os" "$lang" \
     "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" "$(date '+%Y-%m-%d %H:%M:%S')" > "$LOCK_DIR/owner"
 
   warn_other_booted
-  udid="$(xcrun simctl create "$name" "$device" "$RUNTIME_ID")" || fail "simctl create failed"
+  udid="$(xcrun simctl create "$name" "$device" "$runtime_id")" || fail "simctl create failed"
   echo "$udid" > "$LOCK_DIR/udid"
-  say "created $name ($device, iOS 26.5) $udid"
+  say "created $name ($device, iOS $os) $udid"
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" >/dev/null
   # A fresh device copies the Mac's languages (seen 2026-10-14: en-TR, tr-TR), so set the
@@ -171,7 +211,7 @@ cmd_start() {
   xcrun simctl bootstatus "$udid" >/dev/null
   say "device language $languages, locale $locale (rebooted)"
   {
-    echo "run_id=$run_id"; echo "udid=$udid"; echo "device=$device"; echo "lang=$lang"
+    echo "run_id=$run_id"; echo "udid=$udid"; echo "device=$device"; echo "os=$os"; echo "lang=$lang"
     echo "git_rev=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
     echo "started=$(date '+%Y-%m-%d %H:%M:%S')"
   } > "$evidence/run.txt"
@@ -195,7 +235,8 @@ cmd_build() {
   trap 'kill "$beat" 2>/dev/null; exit 143' TERM
   # Build against this run's own device, so the build never names a shared simulator.
   set +e
-  XCB_SIMULATOR="$name" Scripts/xcb.sh build 2>&1 | tee "$out"
+  # xcb finds the device by name on one runtime, so give it this run's iOS version too.
+  XCB_SIMULATOR="$name" XCB_OS="$(state os)" Scripts/xcb.sh build 2>&1 | tee "$out"
   status="${PIPESTATUS[0]}"
   set -e
   { kill "$beat"; wait "$beat"; } 2>/dev/null || true
@@ -407,22 +448,38 @@ cmd_reminders() {
   fi
 }
 
-tree_hash() { axe describe-ui --udid "$(state udid)" 2>/dev/null | shasum | cut -c1-12; }
+# Never fails: under set -e and pipefail a failed axe call here would end `tap` with no message.
+tree_hash() { { axe describe-ui --udid "$(state udid)" 2>/dev/null || echo none; } | shasum | cut -c1-12; }
+
+# Wait up to 8 s for the tree to differ from $1; a save with a reminder resync can take longer
+# than one frame.
+wait_for_change() {
+  local before="$1" i
+  for i in 1 2 3 4; do
+    sleep 2
+    [[ "$(tree_hash)" != "$before" ]] && return 0
+  done
+  return 1
+}
 
 cmd_tap() {
   need_run
+  local once=0
+  if [[ "${1:-}" == --once ]]; then once=1; shift; fi
   [[ $# -gt 0 ]] || fail "tap needs axe selector args, e.g. --id onboarding.welcome.continueButton"
-  local udid before after try
+  local udid before
   udid="$(state udid)"
   before="$(tree_hash)"
-  for try in 1 2; do
-    axe tap "$@" --tap-style physical --wait-timeout 10 --udid "$udid" >/dev/null || fail "axe tap $* found no element"
-    sleep 2
-    after="$(tree_hash)"
-    if [[ "$after" != "$before" ]]; then say "tap $* -> screen changed"; return 0; fi
-    # A tap during a transition animation can be lost; seen 2026-10-14 on the onboarding.
-    [[ $try == 1 ]] && say "screen unchanged after tap $*; tapping once more"
-  done
+  axe tap "$@" --tap-style physical --wait-timeout 10 --udid "$udid" >/dev/null || fail "axe tap $* found no element"
+  if wait_for_change "$before"; then say "tap $* -> screen changed"; return 0; fi
+  if [[ $once == 1 ]]; then
+    say "WARN screen unchanged 8 s after tap $* (--once: no second tap); read vp.sh ui"
+    return 1
+  fi
+  # A tap during a transition animation can be lost; seen 2026-10-14 on the onboarding.
+  say "screen unchanged 8 s after tap $*; tapping once more"
+  axe tap "$@" --tap-style physical --wait-timeout 10 --udid "$udid" >/dev/null || fail "axe tap $* found no element"
+  if wait_for_change "$before"; then say "tap $* -> screen changed"; return 0; fi
   say "WARN screen unchanged after two taps on $*; read vp.sh ui"
   return 1
 }
@@ -453,7 +510,7 @@ cmd_cleanup() {
 
 cmd_status() {
   [[ -d "$LOCK_DIR" ]] || { say "no run in progress"; exit 0; }
-  for f in owner run_id udid device_name lang evidence; do printf '%-12s %s\n' "$f" "$(state "$f")"; done
+  for f in owner run_id udid device_name os lang evidence; do printf '%-12s %s\n' "$f" "$(state "$f")"; done
   if [[ -f "$LOCK_DIR/hold_pid" ]]; then
     printf '%-12s %s (PID %s)\n' hold "$(hold_alive && echo alive || echo NOT-RUNNING)" "$(state hold_pid)"
   else
@@ -478,5 +535,5 @@ case "$sub" in
   revive) cmd_revive ;;
   cleanup) cmd_cleanup ;;
   status) cmd_status ;;
-  *) sed -n '2,28p' "$0"; exit 2 ;;
+  *) sed -n '2,/^$/p' "$0"; exit 2 ;;
 esac
