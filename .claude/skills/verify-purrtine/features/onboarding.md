@@ -4,7 +4,8 @@ A first launch on a fresh device shows a four-step onboarding: welcome, notifica
 the first cat, and starter tasks. When the user finishes, the app saves one cat and one task per
 ticked starter, schedules their reminders, and lands on the Home tab. Every other feature starts
 from the data this journey creates. Proved end to end three times on 2026-10-14 (iPhone 12, iOS 26.5,
-English; the last in the maintenance pass) and the Turkish welcome screen on the same day.
+English; the last in the maintenance pass), the Turkish welcome screen on the same day; again on
+2026-10-15 on iOS 27.0, English (`~/verify-evidence/purrtine/2026-10-15-014147-3a31/`).
 
 ## Sub-features
 
@@ -45,10 +46,10 @@ Preconditions:
   `Miso` and Continue is enabled (the keyboard moves it up to about y=385). `vp shot first-cat-filled`,
   then `vp tap --id onboarding.firstCat.continueButton`.
 - **Starter tasks.** The heading reads `What care does Miso need?`. `vp shot task-setup-empty`, then
-  `vp tap --id onboarding.taskDemo.feeding` and `vp tap --id onboarding.taskDemo.water`. A ticked row
+  `vp tap --once --id onboarding.taskDemo.feeding` and `vp tap --once --id onboarding.taskDemo.water`. A ticked row
   leaves the list, so only `onboarding.taskDemo.litterBox` stays. `vp shot task-setup-ticked` and
   `vp tree task-setup-ticked`.
-- **Finish.** `vp tap --id onboarding.taskSetup.continueButton`. The tree holds `home.view`, and the
+- **Finish.** `vp tap --once --id onboarding.taskSetup.continueButton`. The tree holds `home.view`, and the
   `home.currentTasks.section` lists `home.currentTask.Daily Feeding` and `home.currentTask.Refresh Water`,
   each with `Miso`, `Today` and `No completions yet`. `vp shot home-after-onboarding`, `vp tree home-after-onboarding`.
 - **Second view.** `vp tap --label Tasks --element-type RadioButton`. The tree holds
@@ -65,9 +66,9 @@ Preconditions:
 
 - The first tap right after a screen change can be lost while the transition animates (seen twice on
   2026-10-14, once with the default tap style and once with the physical style). `vp tap` taps once
-  more when the tree did not change; a raw `axe tap` does not.
+  more when the tree did not change for 8 s; a raw `axe tap` does not.
 - Do not tap a starter row twice: a second tap on the next row that slid up ticks a task you did not mean.
-  Read `vp ui` between the two row taps if a `vp tap` retried.
+  The row taps use `vp tap --once`; read `vp ui` between the two row taps.
 - The Simulator app need not be open: on 2026-10-14 axe read the full tree with no Simulator process
   (Xcode 27 ships no `Simulator.app` under `Contents/Developer/Applications` on this Mac). If `vp doctor`
   warns about an empty tree, call xcodebuildmcp `open_sim` and retry.

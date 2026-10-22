@@ -28,8 +28,8 @@ A **critical** finding is one of these:
 - a broken binding repo rule from CLAUDE.md (for example a care-task save outside `CareTaskWriting`,
   a direct `UNUserNotificationCenter.current()` outside `Utilities/`, an edit to schema V1,
   a user-facing string not in `Localizable.xcstrings` with en + tr),
-- a user-visible change whose PR has no `verify-purrtine` proof, once that skill exists (see "Verify
-  trial" in CLAUDE.md). Ask the author for that proof.
+- a user-visible change whose PR has no `verify-purrtine` proof (see "Verify trial" in
+  CLAUDE.md). Ask the author for that proof.
 
 Style smells, naming, and judgement calls are NOT critical.
 
