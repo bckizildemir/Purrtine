@@ -246,6 +246,13 @@ and the same screen size as the recorded runs. Measure again before you change t
 - **The hold blocks every build on the Mac.** Keep a drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.
+- **A system-sheet tap can report a change that did not happen.** On 2026-10-27 `$V tap --label Allow`
+  on the notification sheet said "screen changed", but the sheet stayed ("Requesting permission…").
+  `axe tap -x X -y Y --tap-style physical --udid $UDID` on Allow's frame centre (from `$V ui`)
+  worked. After any tap on a system sheet, read `$V ui` and check the sheet is gone before the next step.
+- **A screenshot with no device names the wrong one.** With several simulators booted (2026-10-27),
+  xcodebuildmcp `screenshot` with no `simulatorId` captured another simulator. Take evidence with
+  `$V shot`, or pass `simulatorId=$UDID` (the clone's UDID) to every xcodebuildmcp call.
 - **`$V reminders` reads the first pending store on the device.** On a fresh device only this app
   schedules notifications, so that store is the app's.
 
