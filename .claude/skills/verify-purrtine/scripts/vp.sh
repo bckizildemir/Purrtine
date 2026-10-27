@@ -6,7 +6,7 @@
 #                                         take the verify lock and a slot, clone the slim
 #                                         template (Scripts/slim-sim.sh), boot the clone
 #   build                                 Scripts/xcb.sh build against that device, copy the .app
-#   hold                                  take the machine-wide xcb lock for the drive (see below)
+#   hold                                  optional: take the machine-wide xcb lock for the drive (see below)
 #   install                               install the copied .app on the device
 #   launch                                launch the app with NO launch arguments
 #   doctor                                read-only: is this run worth driving?
@@ -28,8 +28,9 @@
 # on a slim simulator. Clones take a machine-wide slot first (SLIM_SIM_MAX, default 2, shared
 # with TriQ's verify-triq), so a TriQ run and this one can drive at the same time.
 #
-# Why hold: a build or test from another session competes with the drive for this Mac's memory
-# and CPU. (Scripts/xcb.sh never shuts down a simulator it did not boot.)
+# Optional hold (off by default; owner decision 2026-10-28): Scripts/xcb.sh never shuts down a
+# simulator it did not boot, and slim clones let two runs drive at once. Use `hold` only when the
+# owner asks, or with an old xcb.sh that shuts down other simulators.
 # While `hold` is in force, xcb runs from other sessions wait for the lock, exactly as they
 # wait for a build. A watcher process owns the lock; it lets go when cleanup removes the
 # verify lock, or after VP_HOLD_MAX seconds (default 1800), whichever comes first. The hold depends on xcb's lock
@@ -369,7 +370,7 @@ cmd_doctor() {
     if hold_alive; then echo "hold:    xcb lock watcher alive (PID $(state hold_pid))"
     else echo "WARN the hold watcher (PID $(state hold_pid)) is not running: other sessions' builds and tests are no longer paused; run vp.sh hold"; fi
   else
-    echo "hold:    not taken (run vp.sh hold after build)"
+    echo "hold:    not taken (optional)"
   fi
   warn_other_booted "$udid"
   printf 'evidence: %s\n' "$(state evidence)"
