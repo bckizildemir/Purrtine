@@ -75,5 +75,5 @@ Preconditions:
 - The Cat's Name field shows the placeholder `Fluffy` (`Kedoli`) as its value while empty; do not read
   it as typed text.
 - "Add Photo" (`catForm.photoMenu`) opens the system photo picker out of process; axe sees none of its
-  cells. Leave the photo empty and say so.
+  cells. Leave the photo empty and say so (a `-ui-testing -inject-test-photo` launch, #52, loads a generated photo instead).
 - With a tr device, the welcome progress value reads `%25`, not `25%`.

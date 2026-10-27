@@ -56,5 +56,7 @@ Preconditions:
 - The More tab keeps its navigation stack: after this feature it reopens on `cats.view`. Another feature
   that starts from a More shortcut taps `BackButton` first.
 - "Add Photo" opens the system photo picker, which runs out of process: axe and `snapshot_ui` see none
-  of its cells. Do not try to pick a photo; say in the report that the photo path was not checked.
+  of its cells. Do not try to pick a photo; say in the report that the photo path was not checked,
+  unless the app was launched with `-ui-testing -inject-test-photo` (#52): then "Choose from library"
+  loads a generated photo without the picker.
 - The camera choice asks for camera permission; the simulator has no camera. Skip it.
