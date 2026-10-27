@@ -54,6 +54,16 @@ struct AppLaunchConfigurationTests {
     }
     #endif
 
+    /// `-fail-caregiver-avatar-save` counts only under `-ui-testing` (#39).
+    @Test(arguments: [
+        (["app", "-ui-testing", "-fail-caregiver-avatar-save"], true),
+        (["app", "-ui-testing"], false),
+        (["app", "-fail-caregiver-avatar-save"], false)
+    ])
+    func failsCaregiverAvatarSaveOnlyWhenAskedUnderUITesting(arguments: [String], expected: Bool) {
+        #expect(AppLaunchConfiguration(arguments: arguments).failsCaregiverAvatarSave == expected)
+    }
+
     @Test
     func parsesTaskFilterAndOnboardingStep() {
         let configuration = AppLaunchConfiguration(

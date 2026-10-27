@@ -10,9 +10,30 @@ struct AddCaregiverView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var avatarImage: UIImage?
     @State private var isLoadingPhoto = false
+    @State private var model: AddCaregiverModel
     #if DEBUG
     private let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto
     #endif
+
+    /// Called before the sheet closes when the caregiver saved but its photo did not. The presenter
+    /// shows the note once this sheet has left: UIKit refuses to present an alert from a sheet that
+    /// is closing, and an alert on this sheet would leave with it.
+    let onAvatarNotSaved: () -> Void
+
+    init(onAvatarNotSaved: @escaping () -> Void = {}) {
+        self.onAvatarNotSaved = onAvatarNotSaved
+        #if DEBUG
+        // UI-test-only; see `AppLaunchConfiguration.failsCaregiverAvatarSave`.
+        if AppLaunchConfiguration.current.failsCaregiverAvatarSave {
+            _avatarImage = State(initialValue: UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { _ in })
+            _model = State(initialValue: AddCaregiverModel(saveAvatar: { _ in
+                throw PhotoSaveError.writeFailed(CocoaError(.fileWriteUnknown))
+            }))
+            return
+        }
+        #endif
+        _model = State(initialValue: AddCaregiverModel())
+    }
 
     private var hasUnsavedChanges: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || avatarImage != nil
@@ -40,6 +61,7 @@ struct AddCaregiverView: View {
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .disabled(model.isSaving)
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(String(localized: .caregiverAddTitle))
@@ -47,17 +69,26 @@ struct AddCaregiverView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     SheetDismissButton(hasUnsavedChanges: hasUnsavedChanges, onDismiss: dismiss.callAsFunction)
+                        .disabled(model.isSaving)
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    SheetConfirmButton {
-                        saveCaregiver()
+                    if model.isSaving {
+                        SheetSavingIndicator()
+                    } else {
+                        SheetConfirmButton {
+                            Task { await saveCaregiver() }
+                        }
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoadingPhoto)
+                        .accessibilityIdentifier("addCaregiver.saveButton")
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoadingPhoto)
                 }
             }
         }
-        .interactiveDismissDisabled(hasUnsavedChanges)
+        .interactiveDismissDisabled(hasUnsavedChanges || model.isSaving)
+        .alert(String(localized: .caregiverAddNotSaved), isPresented: $model.isShowingSaveFailure) {
+            Button(String(localized: .actionOk)) { }
+        }
         .onChange(of: selectedPhoto) { _, newPhoto in
             loadSelectedPhoto(newPhoto)
         }
@@ -156,56 +187,17 @@ struct AddCaregiverView: View {
     }
     #endif
 
-    private func saveCaregiver() {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
-        
-        // Save avatar image if exists
-        var avatarURL: String?
-        if let avatarImage = avatarImage {
-            avatarURL = saveAvatarImage(avatarImage)
-        }
-        
-        // Create new caregiver
-        let newCaregiver = Caregiver(
-            name: trimmedName,
-            avatarURL: avatarURL
-        )
-        
-        modelContext.insert(newCaregiver)
-        
-        do {
-            try modelContext.save()
+    /// A failed commit keeps the sheet open with the name and photo, and the model shows the alert.
+    private func saveCaregiver() async {
+        switch await model.save(name: name, avatar: avatarImage, in: modelContext) {
+        case .saved:
             dismiss()
-        } catch {
-            print("❌ Failed to save caregiver: \(error)")
+        case .savedWithoutAvatar:
+            onAvatarNotSaved()
+            dismiss()
+        case nil:
+            break
         }
-    }
-    
-    private func saveAvatarImage(_ image: UIImage) -> String? {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let avatarsDirectory = documentsPath.appendingPathComponent("CaregiverAvatars")
-        
-        // Create directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: avatarsDirectory, withIntermediateDirectories: true)
-        
-        let fileName = "caregiver_avatar_\(UUID().uuidString).jpg"
-        let fileURL = avatarsDirectory.appendingPathComponent(fileName)
-        
-        // Scale down to avatar size and encode once before writing.
-        if let imageData = PhotoManager.renderedJPEGData(
-            from: image,
-            maxPixelSize: PhotoManager.avatarMaxPixelSize
-        ) {
-            do {
-                try imageData.write(to: fileURL)
-                return fileURL.lastPathComponent // Store relative path
-            } catch {
-                print("❌ Failed to save avatar: \(error)")
-            }
-        }
-
-        return nil
     }
 }
 

@@ -75,6 +75,10 @@ struct AppLaunchConfiguration {
     /// UI-test-only injection: makes the commit in `CatDeletionService.delete` throw, so the UI
     /// tests can reach the "delete not saved yet" alert. Debug builds only, gated like the one above.
     var failsCatDeleteCommit: Bool { isUITesting && hasArgument("-fail-cat-delete-commit") }
+    /// UI-test-only injection: the Add Caregiver sheet opens with a stand-in photo whose write
+    /// throws, so a UI test can reach the "photo did not save" note without the system photo
+    /// picker, which runs out of process (#39). Debug builds only, gated like the ones above.
+    var failsCaregiverAvatarSave: Bool { isUITesting && hasArgument("-fail-caregiver-avatar-save") }
     /// UI-test-only: keeps UIKit animations on, which `-ui-testing` otherwise turns off, so a UI test
     /// can reach a race between a closing presentation and the next one (#31). Debug builds only.
     var keepsAnimations: Bool { isUITesting && hasArgument("-keep-animations") }
