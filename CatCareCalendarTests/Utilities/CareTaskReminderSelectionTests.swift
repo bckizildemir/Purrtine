@@ -87,13 +87,11 @@ struct CareTaskReminderSelectionTests {
     }
 
     @Test
-    func aPassedIdealDateFallsBackToAMinuteFromNowWhileTheLastReminderIsLater() throws {
+    func noNudgeWhenTwentyFourHoursBeforeTheLastReminderHasPassed() {
         // The last reminder is 12 hours out, so "24 hours before" is already past.
         let selected = (0..<3).map { makeCandidate("c\($0)", minute: 720 + $0) }
 
-        let date = try #require(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: start, limit: 3))
-
-        #expect(date == start.addingTimeInterval(60))
+        #expect(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: start, limit: 3) == nil)
     }
 
     @Test

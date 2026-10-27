@@ -10,8 +10,8 @@ tops the set up.
 - `NotificationManager.resyncCareTaskNotifications` adds one request with the stable identifier
   `app_open_nudge`, no `taskId`. It is part of the same diff as the reminders, so a resync replaces it,
   and it is removed when reminders are off or the selection holds fewer than 59 reminders.
-- Fire date: 24 hours before the last selected reminder. If that is not in the future, 60 seconds from
-  now, but only while that is before the last reminder; otherwise no nudge
+- Fire date: 24 hours before the last selected reminder. If that is not in the future, there is no
+  nudge, so a dense schedule never nudges an active caregiver right after an app open
   (`CareTaskReminderSelection.nudgeFireDate`).
 - Tapping the nudge opens the app and routes nowhere: `didReceive` finds no `taskId` and completes.
 - `cancelAllCareTaskNotifications` also removes the nudge. Snoozes and debug requests are untouched.

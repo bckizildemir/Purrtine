@@ -368,6 +368,9 @@ final class NotificationManager:
     /// nothing is selected, so the diff removes every care-task reminder and every snooze — that wipe
     /// is intended: the caregiver asked for silence.
     ///
+    /// The "open the app" nudge rides the same diff: when the selection is full, one nudge request is
+    /// wanted (see `CareTaskReminderSelection.nudgeFireDate`); otherwise a pending one is removed.
+    ///
     /// Throws when a request cannot be added, and `CancellationError` when cancelled. A cancelled pass
     /// can stop between adds; that stays safe because every cancellation comes from
     /// `NotificationResyncCoordinator.scheduleResync()`, which runs a successor pass over the whole set.
@@ -389,7 +392,9 @@ final class NotificationManager:
 
         let areRemindersOn = settings.isEnabled && authorizationStatus.allowsReminderConfiguration
         let pendingCareTaskRequests = await notificationCenter.pendingNotificationRequests()
-            .filter { Self.isCareTaskReminder($0) || Self.isNudge($0) || (areRemindersOn == false && Self.isSnooze($0)) }
+            .filter {
+                Self.isCareTaskReminder($0) || Self.isNudge($0) || (areRemindersOn == false && Self.isSnooze($0))
+            }
         try Task.checkCancellation()
 
         let now = Date()
@@ -474,13 +479,6 @@ final class NotificationManager:
         )
     }
 
-    /// Stable identifier of the one nudge request, so a resync replaces it instead of adding another.
-    static let nudgeIdentifier = "app_open_nudge"
-
-    private static func isNudge(_ request: UNNotificationRequest) -> Bool {
-        request.identifier == nudgeIdentifier
-    }
-
     /// Every reminder `info` could schedule: one per upcoming occurrence, plus one overdue follow-up
     /// for the next occurrence. An identifier names its occurrence by due date rather than by
     /// position, so it stays the same while earlier occurrences pass.
@@ -525,6 +523,14 @@ final class NotificationManager:
         return userInfo["taskId"] != nil
             && request.identifier.hasPrefix("snooze_") == false
             && userInfo["testNotification"] as? Bool != true
+    }
+
+    /// Stable identifier of the one nudge request, so a resync replaces it instead of adding another.
+    static let nudgeIdentifier = "app_open_nudge"
+
+    /// The pending "open the app" nudge, which the resync owns like a reminder.
+    private static func isNudge(_ request: UNNotificationRequest) -> Bool {
+        request.identifier == nudgeIdentifier
     }
 
     /// A pending snooze for a task, as `scheduleSnoozedNotification` names it.

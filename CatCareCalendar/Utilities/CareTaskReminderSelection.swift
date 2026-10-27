@@ -19,21 +19,22 @@ enum CareTaskReminderSelection {
     /// outside this budget; the nudge is scheduled only when the selection is full (see `nudgeFireDate`).
     static let limit = 59
 
+    /// How long before the last selected reminder the nudge fires: 24 hours.
+    private static let nudgeLeadTime: TimeInterval = 24 * 3_600
+
     /// When the "open the app" nudge should fire, or `nil` for none.
     ///
     /// The set may run out only when it is full, so a selection shorter than `limit` gets no nudge.
-    /// The nudge fires 24 hours before the last selected reminder. If that moment has passed, it fires
-    /// 60 seconds from `now`, provided that is still before the last reminder.
+    /// The nudge fires `nudgeLeadTime` before the last selected reminder. If that moment is not in the
+    /// future, there is no nudge: a dense schedule must not nudge an active caregiver right after every open.
     static func nudgeFireDate(
         selected: [CareTaskReminderCandidate],
         now: Date,
         limit: Int = limit
     ) -> Date? {
         guard selected.count == limit, let lastFireDate = selected.map(\.fireDate).max() else { return nil }
-        let idealDate = lastFireDate.addingTimeInterval(-24 * 3_600)
-        if idealDate > now { return idealDate }
-        let soonestDate = now.addingTimeInterval(60)
-        return soonestDate < lastFireDate ? soonestDate : nil
+        let fireDate = lastFireDate.addingTimeInterval(-nudgeLeadTime)
+        return fireDate > now ? fireDate : nil
     }
 
     /// The `limit` soonest candidates, soonest first. A tie breaks by identifier, so the result does
