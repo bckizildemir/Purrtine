@@ -30,7 +30,7 @@ English; the last in the maintenance pass), the Turkish welcome screen on the sa
 
 Preconditions:
 
-- A fresh run: `vp start` (add `--lang tr` for Turkish), `vp build`, `vp hold`, `vp install`, `vp launch`.
+- A fresh run: `vp start` (add `--lang tr` for Turkish), `vp build`, `vp install`, `vp launch`.
 - `vp ui` shows `Button | Get Started | onboarding.welcome.continueButton` (`Başlayalım` in Turkish).
 
 - **Welcome.** `vp shot onboarding-welcome`, then `vp tap --id onboarding.welcome.continueButton`.

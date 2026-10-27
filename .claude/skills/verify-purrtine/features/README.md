@@ -7,7 +7,7 @@ is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh
 
 ## Baseline preconditions
 
-- A run is open: `vp.sh start` → `vp.sh build` → `vp.sh hold` → `vp.sh install` → `vp.sh launch`, and `vp.sh doctor`
+- A run is open: `vp.sh start` → `vp.sh build` → `vp.sh install` → `vp.sh launch`, and `vp.sh doctor`
   exits 0. Every command below runs from the repo root; `vp` means
   `.claude/skills/verify-purrtine/scripts/vp.sh`.
 - `UDID` is the run's device: `UDID=$(cat /tmp/verify-purrtine.lock/udid)`.

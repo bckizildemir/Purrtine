@@ -44,7 +44,6 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
 ```bash
 $V start                       # verify lock, fresh device, English; add --lang tr for Turkish
 $V build                       # Scripts/xcb.sh build against this device; copies CatCareCalendar.app
-$V hold                        # take the xcb lock for the drive (see "Why hold")
 $V install
 $V launch                      # prints "com.berkecankizildemir.CatCareCalendar: <pid>"
 $V doctor                      # must exit 0
@@ -67,24 +66,21 @@ $V doctor                      # must exit 0
   onboarding.welcome.continueButton`. A fresh device always starts on the onboarding.
 - Teardown is `$V cleanup` (see Cleanup).
 
-### Why hold
+### Optional hold
 
-A build or test from another session competes with the drive for this Mac's memory and CPU, and
-before #80 (2026-10-15) `Scripts/xcb.sh test` also shut down every other booted simulator. On
-2026-10-14 this run's device was shut down three times in 30 minutes that way. Since 2026-10-27
-xcb never shuts down a simulator it did not boot: it tests on the project's own slim test device.
-`$V hold` takes the same machine-wide lock that xcb uses, owned by a watcher process, so their
-builds and tests wait while you drive. It ends at `$V cleanup`, or after 30 minutes
-(`VP_HOLD_MAX=<seconds>` to change). Take it after `build` — `build` needs that lock itself — and
-keep the drive short. If the device was shut down before the hold, `$V install` boots it again.
-A second verify run (TriQ's, say) can clone and boot while you hold, but its `build` waits for
-your hold to end.
+`$V hold` takes the machine-wide xcb build lock (`~/Library/Caches/xcb/build.lock`), owned by a
+watcher process, so other sessions' builds and tests wait while you drive. Skip it by default:
+`Scripts/xcb.sh` never shuts down a simulator it did not boot, and slim clones let a TriQ run drive
+at the same time. Use it only when the owner asks, or when a checkout with an old `xcb.sh` that
+shuts down other simulators is in use. Take it after `build` — `build` needs that lock itself. It
+ends at `$V cleanup`, or after 30 minutes (`VP_HOLD_MAX=<seconds>` to change). If the device was
+shut down before the hold, `$V install` boots it again.
 
-**Owner decision (2026-10-14):** a drive may hold the xcb build lock for up to 30 minutes, which
-pauses every build and test on the Mac, TriQ's too. Accepted. A longer pass re-runs `$V hold`.
+**Owner decision (2026-10-28):** hold is off by default; slim clones and the new xcb.sh made it
+unnecessary. It replaces the 2026-10-14 decision.
 `hold` depends on xcb's lock format: the `pid` and `owner` files in
 `~/Library/Caches/xcb/build.lock`. A change to that lock in `Scripts/xcb.sh` must update `vp.sh` in
-the same PR. `$V status` and `$V doctor` report whether the watcher process is alive.
+the same PR. When a hold was taken, `$V status` and `$V doctor` report whether the watcher is alive.
 
 ## Doctor
 
@@ -100,7 +96,7 @@ the number of labelled accessibility elements. Run it first whenever anything lo
   start again; if it repeats, `Scripts/slim-sim.sh template` repairs the template.
 - `WARN another simulator is booted` → owner decision: warn and continue. The run never shuts down a
   device it did not create. `start` and `doctor` print the warning.
-- `WARN the hold watcher … is not running` → `$V hold` again (the 30 minutes ran out or it died).
+- `WARN the hold watcher … is not running` → only after you took `$V hold`: the 30 minutes ran out or it died. Take it again only if you still need it.
 - `WARN empty accessibility tree` → open the Simulator window (xcodebuildmcp `open_sim`) and retry.
 - `WARN the app carries GoogleService-Info.plist` → the cloud tier is live in this build. Do not
   drive the Whiskers assistant into its cloud fallback: it calls a paid Firebase function.
@@ -243,7 +239,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   stays off. The owner's main checkout has it (seen 2026-10-14): the build then signs in to Firebase at
   launch, and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
   assistant's cloud fallback alone in such a build.
-- **The hold blocks every build on the Mac.** Keep a drive short. The watcher lets go after
+- **An optional hold blocks every build on the Mac.** Keep a held drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.
 - **A system-sheet tap can report a change that did not happen.** On 2026-10-27 `$V tap --label Allow`
@@ -269,9 +265,8 @@ and the same screen size as the recorded runs. Measure again before you change t
 ## Maintenance pass (`/maintain-verification-skill`)
 
 A maintain pass drives **every** feature on **one** device, in one language, in one run: `start`,
-`build` (background), `hold`, `install`, `launch`, `doctor`, then onboarding first and the other
-features in the order of `features/README.md`. A full pass can outlast the 30-minute hold: when
-`$V status` or `$V doctor` says the watcher is gone, run `$V hold` again before the next drive. Run
+`build` (background), `install`, `launch`, `doctor`, then onboarding first and the other
+features in the order of `features/README.md`. Run
 `$V doctor` before the first drive and after any failed drive; `$V revive` restores a device another
 session shut down. Evidence stays in `~/verify-evidence/purrtine/`; teardown (`$V cleanup`) happens once,
 after the last drive. A feature that cannot be reached is reported with the command tried and the
