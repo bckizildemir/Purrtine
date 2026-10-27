@@ -9,7 +9,7 @@ import UserNotifications
 @MainActor
 struct NotificationManagerResyncTests {
     @Test
-    func onboardingStarterTasksKeepOnlyTheSixtySoonestReminders() async throws {
+    func onboardingStarterTasksKeepOnlyTheFiftyNineSoonestRemindersAndOneNudge() async throws {
         let infos = try await starterTaskInfos()
         let fakeCenter = FakeUserNotificationCenterClient()
         let sut = try await makeManager(notificationCenter: fakeCenter)
@@ -17,11 +17,12 @@ struct NotificationManagerResyncTests {
         try await sut.resyncCareTaskNotifications(with: infos)
 
         // Uncapped, these three tasks produce 83 requests spread over 30 days. Two daily series and
-        // one every-other-day series fire 2.5 reminders a day, so the 60 soonest (3 of them overdue
-        // follow-ups) end about 23 days out.
+        // one every-other-day series fire 2.5 reminders a day, so the 59 soonest (3 of them overdue
+        // follow-ups) end about 23 days out. The full set also gets one nudge.
         let fireDates = try fakeCenter.pendingRequests.map(fireDate(of:))
         let latest = try #require(fireDates.max())
         #expect(fakeCenter.pendingRequests.count == 60)
+        #expect(fakeCenter.pendingRequests.filter { $0.content.userInfo["taskId"] != nil }.count == 59)
         #expect(latest < Date().addingTimeInterval(25 * 86_400))
         for info in infos where info.frequency == .daily {
             let days = try fakeCenter.pendingRequests
@@ -177,7 +178,117 @@ struct NotificationManagerResyncTests {
         #expect(fakeCenter.pendingRequests.count == 3)
     }
 
+    // MARK: - Nudge (#11)
+
+    @Test
+    func aFullSetGetsOneNudgeADayBeforeTheLastReminder() async throws {
+        let infos = try await starterTaskInfos()
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: infos)
+
+        let nudge = try #require(try singleNudge(in: fakeCenter))
+        let reminderDates = try fakeCenter.pendingRequests
+            .filter { $0.content.userInfo["taskId"] != nil }
+            .map(fireDate(of:))
+        let lastReminder = try #require(reminderDates.max())
+        #expect(reminderDates.count == 59)
+        #expect(try fireDate(of: nudge) == lastReminder.addingTimeInterval(-86_400))
+        #expect(try fireDate(of: nudge) < lastReminder)
+        #expect(nudge.content.userInfo["taskId"] == nil)
+        #expect(nudge.content.title == String(localized: .notificationNudgeTitle))
+        #expect(nudge.content.body == String(localized: .notificationNudgeBody))
+    }
+
+    @Test
+    func fewerRemindersThanTheLimitGetNoNudge() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: UUID())])
+
+        #expect(try singleNudge(in: fakeCenter) == nil)
+    }
+
+    @Test
+    func aSecondResyncKeepsOneNudgeWithoutReAddingIt() async throws {
+        let infos = try await starterTaskInfos()
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: infos)
+        let addsAfterFirstPass = fakeCenter.addedRequests.count
+        try await sut.resyncCareTaskNotifications(with: infos)
+
+        #expect(fakeCenter.pendingRequests.filter { $0.identifier == NotificationManager.nudgeIdentifier }.count == 1)
+        #expect(fakeCenter.addedRequests.count == addsAfterFirstPass)
+    }
+
+    @Test
+    func aStaleNudgeIsRemovedWhenTheSetNoLongerFillsTheLimit() async throws {
+        let infos = try await starterTaskInfos()
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        try await sut.resyncCareTaskNotifications(with: infos)
+        #expect(try singleNudge(in: fakeCenter) != nil)
+
+        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: UUID())])
+
+        #expect(try singleNudge(in: fakeCenter) == nil)
+    }
+
+    @Test
+    func turningRemindersOffRemovesTheNudge() async throws {
+        let infos = try await starterTaskInfos()
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        try await sut.resyncCareTaskNotifications(with: infos)
+        #expect(try singleNudge(in: fakeCenter) != nil)
+
+        var settings = sut.settings
+        settings.isEnabled = false
+        sut.applySettings(settings)
+        try await sut.resyncCareTaskNotifications(with: infos)
+
+        #expect(fakeCenter.pendingRequests.isEmpty)
+    }
+
+    @Test
+    func theNudgeAndFourSnoozesStayWithinTheSystemLimit() async throws {
+        let infos = try await starterTaskInfos()
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let taskId = UUID()
+        fakeCenter.pendingRequests = (0..<4).map {
+            pendingRequest(identifier: "snooze_\(taskId.uuidString)_\($0)", taskId: taskId)
+        }
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: infos)
+
+        #expect(fakeCenter.pendingRequests.count == 64)
+        #expect(fakeCenter.pendingRequests.filter { $0.identifier.hasPrefix("snooze_") }.count == 4)
+    }
+
+    @Test
+    func theNudgeCopyExistsInEnglishAndTurkish() throws {
+        for language in ["en", "tr"] {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let bundle = try #require(Bundle(path: path))
+            for key in ["notification.nudge.title", "notification.nudge.body"] {
+                let value = bundle.localizedString(forKey: key, value: "MISSING", table: nil)
+                #expect(value != "MISSING" && value.isEmpty == false, "\(key) missing in \(language)")
+            }
+        }
+    }
+
     // MARK: - Helpers
+
+    private func singleNudge(in fakeCenter: FakeUserNotificationCenterClient) throws -> UNNotificationRequest? {
+        let nudges = fakeCenter.pendingRequests.filter { $0.identifier == NotificationManager.nudgeIdentifier }
+        try #require(nudges.count <= 1)
+        return nudges.first
+    }
 
     private func starterTaskInfos() async throws -> [NotificationScheduleInfo] {
         let container = try TestModelContainerFactory.makeInMemoryContainer()

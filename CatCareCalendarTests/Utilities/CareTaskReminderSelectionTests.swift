@@ -18,25 +18,25 @@ struct CareTaskReminderSelectionTests {
 
         let selected = CareTaskReminderSelection.soonest(candidates.reversed())
 
-        #expect(selected.count == 60)
+        #expect(selected.count == 59)
         #expect(selected.first?.identifier == "m0")
-        #expect(selected.last?.identifier == "m59")
-        #expect(Set(selected.map(\.identifier)).contains("m60") == false)
+        #expect(selected.last?.identifier == "m58")
+        #expect(Set(selected.map(\.identifier)).contains("m59") == false)
         #expect(Set(selected.map(\.info.taskId)) == Set(taskIds))
     }
 
     @Test
     func overdueCandidatesCompeteForTheSameSlots() {
-        var candidates = (0..<60).map { makeCandidate("due\($0)", minute: 10 + $0) }
+        var candidates = (0..<59).map { makeCandidate("due\($0)", minute: 10 + $0) }
         candidates.append(makeCandidate("early_overdue", minute: 5, isOverdue: true))
         candidates.append(makeCandidate("late_overdue", minute: 500, isOverdue: true))
 
         let selected = CareTaskReminderSelection.soonest(candidates)
 
-        #expect(selected.count == 60)
+        #expect(selected.count == 59)
         #expect(selected.first?.identifier == "early_overdue")
         #expect(selected.contains { $0.identifier == "late_overdue" } == false)
-        #expect(selected.last?.identifier == "due58")
+        #expect(selected.last?.identifier == "due57")
     }
 
     @Test
@@ -64,8 +64,43 @@ struct CareTaskReminderSelectionTests {
     }
 
     @Test
-    func theDefaultLimitLeavesFourOfTheSixtyFourSystemSlotsForSnoozes() {
-        #expect(CareTaskReminderSelection.limit == 60)
+    func theDefaultLimitLeavesOneNudgeSlotAndFourSnoozeSlotsOfTheSixtyFour() {
+        #expect(CareTaskReminderSelection.limit == 59)
+        #expect(CareTaskReminderSelection.limit + 1 + 4 == 64)
+    }
+
+    @Test
+    func theNudgeFiresADayBeforeTheLastReminderOfAFullSelection() throws {
+        let now = start.addingTimeInterval(-1_000)
+        let selected = (0..<3).map { makeCandidate("c\($0)", minute: 2_000 + $0) }
+
+        let date = try #require(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: now, limit: 3))
+
+        #expect(date == selected[2].fireDate.addingTimeInterval(-86_400))
+    }
+
+    @Test
+    func aSelectionShorterThanTheLimitGetsNoNudge() {
+        let selected = (0..<2).map { makeCandidate("c\($0)", minute: 5_000 + $0) }
+
+        #expect(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: start, limit: 3) == nil)
+    }
+
+    @Test
+    func aPassedIdealDateFallsBackToAMinuteFromNowWhileTheLastReminderIsLater() throws {
+        // The last reminder is 12 hours out, so "24 hours before" is already past.
+        let selected = (0..<3).map { makeCandidate("c\($0)", minute: 720 + $0) }
+
+        let date = try #require(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: start, limit: 3))
+
+        #expect(date == start.addingTimeInterval(60))
+    }
+
+    @Test
+    func noNudgeWhenTheLastReminderIsWithinTheNextMinute() {
+        let selected = (0..<3).map { _ in makeCandidate("c", minute: 0) }
+
+        #expect(CareTaskReminderSelection.nudgeFireDate(selected: selected, now: start, limit: 3) == nil)
     }
 
     private func makeCandidate(

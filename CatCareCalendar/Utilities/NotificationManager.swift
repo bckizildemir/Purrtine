@@ -389,10 +389,17 @@ final class NotificationManager:
 
         let areRemindersOn = settings.isEnabled && authorizationStatus.allowsReminderConfiguration
         let pendingCareTaskRequests = await notificationCenter.pendingNotificationRequests()
-            .filter { Self.isCareTaskReminder($0) || (areRemindersOn == false && Self.isSnooze($0)) }
+            .filter { Self.isCareTaskReminder($0) || Self.isNudge($0) || (areRemindersOn == false && Self.isSnooze($0)) }
         try Task.checkCancellation()
 
-        let wantedRequests = areRemindersOn ? selectedReminderRequests(for: infos) : []
+        let now = Date()
+        let selected = areRemindersOn ? selectedReminderCandidates(for: infos, now: now) : []
+        var wantedRequests = selected.map(reminderRequest(for:))
+        // The nudge shares the diff: an unchanged one is kept, a moved one replaced in place under
+        // its fixed identifier, and one that is no longer wanted falls into `staleIds`.
+        if let nudgeDate = CareTaskReminderSelection.nudgeFireDate(selected: selected, now: now) {
+            wantedRequests.append(nudgeRequest(firedAt: nudgeDate))
+        }
         let wantedIds = Set(wantedRequests.map(\.identifier))
         let staleIds = pendingCareTaskRequests.map(\.identifier).filter { wantedIds.contains($0) == false }
         if staleIds.isEmpty == false {
@@ -420,8 +427,10 @@ final class NotificationManager:
     }
 
     /// The requests a resync wants pending: the soonest reminders across every eligible schedule.
-    private func selectedReminderRequests(for infos: [NotificationScheduleInfo]) -> [UNNotificationRequest] {
-        let now = Date()
+    private func selectedReminderCandidates(
+        for infos: [NotificationScheduleInfo],
+        now: Date
+    ) -> [CareTaskReminderCandidate] {
         let candidates = infos
             .filter {
                 NotificationSchedulingEligibility.allows(
@@ -432,19 +441,44 @@ final class NotificationManager:
             }
             .flatMap { reminderCandidates(for: $0, now: now) }
 
-        return CareTaskReminderSelection.soonest(candidates).map { candidate in
-            UNNotificationRequest(
-                identifier: candidate.identifier,
-                content: createNotificationContent(for: candidate.info, isOverdue: candidate.isOverdue),
-                trigger: UNCalendarNotificationTrigger(
-                    dateMatching: Calendar.current.dateComponents(
-                        [.year, .month, .day, .hour, .minute],
-                        from: candidate.fireDate
-                    ),
-                    repeats: false
-                )
-            )
-        }
+        return CareTaskReminderSelection.soonest(candidates)
+    }
+
+    private func reminderRequest(for candidate: CareTaskReminderCandidate) -> UNNotificationRequest {
+        UNNotificationRequest(
+            identifier: candidate.identifier,
+            content: createNotificationContent(for: candidate.info, isOverdue: candidate.isOverdue),
+            trigger: calendarTrigger(firedAt: candidate.fireDate)
+        )
+    }
+
+    /// The single "open the app" request. It carries no `taskId`, so a tap opens the app and nothing
+    /// else: `didReceive` has no task to route to and just completes.
+    private func nudgeRequest(firedAt fireDate: Date) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: .notificationNudgeTitle)
+        content.body = String(localized: .notificationNudgeBody)
+        content.sound = settings.soundEnabled ? .default : nil
+        content.badge = badgeNumber
+        return UNNotificationRequest(
+            identifier: Self.nudgeIdentifier,
+            content: content,
+            trigger: calendarTrigger(firedAt: fireDate)
+        )
+    }
+
+    private func calendarTrigger(firedAt fireDate: Date) -> UNCalendarNotificationTrigger {
+        UNCalendarNotificationTrigger(
+            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate),
+            repeats: false
+        )
+    }
+
+    /// Stable identifier of the one nudge request, so a resync replaces it instead of adding another.
+    static let nudgeIdentifier = "app_open_nudge"
+
+    private static func isNudge(_ request: UNNotificationRequest) -> Bool {
+        request.identifier == nudgeIdentifier
     }
 
     /// Every reminder `info` could schedule: one per upcoming occurrence, plus one overdue follow-up
@@ -682,7 +716,7 @@ final class NotificationManager:
 
         let pendingRequests = await notificationCenter.pendingNotificationRequests()
         let identifiers = pendingRequests
-            .filter { $0.content.userInfo["taskId"] != nil }
+            .filter { $0.content.userInfo["taskId"] != nil || Self.isNudge($0) }
             .map(\.identifier)
         notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiers)
         await syncBadgeCount()
