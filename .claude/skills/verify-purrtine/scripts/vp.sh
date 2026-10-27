@@ -3,7 +3,8 @@
 #
 # Subcommands (run from the repo root, in this order):
 #   start [--device NAME] [--os 27.0|26.5] [--lang en|tr]
-#                                         take the verify lock, create + boot a fresh device
+#                                         take the verify lock and a slot, clone the slim
+#                                         template (Scripts/slim-sim.sh), boot the clone
 #   build                                 Scripts/xcb.sh build against that device, copy the .app
 #   hold                                  take the machine-wide xcb lock for the drive (see below)
 #   install                               install the copied .app on the device
@@ -22,21 +23,27 @@
 #
 # State lives in the lock directory, so every Bash call (a new shell) finds the same run.
 #
+# The device: a SimSlim clone of the project's pristine slim template, "iPhone 12 slim tmpl
+# (Purrtine)" (profile in Scripts/simslim-profile.json), so every run starts as a brand-new user
+# on a slim simulator. Clones take a machine-wide slot first (SLIM_SIM_MAX, default 2, shared
+# with TriQ's verify-triq), so a TriQ run and this one can drive at the same time.
+#
 # Why hold: a build or test from another session competes with the drive for this Mac's memory
-# and CPU. (Since #80, Scripts/xcb.sh no longer shuts down devices named verify-* before a test.)
+# and CPU. (Scripts/xcb.sh never shuts down a simulator it did not boot.)
 # While `hold` is in force, xcb runs from other sessions wait for the lock, exactly as they
 # wait for a build. A watcher process owns the lock; it lets go when cleanup removes the
 # verify lock, or after VP_HOLD_MAX seconds (default 1800), whichever comes first. The hold depends on xcb's lock
 # format (pid + owner files in $XCB_LOCK_DIR): change Scripts/xcb.sh's lock and this file together.
 #
 # TriQ runs the same kind of skill (verify-triq, /tmp/verify-triq.lock). Its runs and ours share
-# the xcb lock and this Mac's memory, so `start` waits while a fresh TriQ lock exists. TriQ's
-# vt.sh waits for ours the same way.
+# the xcb lock and the verify slots; neither waits for the other's verify lock.
 
 set -euo pipefail
 
 LOCK_DIR="${VP_LOCK_DIR:-/tmp/verify-purrtine.lock}"
-TRIQ_LOCK_DIR="/tmp/verify-triq.lock"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+SLIM_SIM="$REPO_ROOT/Scripts/slim-sim.sh"
+SLIM_PROFILE="$REPO_ROOT/Scripts/simslim-profile.json"
 LOCK_TIMEOUT="${VP_LOCK_TIMEOUT:-3600}"
 STALE_MINUTES="${VP_STALE_MINUTES:-45}"
 DEFAULT_OS="${VP_OS:-27.0}"
@@ -93,41 +100,14 @@ lock_is_stale() {
 remove_stale_lock() {
   local udid name; udid="$(state udid)"; name="$(state device_name)"
   say "removing stale lock: $(state owner)"
-  if [[ -n "$udid" && "$name" == "$DEVICE_PREFIX"* ]] && device_exists "$udid"; then
-    xcrun simctl shutdown "$udid" 2>/dev/null || true
-    xcrun simctl delete "$udid" || true
+  if [[ -n "$udid" && "$name" == "$DEVICE_PREFIX"* ]]; then
+    "$SLIM_SIM" release "$udid" || true
   fi
   rm -rf "$LOCK_DIR"
 }
 
-# A TriQ verify run is in progress: its lock exists and was touched in the last STALE_MINUTES
-# (vt.sh keeps a heartbeat file, like ours). A stale lock or a leftover booted verify-triq-*
-# device without a lock only gets a warning: that run crashed, and its own vt.sh start or
-# cleanup removes it. We never touch TriQ's lock or devices.
-triq_busy() {
-  [[ -d "$TRIQ_LOCK_DIR" ]] || return 1
-  if [[ -f "$TRIQ_LOCK_DIR/heartbeat" ]]; then
-    [[ -z "$(find "$TRIQ_LOCK_DIR/heartbeat" -mmin +"$STALE_MINUTES" 2>/dev/null)" ]] && return 0
-  elif [[ -z "$(find "$TRIQ_LOCK_DIR" -maxdepth 0 -mmin +2 2>/dev/null)" ]]; then
-    return 0
-  fi
-  say "WARN stale TriQ verify lock ($TRIQ_LOCK_DIR, no heartbeat for ${STALE_MINUTES} min): not waiting for it"
-  return 1
-}
-
 acquire_lock() {
   local waited=0
-  while triq_busy; do
-    if (( waited % 60 == 0 )); then
-      say "waiting for the TriQ verify run to end (${waited}s) - $(cat "$TRIQ_LOCK_DIR/owner" 2>/dev/null || echo unknown)"
-    fi
-    (( waited < LOCK_TIMEOUT )) || fail "gave up waiting for the TriQ verify run after ${LOCK_TIMEOUT}s"
-    sleep 15
-    waited=$((waited + 15))
-  done
-  if xcrun simctl list devices booted 2>/dev/null | grep -q 'verify-triq-'; then
-    say "WARN a verify-triq-* device is booted with no live TriQ lock; not touched"
-  fi
   until mkdir "$LOCK_DIR" 2>/dev/null; do
     if lock_is_stale; then remove_stale_lock; continue; fi
     if (( waited % 60 == 0 )); then
@@ -146,7 +126,7 @@ warn_other_booted() {
   local mine="${1:-}" others
   others="$(xcrun simctl list devices booted 2>/dev/null | grep -E '\(Booted\)' | grep -v -F "${mine:-@@none@@}" || true)"
   if [[ -n "$others" ]]; then
-    say "WARN another simulator is booted (not touched by this run; xcb.sh test in another session may shut it down):"
+    say "WARN another simulator is booted (not touched by this run):"
     printf '%s\n' "$others" | sed 's/^ */vp:   /'
   fi
 }
@@ -180,6 +160,9 @@ cmd_start() {
   local runtimes; runtimes="$(xcrun simctl list runtimes)"
   [[ "$runtimes" == *"$runtime_id"* ]] || fail "no iOS $os simulator runtime on this Mac"
   acquire_lock
+  # Any failure from here on would leave a lock and a slot that block the next start; undo the
+  # half-made run instead.
+  trap 'rc=$?; if [[ $rc -ne 0 ]]; then echo "vp: start failed (exit $rc); cleaning up" >&2; cmd_cleanup >&2; fi' EXIT
 
   local run_id evidence name udid
   run_id="$(date '+%H%M%S')-$(printf '%04x' $((RANDOM)))"
@@ -195,9 +178,13 @@ cmd_start() {
     "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" "$(date '+%Y-%m-%d %H:%M:%S')" > "$LOCK_DIR/owner"
 
   warn_other_booted
-  udid="$(xcrun simctl create "$name" "$device" "$runtime_id")" || fail "simctl create failed"
+  # A clone of the pristine slim template: no app, no data, the project's SimSlim profile.
+  # It waits for a free verify slot (SLIM_SIM_MAX, default 2, shared with TriQ).
+  touch "$LOCK_DIR/heartbeat"
+  udid="$(SLIM_SIM_DEVICE="$device" SLIM_SIM_OS="$os" "$SLIM_SIM" clone "$name" "$LOCK_DIR")" \
+    || fail "Scripts/slim-sim.sh clone failed"
   echo "$udid" > "$LOCK_DIR/udid"
-  say "created $name ($device, iOS $os) $udid"
+  say "cloned $name ($device, iOS $os, slim) $udid"
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" >/dev/null
   # A fresh device copies the Mac's languages (seen 2026-10-14: en-TR, tr-TR), so set the
@@ -210,12 +197,16 @@ cmd_start() {
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" >/dev/null
   say "device language $languages, locale $locale (rebooted)"
+  local slim=ok
+  simslim verify "$udid" --profile "$SLIM_PROFILE" >/dev/null 2>&1 || { slim=drift; say "WARN the clone does not match $SLIM_PROFILE (simslim verify $udid)"; }
   {
     echo "run_id=$run_id"; echo "udid=$udid"; echo "device=$device"; echo "os=$os"; echo "lang=$lang"
+    echo "slim=$slim profile=$(tr -d ' \n' < "$SLIM_PROFILE")"
     echo "git_rev=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
     echo "started=$(date '+%Y-%m-%d %H:%M:%S')"
   } > "$evidence/run.txt"
   touch "$LOCK_DIR/heartbeat"
+  trap - EXIT
   say "booted. UDID=$udid"
   say "evidence $evidence"
 }
@@ -334,7 +325,7 @@ cmd_doctor() {
   printf 'owner:   %s\n' "$(state owner)"
   printf 'device:  %s %s state=%s\n' "$(state device_name)" "$udid" "$(device_state "$udid")"
   if [[ "$(device_state "$udid")" != Booted ]]; then
-    echo "FAIL device is not booted (an xcb.sh test in another session shuts down other simulators): run vp.sh revive"
+    echo "FAIL device is not booted (another session shut it down?): run vp.sh revive"
     ok=1
   fi
   if xcrun simctl get_app_container "$udid" "$BUNDLE_ID" >/dev/null 2>&1; then
@@ -353,6 +344,11 @@ cmd_doctor() {
     fi
   else
     echo "WARN app is not running"
+  fi
+  if simslim verify "$udid" --profile "$SLIM_PROFILE" >/dev/null 2>&1; then
+    echo "slim:    matches Scripts/simslim-profile.json"
+  else
+    echo "WARN slim: the device does not match Scripts/simslim-profile.json (simslim verify $udid)"
   fi
   printf 'lang:    %s (AppleLanguages: %s)\n' "$(state lang)" \
     "$(xcrun simctl spawn "$udid" defaults read -g AppleLanguages 2>/dev/null | tr -d ' \n')"
@@ -492,11 +488,10 @@ cmd_memory() {
 cmd_cleanup() {
   [[ -d "$LOCK_DIR" ]] || { say "no run in progress"; exit 0; }
   local udid name evidence; udid="$(state udid)"; name="$(state device_name)"; evidence="$(state evidence)"
-  if [[ -n "$udid" && "$name" == "$DEVICE_PREFIX"* ]] && device_exists "$udid"; then
-    xcrun simctl terminate "$udid" "$BUNDLE_ID" 2>/dev/null || true
-    xcrun simctl shutdown "$udid" 2>/dev/null || true
-    xcrun simctl delete "$udid" || say "WARN simctl delete failed for $udid; delete it by hand"
-    say "deleted $name ($udid)"
+  if [[ -n "$udid" && "$name" == "$DEVICE_PREFIX"* ]]; then
+    device_exists "$udid" && { xcrun simctl terminate "$udid" "$BUNDLE_ID" 2>/dev/null || true; }
+    # Deletes the clone and frees its verify slot (a slot whose device is gone is freed too).
+    "$SLIM_SIM" release "$udid" || say "WARN Scripts/slim-sim.sh release $udid failed; delete it by hand"
   fi
   release_hold
   [[ -n "$evidence" ]] && echo "finished=$(date '+%Y-%m-%d %H:%M:%S')" >> "$evidence/run.txt"
@@ -506,6 +501,7 @@ cmd_cleanup() {
     say "evidence kept: $evidence ($(find "$evidence" -type f | wc -l | tr -d ' ') files)"
   fi
   du -sh "$EVIDENCE_ROOT"
+  return 0
 }
 
 cmd_status() {
