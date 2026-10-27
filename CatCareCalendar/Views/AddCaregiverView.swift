@@ -10,6 +10,9 @@ struct AddCaregiverView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var avatarImage: UIImage?
     @State private var isLoadingPhoto = false
+    #if DEBUG
+    private let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto
+    #endif
 
     private var hasUnsavedChanges: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || avatarImage != nil
@@ -100,9 +103,11 @@ struct AddCaregiverView: View {
                 CaregiverPhotoPickerButton(
                     selection: $selectedPhoto,
                     hasPhoto: avatarImage != nil,
-                    isLoading: isLoadingPhoto,
-                    onInjectedPick: loadInjectedPhoto
+                    isLoading: isLoadingPhoto
                 )
+                #if DEBUG
+                .injectingPhoto(injectedPhoto.map { photo in { loadInjectedPhoto(photo) } })
+                #endif
                 
                 if avatarImage != nil {
                     Button(String(localized: .caregiverAddPhotoRemove)) {
@@ -144,13 +149,12 @@ struct AddCaregiverView: View {
         }
     }
     
+    #if DEBUG
     /// Loads the generated photo that stands in for the system picker under `-inject-test-photo` (#52).
-    private func loadInjectedPhoto() {
-        #if DEBUG
-        guard let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto else { return }
-        loadPhoto { await injectedPhoto.load() }
-        #endif
+    private func loadInjectedPhoto(_ photo: InjectedTestPhoto) {
+        loadPhoto { await photo.load() }
     }
+    #endif
 
     private func saveCaregiver() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -216,12 +220,20 @@ private struct CaregiverPhotoPickerButton: View {
     @Binding var selection: PhotosPickerItem?
     let hasPhoto: Bool
     let isLoading: Bool
-    /// Stands in for the picker under `-inject-test-photo`; unused in release builds.
-    let onInjectedPick: () -> Void
+    #if DEBUG
+    /// Set under `-inject-test-photo`: a plain button that stands in for the picker (#52).
+    var onInjectedPick: (() -> Void)?
+
+    func injectingPhoto(_ action: (() -> Void)?) -> Self {
+        var copy = self
+        copy.onInjectedPick = action
+        return copy
+    }
+    #endif
 
     var body: some View {
         #if DEBUG
-        if AppLaunchConfiguration.current.injectedTestPhoto != nil {
+        if let onInjectedPick {
             Button(action: onInjectedPick) {
                 CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
             }
