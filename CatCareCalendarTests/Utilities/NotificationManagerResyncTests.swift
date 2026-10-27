@@ -18,7 +18,7 @@ struct NotificationManagerResyncTests {
 
         // Uncapped, these three tasks produce 83 requests spread over 30 days. Two daily series and
         // one every-other-day series fire 2.5 reminders a day, so the 59 soonest (3 of them overdue
-        // follow-ups) end about 23 days out. The full set also gets one nudge.
+        // follow-ups) end about 23 days out. The limit cut the set, so it also gets one nudge.
         let fireDates = try fakeCenter.pendingRequests.map(fireDate(of:))
         let latest = try #require(fireDates.max())
         #expect(fakeCenter.pendingRequests.count == 60)
@@ -181,7 +181,7 @@ struct NotificationManagerResyncTests {
     // MARK: - Nudge (#11)
 
     @Test
-    func aFullSetGetsOneNudgeADayBeforeTheLastReminder() async throws {
+    func aSetCutByTheLimitGetsOneNudgeADayBeforeTheLastReminder() async throws {
         let infos = try await starterTaskInfos()
         let fakeCenter = FakeUserNotificationCenterClient()
         let sut = try await makeManager(notificationCenter: fakeCenter)
@@ -202,7 +202,27 @@ struct NotificationManagerResyncTests {
     }
 
     @Test
-    func fewerRemindersThanTheLimitGetNoNudge() async throws {
+    func aSeriesCutByItsOwnCapGetsANudgeADayBeforeItsLastReminder() async throws {
+        // One daily task: the cap stops it at 30 reminders although the series goes on.
+        let calendar = Calendar.current
+        let firstDue = try #require(calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date())))
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(
+            with: [makeInfo(taskId: UUID(), scheduledDate: firstDue, frequency: .daily)]
+        )
+
+        let reminders = fakeCenter.pendingRequests
+            .filter { $0.content.userInfo["taskId"] != nil && $0.identifier.contains("overdue") == false }
+        let nudge = try #require(try singleNudge(in: fakeCenter))
+        let lastReminder = try #require(try reminders.map(fireDate(of:)).max())
+        #expect(reminders.count == 30)
+        #expect(try fireDate(of: nudge) == lastReminder.addingTimeInterval(-86_400))
+    }
+
+    @Test
+    func aSeriesThatEndsOnItsOwnGetsNoNudge() async throws {
         let fakeCenter = FakeUserNotificationCenterClient()
         let sut = try await makeManager(notificationCenter: fakeCenter)
 
@@ -226,7 +246,7 @@ struct NotificationManagerResyncTests {
     }
 
     @Test
-    func aStaleNudgeIsRemovedWhenTheSetNoLongerFillsTheLimit() async throws {
+    func aStaleNudgeIsRemovedWhenNothingIsCutAnymore() async throws {
         let infos = try await starterTaskInfos()
         let fakeCenter = FakeUserNotificationCenterClient()
         let sut = try await makeManager(notificationCenter: fakeCenter)
