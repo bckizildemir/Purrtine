@@ -1,0 +1,5 @@
+{
+  "name": "Purrtine",
+  "except": ["photos", "siri"],
+  "keep": []
+}
