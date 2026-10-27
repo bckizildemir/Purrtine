@@ -100,7 +100,8 @@ struct AddCaregiverView: View {
                 CaregiverPhotoPickerButton(
                     selection: $selectedPhoto,
                     hasPhoto: avatarImage != nil,
-                    isLoading: isLoadingPhoto
+                    isLoading: isLoadingPhoto,
+                    onInjectedPick: loadInjectedPhoto
                 )
                 
                 if avatarImage != nil {
@@ -120,11 +121,16 @@ struct AddCaregiverView: View {
     
     private func loadSelectedPhoto(_ photoItem: PhotosPickerItem?) {
         guard let photoItem = photoItem else { return }
-        
+        loadPhoto {
+            try await photoItem.loadTransferable(type: Data.self)
+        }
+    }
+
+    private func loadPhoto(loadData: @escaping @MainActor () async throws -> Data?) {
         isLoadingPhoto = true
-        
+
         Task {
-            if let data = try? await photoItem.loadTransferable(type: Data.self),
+            if let data = try? await loadData(),
                let uiImage = UIImage(data: data) {
                 await MainActor.run {
                     self.avatarImage = uiImage
@@ -138,6 +144,14 @@ struct AddCaregiverView: View {
         }
     }
     
+    /// Loads the generated photo that stands in for the system picker under `-inject-test-photo` (#52).
+    private func loadInjectedPhoto() {
+        #if DEBUG
+        guard let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto else { return }
+        loadPhoto { await injectedPhoto.load() }
+        #endif
+    }
+
     private func saveCaregiver() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
@@ -202,21 +216,46 @@ private struct CaregiverPhotoPickerButton: View {
     @Binding var selection: PhotosPickerItem?
     let hasPhoto: Bool
     let isLoading: Bool
+    /// Stands in for the picker under `-inject-test-photo`; unused in release builds.
+    let onInjectedPick: () -> Void
 
     var body: some View {
-        PhotosPicker(selection: $selection, matching: .images) {
-            HStack(spacing: 6) {
-                Image(systemName: "camera.fill")
-                Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        #if DEBUG
+        if AppLaunchConfiguration.current.injectedTestPhoto != nil {
+            Button(action: onInjectedPick) {
+                CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
             }
-            .font(.caption)
-            .foregroundStyle(.blue)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.1))
-            .clipShape(.rect(cornerRadius: 20))
+            .disabled(isLoading)
+        } else {
+            picker
+        }
+        #else
+        picker
+        #endif
+    }
+
+    private var picker: some View {
+        PhotosPicker(selection: $selection, matching: .images) {
+            CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
         }
         .disabled(isLoading)
+    }
+}
+
+private struct CaregiverPhotoPickerLabel: View {
+    let hasPhoto: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "camera.fill")
+            Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        }
+        .font(.caption)
+        .foregroundStyle(.blue)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.blue.opacity(0.1))
+        .clipShape(.rect(cornerRadius: 20))
     }
 }
 

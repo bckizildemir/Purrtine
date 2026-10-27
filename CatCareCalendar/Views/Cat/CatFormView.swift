@@ -224,6 +224,7 @@ struct CatFormView: View {
                     hasChangedPhoto: $hasChangedPhoto,
                     existingCat: existingCat,
                     onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) },
+                    onChooseFromLibrary: openPhotoLibrary,
                     onTakePhoto: openCamera,
                     onRemovePhoto: removePhoto
                 )
@@ -323,12 +324,32 @@ struct CatFormView: View {
     /// A failed pick keeps the photo the form already had and shows why under the photo circle.
     private func loadSelectedPhoto(_ item: PhotosPickerItem?) {
         guard let item else { return }
+        startPhotoLoad(for: item) {
+            try await item.loadTransferable(type: Data.self)
+        }
+    }
+
+    /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
+    /// photo instead, because the system picker cannot be driven from a test (#52).
+    private func openPhotoLibrary() {
+        #if DEBUG
+        if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
+            formData.selectedPhoto = nil
+            startPhotoLoad(for: nil) { await injectedPhoto.load() }
+            return
+        }
+        #endif
+        formData.isShowingPhotoLibrary = true
+    }
+
+    /// `item` is the pick the load belongs to; `nil` for an injected photo, which has none.
+    private func startPhotoLoad(for item: PhotosPickerItem?, loadData: @escaping @MainActor () async throws -> Data?) {
         formData.isLoadingPhoto = true
         formData.photoProblem = nil
 
         Task {
             let outcome = await CatPhotoIntake.prepare {
-                try await item.loadTransferable(type: Data.self)
+                try await loadData()
             }
             // A newer pick replaced this one while it loaded; that load reports instead.
             guard formData.selectedPhoto == item else { return }

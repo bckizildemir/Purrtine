@@ -101,7 +101,7 @@ struct TaskCompletionView: View {
         }
         .confirmationDialog(String(localized: .catAddPhotoSelect), isPresented: $showingPhotoSourceDialog, titleVisibility: .visible) {
             Button(String(localized: .catAddPhotoLibrary)) {
-                showingLibraryPicker = true
+                openPhotoLibrary()
             }
             if CameraPermissionHelper.isCameraAvailable {
                 Button(String(localized: .catAddCamera)) {
@@ -415,11 +415,28 @@ private extension TaskCompletionView {
     
     func loadPendingLibraryItem(_ item: PhotosPickerItem?) {
         guard let item else { return }
+        loadLibraryPhoto {
+            try await item.loadTransferable(type: Data.self)
+        }
+    }
 
+    /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
+    /// photo instead, because the system picker cannot be driven from a test (#52).
+    func openPhotoLibrary() {
+        #if DEBUG
+        if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
+            loadLibraryPhoto { await injectedPhoto.load() }
+            return
+        }
+        #endif
+        showingLibraryPicker = true
+    }
+
+    private func loadLibraryPhoto(loadData: @escaping @MainActor () async throws -> Data?) {
         isLoadingPhotos = true
 
         Task {
-            let data = try? await item.loadTransferable(type: Data.self)
+            let data = try? await loadData()
             // Decode off the main actor (the enclosing view is @MainActor, so a plain Task would
             // decode on main).
             let uiImage = await Task.detached { data.flatMap { UIImage(data: $0) } }.value

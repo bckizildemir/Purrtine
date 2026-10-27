@@ -26,6 +26,34 @@ struct AppLaunchConfigurationTests {
         #expect(AppLaunchConfiguration(arguments: arguments).keepsAnimations == expected)
     }
 
+    #if DEBUG
+    /// `-inject-test-photo` takes a bare flag, `=<name>` and `<name>` as the next argument; an unknown
+    /// name falls back to `rotated` (#52).
+    @Test(arguments: [
+        (["app", "-ui-testing", "-inject-test-photo"], InjectedTestPhoto.rotated),
+        (["app", "-ui-testing", "-inject-test-photo=rotated"], InjectedTestPhoto.rotated),
+        (["app", "-ui-testing", "-inject-test-photo=large"], InjectedTestPhoto.large),
+        (["app", "-ui-testing", "-inject-test-photo=heic"], InjectedTestPhoto.heic),
+        (["app", "-ui-testing", "-inject-test-photo", "heic"], InjectedTestPhoto.heic),
+        (["app", "-ui-testing", "-inject-test-photo", "large", "-keep-animations"], InjectedTestPhoto.large),
+        (["app", "-ui-testing", "-inject-test-photo", "-keep-animations"], InjectedTestPhoto.rotated),
+        (["app", "-ui-testing", "-inject-test-photo=bogus"], InjectedTestPhoto.rotated),
+        (["app", "-ui-testing", "-inject-test-photo", "bogus"], InjectedTestPhoto.rotated)
+    ])
+    func parsesInjectedTestPhoto(arguments: [String], expected: InjectedTestPhoto) {
+        #expect(AppLaunchConfiguration(arguments: arguments).injectedTestPhoto == expected)
+    }
+
+    @Test(arguments: [
+        ["app", "-inject-test-photo"],
+        ["app", "-inject-test-photo=heic"],
+        ["app", "-ui-testing"]
+    ])
+    func ignoresInjectedTestPhotoWithoutUITestingOrFlag(arguments: [String]) {
+        #expect(AppLaunchConfiguration(arguments: arguments).injectedTestPhoto == nil)
+    }
+    #endif
+
     @Test
     func parsesTaskFilterAndOnboardingStep() {
         let configuration = AppLaunchConfiguration(
