@@ -223,7 +223,7 @@ struct CatFormView: View {
                     formData: $formData,
                     hasChangedPhoto: $hasChangedPhoto,
                     existingCat: existingCat,
-                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) },
+                    onRetryPhotoLoad: retryPhotoLoad,
                     onChooseFromLibrary: openPhotoLibrary,
                     onTakePhoto: openCamera,
                     onRemovePhoto: removePhoto
@@ -329,6 +329,18 @@ struct CatFormView: View {
         }
     }
 
+    /// Retry after a failed load: loads the same library pick again. An injected photo has no pick,
+    /// so under `-inject-test-photo` (Debug) Retry runs the injected load again (#52).
+    private func retryPhotoLoad() {
+        #if DEBUG
+        if formData.selectedPhoto == nil, AppLaunchConfiguration.current.injectedTestPhoto != nil {
+            openPhotoLibrary()
+            return
+        }
+        #endif
+        loadSelectedPhoto(formData.selectedPhoto)
+    }
+
     /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
     /// photo instead, because the system picker cannot be driven from a test (#52).
     private func openPhotoLibrary() {
@@ -352,7 +364,9 @@ struct CatFormView: View {
                 try await loadData()
             }
             // A newer pick replaced this one while it loaded; that load reports instead.
-            guard formData.selectedPhoto == item else { return }
+            // An injected load (`item == nil`) is current only while no library pick exists.
+            let isCurrent = item.map { formData.selectedPhoto == $0 } ?? (formData.selectedPhoto == nil)
+            guard isCurrent else { return }
             formData.isLoadingPhoto = false
 
             switch outcome {

@@ -425,7 +425,15 @@ private extension TaskCompletionView {
     func openPhotoLibrary() {
         #if DEBUG
         if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
-            loadLibraryPhoto { await injectedPhoto.load() }
+            loadLibraryPhoto {
+                // The real picker keeps the user in a system sheet for seconds, so the confirmation
+                // dialog that opened it is long gone when the crop cover appears. The injected load
+                // finishes at once, while the dialog still closes; UIKit drops a cover presented
+                // during that dismissal. No SwiftUI state says the dismissal animation ended, so
+                // wait it out here, in the Debug-only path.
+                try? await Task.sleep(for: .milliseconds(600))
+                return await injectedPhoto.load()
+            }
             return
         }
         #endif
