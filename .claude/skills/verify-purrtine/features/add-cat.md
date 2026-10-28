@@ -57,4 +57,5 @@ Preconditions:
   that starts from a More shortcut taps `BackButton` first.
 - "Add Photo" opens the system photo picker, which runs out of process: axe and `snapshot_ui` see none
   of its cells. Do not try to pick a photo; say in the report that the photo path was not checked.
+  (`-inject-test-photo`, #52, is for the UI-test harness only, not for this skill.)
 - The camera choice asks for camera permission; the simulator has no camera. Skip it.

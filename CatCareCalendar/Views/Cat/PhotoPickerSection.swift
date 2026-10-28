@@ -12,6 +12,8 @@ struct PhotoPickerSection: View {
     var existingCat: Cat?
     /// Loads the current photo-library pick again, after a failed load.
     let onRetryPhotoLoad: () -> Void
+    /// Opens the photo library.
+    let onChooseFromLibrary: () -> Void
     /// Asks for camera permission, then opens the camera.
     let onTakePhoto: () -> Void
     /// Clears the photo the form shows.
@@ -23,9 +25,11 @@ struct PhotoPickerSection: View {
                 if CameraPermissionHelper.isCameraAvailable {
                     Button(String(localized: .catAddCamera), systemImage: "camera", action: onTakePhoto)
                 }
-                Button(String(localized: .catAddPhotoLibrary), systemImage: "photo.on.rectangle") {
-                    formData.isShowingPhotoLibrary = true
-                }
+                Button(
+                    String(localized: .catAddPhotoLibrary),
+                    systemImage: "photo.on.rectangle",
+                    action: onChooseFromLibrary
+                )
                 if hasAnyPhoto {
                     Button(
                         String(localized: .catAddRemovePhoto),
@@ -58,7 +62,7 @@ struct PhotoPickerSection: View {
     private func chooseAnotherPhoto() {
         formData.photoProblem = nil
         formData.selectedPhoto = nil
-        formData.isShowingPhotoLibrary = true
+        onChooseFromLibrary()
     }
 
     /// A removed photo stops counting at once, before Save deletes the stored file.

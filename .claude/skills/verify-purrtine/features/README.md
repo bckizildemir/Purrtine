@@ -53,8 +53,8 @@ feature of a pass in one language on one device; a language change on a running 
   evidence folder is enough: `echo "feature=onboarding entry=first-launch" >> <evidence>/run.txt`).
 - Report an entry point you could not reach with the command you tried and the precondition that was
   missing. Do not report it as verified through a different path.
-- The system photo picker runs out of process. A step that needs a picked photo is not verified;
-  say so.
+- The system photo picker runs out of process. A step that needs a picked photo is not verified:
+  say so. (`-inject-test-photo`, #52, is for the UI-test harness only; this skill never launches with flags.)
 
 ## Feature entry contract
 

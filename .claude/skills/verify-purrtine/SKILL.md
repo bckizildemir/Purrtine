@@ -150,7 +150,7 @@ Proof standards:
   device's pending notification store into the evidence and counts the pending requests per title (more than 0 = scheduled; the app caps the total at 60).
   A delivered banner needs its time to pass; prove it with a shot only when the change is about delivery.
   Say which side effects you did not prove.
-- The system photo picker runs out of process; axe sees none of its cells. Never claim a photo pick.
+- The system photo picker runs out of process; axe sees none of its cells. Never claim a real photo pick: say in the report that the photo pick was not checked by hand. The `-inject-test-photo` launch flag (#52) is for the UI-test harness only; it needs `-ui-testing`, which this skill never uses, so it is not a proof path here.
 - Add a `feature=… entry=… result=…` line to `run.txt` for each feature you drove.
 - In the PR: attach the key screenshots (drag them into the PR description on GitHub, or upload with
   `gh`), and name the evidence folder and the feature files you followed.
@@ -232,7 +232,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   reports an empty tree, call xcodebuildmcp `open_sim`.
 - **Out-of-process system UI.** The photo picker (`catForm.photoMenu` → Photo Library) runs out of
   process; axe sees none of its cells. The camera choice asks for camera access, and the simulator
-  has no camera. Do not claim a photo path.
+  has no camera. Do not claim a photo path; say it was not checked by hand (see Rules).
 - **Debug-only screens exist.** More → Developer Tools (`settings.developerTools`) and its notification
   history are in every Debug build. Never use them for data or proof.
 - **Cloud tier.** `GoogleService-Info.plist` is gitignored, so a fresh worktree has none and Firebase

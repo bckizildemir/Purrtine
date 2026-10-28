@@ -11,6 +11,9 @@ struct AddCaregiverView: View {
     @State private var avatarImage: UIImage?
     @State private var isLoadingPhoto = false
     @State private var model: AddCaregiverModel
+    #if DEBUG
+    private let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto
+    #endif
 
     /// Called before the sheet closes when the caregiver saved but its photo did not. The presenter
     /// shows the note once this sheet has left: UIKit refuses to present an alert from a sheet that
@@ -133,6 +136,9 @@ struct AddCaregiverView: View {
                     hasPhoto: avatarImage != nil,
                     isLoading: isLoadingPhoto
                 )
+                #if DEBUG
+                .injectingPhoto(injectedPhoto.map { photo in { loadInjectedPhoto(photo) } })
+                #endif
                 
                 if avatarImage != nil {
                     Button(String(localized: .caregiverAddPhotoRemove)) {
@@ -151,11 +157,16 @@ struct AddCaregiverView: View {
     
     private func loadSelectedPhoto(_ photoItem: PhotosPickerItem?) {
         guard let photoItem = photoItem else { return }
-        
+        loadPhoto {
+            try await photoItem.loadTransferable(type: Data.self)
+        }
+    }
+
+    private func loadPhoto(loadData: @escaping @MainActor () async throws -> Data?) {
         isLoadingPhoto = true
-        
+
         Task {
-            if let data = try? await photoItem.loadTransferable(type: Data.self),
+            if let data = try? await loadData(),
                let uiImage = UIImage(data: data) {
                 await MainActor.run {
                     self.avatarImage = uiImage
@@ -169,6 +180,13 @@ struct AddCaregiverView: View {
         }
     }
     
+    #if DEBUG
+    /// Loads the generated photo that stands in for the system picker under `-inject-test-photo` (#52).
+    private func loadInjectedPhoto(_ photo: InjectedTestPhoto) {
+        loadPhoto { await photo.load() }
+    }
+    #endif
+
     /// A failed commit keeps the sheet open with the name and photo, and the model shows the alert.
     private func saveCaregiver() async {
         switch await model.save(name: name, avatar: avatarImage, in: modelContext) {
@@ -194,21 +212,54 @@ private struct CaregiverPhotoPickerButton: View {
     @Binding var selection: PhotosPickerItem?
     let hasPhoto: Bool
     let isLoading: Bool
+    #if DEBUG
+    /// Set under `-inject-test-photo`: a plain button that stands in for the picker (#52).
+    var onInjectedPick: (() -> Void)?
+
+    func injectingPhoto(_ action: (() -> Void)?) -> Self {
+        var copy = self
+        copy.onInjectedPick = action
+        return copy
+    }
+    #endif
 
     var body: some View {
-        PhotosPicker(selection: $selection, matching: .images) {
-            HStack(spacing: 6) {
-                Image(systemName: "camera.fill")
-                Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        #if DEBUG
+        if let onInjectedPick {
+            Button(action: onInjectedPick) {
+                CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
             }
-            .font(.caption)
-            .foregroundStyle(.blue)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.1))
-            .clipShape(.rect(cornerRadius: 20))
+            .disabled(isLoading)
+        } else {
+            picker
+        }
+        #else
+        picker
+        #endif
+    }
+
+    private var picker: some View {
+        PhotosPicker(selection: $selection, matching: .images) {
+            CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
         }
         .disabled(isLoading)
+    }
+}
+
+private struct CaregiverPhotoPickerLabel: View {
+    let hasPhoto: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "camera.fill")
+            Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        }
+        .font(.caption)
+        .foregroundStyle(.blue)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.blue.opacity(0.1))
+        .clipShape(.rect(cornerRadius: 20))
     }
 }
 
