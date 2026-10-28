@@ -75,9 +75,30 @@ struct AppLaunchConfiguration {
     /// UI-test-only injection: makes the commit in `CatDeletionService.delete` throw, so the UI
     /// tests can reach the "delete not saved yet" alert. Debug builds only, gated like the one above.
     var failsCatDeleteCommit: Bool { isUITesting && hasArgument("-fail-cat-delete-commit") }
+    /// UI-test-only injection: the Add Caregiver sheet opens with a stand-in photo whose write
+    /// throws, so a UI test can reach the "photo did not save" note without the system photo
+    /// picker, which runs out of process (#39). Debug builds only, gated like the ones above.
+    var failsCaregiverAvatarSave: Bool { isUITesting && hasArgument("-fail-caregiver-avatar-save") }
     /// UI-test-only: keeps UIKit animations on, which `-ui-testing` otherwise turns off, so a UI test
     /// can reach a race between a closing presentation and the next one (#31). Debug builds only.
     var keepsAnimations: Bool { isUITesting && hasArgument("-keep-animations") }
+    /// UI-test-only: "choose from library" feeds a generated photo to the same code the system photo
+    /// picker feeds, because that picker runs out of process (#52). Takes `-inject-test-photo`
+    /// (default `rotated`), `-inject-test-photo=<name>` or `-inject-test-photo <name>`; an unknown
+    /// name falls back to the default. Debug builds only, gated on `isUITesting` like the ones above.
+    var injectedTestPhoto: InjectedTestPhoto? {
+        guard isUITesting else { return nil }
+        let flag = "-inject-test-photo"
+        for argument in arguments {
+            if argument == flag {
+                return value(for: flag).flatMap(InjectedTestPhoto.init(rawValue:)) ?? .default
+            }
+            if argument.hasPrefix(flag + "=") {
+                return InjectedTestPhoto(rawValue: String(argument.dropFirst(flag.count + 1))) ?? .default
+            }
+        }
+        return nil
+    }
     #endif
     var disablesCloudServices: Bool { isUITesting || isUnitTesting || isRunningForPreviews }
     var resetsOnboarding: Bool { hasArgument("-reset-onboarding") }

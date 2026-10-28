@@ -334,9 +334,8 @@ isolation reconciled with the `nonisolated` `XCTestCase` declaration it override
 on it would serialise a parallel Swift Testing suite for no benefit.
 
 This stage is the best value in the whole migration: one setting, one file, about 99.5% of the
-test-side diagnostics gone. Run the dual-simulator UI test pass (iPhone 12 / iOS 18.5 and iOS 26.5,
-sequentially, `-disable-concurrent-destination-testing`) to confirm the tests still pass, because
-`@MainActor` changes when the test bodies run.
+test-side diagnostics gone. Confirm the tests still pass (unit scheme through `Scripts/xcb.sh test --only ...`),
+because `@MainActor` changes when the test bodies run. Simulator checks: see the Verify trial line in `CLAUDE.md` and the `verify-purrtine` skill.
 
 ### Stage 2 — clear the two blockers in the app target (2 files)
 

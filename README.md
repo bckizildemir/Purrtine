@@ -54,7 +54,7 @@ Agents and the local loop run only the changed suites with `--only`; CI runs the
 | `Scripts/` | Build lock wrapper, coverage check |
 | `documentation/` | Product requirements (`PRD.md`), feature specs, changelogs |
 | `docs/` | Architecture notes, legal pages (GitHub Pages) |
-| `CONTEXT.md`, `docs/adr/` | Domain language and architecture decision records |
+| `GLOSSARY.md`, `docs/adr/` | Domain language and architecture decision records |
 
 ## Contributing
 

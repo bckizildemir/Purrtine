@@ -1055,6 +1055,23 @@
         }
       }
     },
+    "caregiver.add.not_saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caregiver not saved. Try again."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bakıcı kaydedilmedi. Tekrar deneyin."
+          }
+        }
+      }
+    },
     "caregiver.add.photo_add" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1085,6 +1102,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fotoğrafı Değiştir"
+          }
+        }
+      }
+    },
+    "caregiver.add.photo_not_saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caregiver saved, but the photo did not save."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bakıcı kaydedildi, ancak fotoğraf kaydedilmedi."
           }
         }
       }
@@ -1701,19 +1735,19 @@
         }
       }
     },
-    "cat.add.photo_gallery" : {
+    "cat.add.photo_library" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Photo Gallery"
+            "value" : "Photo Library"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Foto Galerisi"
+            "value" : "Fotoğraf Arşivi"
           }
         }
       }
@@ -6675,6 +6709,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bildirim Geçmişi"
+          }
+        }
+      }
+    },
+    "notification.nudge.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the app to keep reminders going"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hatırlatmaların devam etmesi için uygulamayı aç"
+          }
+        }
+      }
+    },
+    "notification.nudge.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders are running low"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hatırlatmalar azalıyor"
           }
         }
       }

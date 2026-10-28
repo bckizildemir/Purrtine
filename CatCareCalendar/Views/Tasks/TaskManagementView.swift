@@ -173,7 +173,24 @@ struct TaskManagementView: View {
       if allCats.isEmpty {
         emptyStateView
       } else {
-        VStack(spacing: 2) {
+        // The navigation bar minimizes only for a scroll view that reaches the bar's bottom edge.
+        // The filter row therefore sits in a top safe-area inset instead of a stack above the
+        // list: the list keeps the full height and still scrolls under the bar.
+        Group {
+          if viewModel.selectedViewMode == .list {
+            if viewModel.groupedTasks.isEmpty {
+              ScrollView {
+                filterEmptyView
+              }
+            } else {
+              listView
+                .padding(.bottom, 2)
+            }
+          } else {
+            calendarView
+          }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
           if viewModel.selectedViewMode == .list {
             TaskFilterSection(
               filters: CareTaskFilter.allCases,
@@ -186,19 +203,7 @@ struct TaskManagementView: View {
               }
             )
             .padding(.top, 2)
-          }
-
-          if viewModel.selectedViewMode == .list {
-            if viewModel.groupedTasks.isEmpty {
-              ScrollView {
-                filterEmptyView
-              }
-            } else {
-              listView
-                .padding(.bottom, 2)
-            }
-          } else {
-            calendarView
+            .background(Theme.backgroundGrouped)
           }
         }
       }

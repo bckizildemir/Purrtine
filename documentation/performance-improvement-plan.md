@@ -224,10 +224,9 @@ Follow the same verify-it-for-real approach we used on the Complete Task fix:
 - **Launch:** Instruments **App Launch** template (P2.10) — cold-start time before/after.
 - **Main-thread hangs:** confirm the Save-button hang disappears after P1.8 (Hangs instrument).
 - **UI state:** `xcodebuildmcp` `screenshot` / `snapshot_ui` to confirm each change is visually intact
-  (this is now the project default per CLAUDE.md).
+  (Simulator checks: see the Verify trial line in `CLAUDE.md` and the `verify-purrtine` skill.)
 
-Regression guard: run the unit suite + `LocalizationParityTests`, and the sequential UI tests on iOS
-18.5 and 26.5, after each phase.
+Regression guard: run the unit suite + `LocalizationParityTests`, after each phase.
 
 ---
 

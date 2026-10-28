@@ -10,6 +10,30 @@ struct AddCaregiverView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var avatarImage: UIImage?
     @State private var isLoadingPhoto = false
+    @State private var model: AddCaregiverModel
+    #if DEBUG
+    private let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto
+    #endif
+
+    /// Called before the sheet closes when the caregiver saved but its photo did not. The presenter
+    /// shows the note once this sheet has left: UIKit refuses to present an alert from a sheet that
+    /// is closing, and an alert on this sheet would leave with it.
+    let onAvatarNotSaved: () -> Void
+
+    init(onAvatarNotSaved: @escaping () -> Void = {}) {
+        self.onAvatarNotSaved = onAvatarNotSaved
+        #if DEBUG
+        // UI-test-only; see `AppLaunchConfiguration.failsCaregiverAvatarSave`.
+        if AppLaunchConfiguration.current.failsCaregiverAvatarSave {
+            _avatarImage = State(initialValue: UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { _ in })
+            _model = State(initialValue: AddCaregiverModel(saveAvatar: { _ in
+                throw PhotoSaveError.writeFailed(CocoaError(.fileWriteUnknown))
+            }))
+            return
+        }
+        #endif
+        _model = State(initialValue: AddCaregiverModel())
+    }
 
     private var hasUnsavedChanges: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || avatarImage != nil
@@ -37,6 +61,7 @@ struct AddCaregiverView: View {
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .disabled(model.isSaving)
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(String(localized: .caregiverAddTitle))
@@ -44,17 +69,26 @@ struct AddCaregiverView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     SheetDismissButton(hasUnsavedChanges: hasUnsavedChanges, onDismiss: dismiss.callAsFunction)
+                        .disabled(model.isSaving)
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    SheetConfirmButton {
-                        saveCaregiver()
+                    if model.isSaving {
+                        SheetSavingIndicator()
+                    } else {
+                        SheetConfirmButton {
+                            Task { await saveCaregiver() }
+                        }
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoadingPhoto)
+                        .accessibilityIdentifier("addCaregiver.saveButton")
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoadingPhoto)
                 }
             }
         }
-        .interactiveDismissDisabled(hasUnsavedChanges)
+        .interactiveDismissDisabled(hasUnsavedChanges || model.isSaving)
+        .alert(String(localized: .caregiverAddNotSaved), isPresented: $model.isShowingSaveFailure) {
+            Button(String(localized: .actionOk)) { }
+        }
         .onChange(of: selectedPhoto) { _, newPhoto in
             loadSelectedPhoto(newPhoto)
         }
@@ -102,6 +136,9 @@ struct AddCaregiverView: View {
                     hasPhoto: avatarImage != nil,
                     isLoading: isLoadingPhoto
                 )
+                #if DEBUG
+                .injectingPhoto(injectedPhoto.map { photo in { loadInjectedPhoto(photo) } })
+                #endif
                 
                 if avatarImage != nil {
                     Button(String(localized: .caregiverAddPhotoRemove)) {
@@ -120,11 +157,16 @@ struct AddCaregiverView: View {
     
     private func loadSelectedPhoto(_ photoItem: PhotosPickerItem?) {
         guard let photoItem = photoItem else { return }
-        
+        loadPhoto {
+            try await photoItem.loadTransferable(type: Data.self)
+        }
+    }
+
+    private func loadPhoto(loadData: @escaping @MainActor () async throws -> Data?) {
         isLoadingPhoto = true
-        
+
         Task {
-            if let data = try? await photoItem.loadTransferable(type: Data.self),
+            if let data = try? await loadData(),
                let uiImage = UIImage(data: data) {
                 await MainActor.run {
                     self.avatarImage = uiImage
@@ -138,56 +180,24 @@ struct AddCaregiverView: View {
         }
     }
     
-    private func saveCaregiver() {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
-        
-        // Save avatar image if exists
-        var avatarURL: String?
-        if let avatarImage = avatarImage {
-            avatarURL = saveAvatarImage(avatarImage)
-        }
-        
-        // Create new caregiver
-        let newCaregiver = Caregiver(
-            name: trimmedName,
-            avatarURL: avatarURL
-        )
-        
-        modelContext.insert(newCaregiver)
-        
-        do {
-            try modelContext.save()
-            dismiss()
-        } catch {
-            print("❌ Failed to save caregiver: \(error)")
-        }
+    #if DEBUG
+    /// Loads the generated photo that stands in for the system picker under `-inject-test-photo` (#52).
+    private func loadInjectedPhoto(_ photo: InjectedTestPhoto) {
+        loadPhoto { await photo.load() }
     }
-    
-    private func saveAvatarImage(_ image: UIImage) -> String? {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let avatarsDirectory = documentsPath.appendingPathComponent("CaregiverAvatars")
-        
-        // Create directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: avatarsDirectory, withIntermediateDirectories: true)
-        
-        let fileName = "caregiver_avatar_\(UUID().uuidString).jpg"
-        let fileURL = avatarsDirectory.appendingPathComponent(fileName)
-        
-        // Scale down to avatar size and encode once before writing.
-        if let imageData = PhotoManager.renderedJPEGData(
-            from: image,
-            maxPixelSize: PhotoManager.avatarMaxPixelSize
-        ) {
-            do {
-                try imageData.write(to: fileURL)
-                return fileURL.lastPathComponent // Store relative path
-            } catch {
-                print("❌ Failed to save avatar: \(error)")
-            }
-        }
+    #endif
 
-        return nil
+    /// A failed commit keeps the sheet open with the name and photo, and the model shows the alert.
+    private func saveCaregiver() async {
+        switch await model.save(name: name, avatar: avatarImage, in: modelContext) {
+        case .saved:
+            dismiss()
+        case .savedWithoutAvatar:
+            onAvatarNotSaved()
+            dismiss()
+        case nil:
+            break
+        }
     }
 }
 
@@ -202,21 +212,54 @@ private struct CaregiverPhotoPickerButton: View {
     @Binding var selection: PhotosPickerItem?
     let hasPhoto: Bool
     let isLoading: Bool
+    #if DEBUG
+    /// Set under `-inject-test-photo`: a plain button that stands in for the picker (#52).
+    var onInjectedPick: (() -> Void)?
+
+    func injectingPhoto(_ action: (() -> Void)?) -> Self {
+        var copy = self
+        copy.onInjectedPick = action
+        return copy
+    }
+    #endif
 
     var body: some View {
-        PhotosPicker(selection: $selection, matching: .images) {
-            HStack(spacing: 6) {
-                Image(systemName: "camera.fill")
-                Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        #if DEBUG
+        if let onInjectedPick {
+            Button(action: onInjectedPick) {
+                CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
             }
-            .font(.caption)
-            .foregroundStyle(.blue)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.1))
-            .clipShape(.rect(cornerRadius: 20))
+            .disabled(isLoading)
+        } else {
+            picker
+        }
+        #else
+        picker
+        #endif
+    }
+
+    private var picker: some View {
+        PhotosPicker(selection: $selection, matching: .images) {
+            CaregiverPhotoPickerLabel(hasPhoto: hasPhoto)
         }
         .disabled(isLoading)
+    }
+}
+
+private struct CaregiverPhotoPickerLabel: View {
+    let hasPhoto: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "camera.fill")
+            Text(hasPhoto ? .caregiverAddPhotoChange : .caregiverAddPhotoAdd)
+        }
+        .font(.caption)
+        .foregroundStyle(.blue)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.blue.opacity(0.1))
+        .clipShape(.rect(cornerRadius: 20))
     }
 }
 

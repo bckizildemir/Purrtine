@@ -176,15 +176,40 @@ struct AppLaunchBootstrapperTests {
         #expect(soloTask.assignedCats.map(\.name) == ["UI Test Cat"])
     }
 
-    @Test(arguments: [(9, 0), (21, 30), (23, 59)])
-    func soloTaskFallsOnTheLaunchDayAtAnyTimeOfDay(hour: Int, minute: Int) throws {
-        // The calendar opens on today and the UI tests wait for "UI Solo Task" there.
-        // A plain `now + 3h` moved the task to tomorrow from 21:00 on (#41).
+    /// A launch day: zone, and the date parts of that day.
+    struct LaunchDay: Sendable, CustomTestStringConvertible {
+        let zone: String
+        let year: Int
+        let month: Int
+        let day: Int
+
+        var testDescription: String { "\(zone) \(year)-\(month)-\(day)" }
+    }
+
+    nonisolated static let launchDays = [
+        LaunchDay(zone: "UTC", year: 2024, month: 3, day: 9),
+        LaunchDay(zone: "America/Los_Angeles", year: 2024, month: 3, day: 10),
+        LaunchDay(zone: "America/Los_Angeles", year: 2024, month: 11, day: 3),
+        LaunchDay(zone: "Europe/Berlin", year: 2024, month: 3, day: 31),
+        LaunchDay(zone: "Europe/Berlin", year: 2024, month: 10, day: 27)
+    ]
+
+    @Test(arguments: launchDays, [(9, 0), (21, 30), (22, 30), (23, 59)])
+    func seededTasksFallOnTheLaunchDayAtAnyTimeOfDay(launchDay: LaunchDay, time: (Int, Int)) throws {
+        // The calendar opens on today and the UI tests wait for both tasks there.
+        // A plain `now + 3h` moved the solo task to tomorrow from 21:00 on (#41),
+        // and `now + 2h` did the same to the shared task from 22:00 (#62).
+        // The DST days check that "the same day" follows the local calendar.
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
-        let startOfDay = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_710_000_000))
+        calendar.timeZone = try #require(TimeZone(identifier: launchDay.zone))
         let now = try #require(
-            calendar.date(byAdding: DateComponents(hour: hour, minute: minute), to: startOfDay)
+            calendar.date(from: DateComponents(
+                year: launchDay.year,
+                month: launchDay.month,
+                day: launchDay.day,
+                hour: time.0,
+                minute: time.1
+            ))
         )
 
         let container = try TestModelContainerFactory.makeInMemoryContainer()
@@ -202,10 +227,12 @@ struct AppLaunchBootstrapperTests {
         )
 
         let tasks = try context.fetch(FetchDescriptor<CareTask>())
-        let soloTask = try #require(tasks.first(where: { $0.title == "UI Solo Task" }))
-        let schedule = try #require(soloTask.schedules.first)
-        #expect(calendar.isDate(schedule.scheduledDate, inSameDayAs: now))
-        #expect(schedule.scheduledDate >= now)
+        for title in ["UI Shared Task", "UI Solo Task"] {
+            let task = try #require(tasks.first(where: { $0.title == title }))
+            let schedule = try #require(task.schedules.first)
+            #expect(calendar.isDate(schedule.scheduledDate, inSameDayAs: now), "\(title)")
+            #expect(schedule.scheduledDate >= now, "\(title)")
+        }
     }
 }
 

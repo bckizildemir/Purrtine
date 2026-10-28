@@ -181,8 +181,7 @@ These docs should pull the project toward the target state, but implementation w
 - UI automation, when added, should use XCTest.
 
 ### Simulator Baseline
-- Verification device: `iPhone 12`
-- Verification OS versions: `iOS 18.5` and `iOS 26.5`, run sequentially
+- Simulator checks: see the Verify trial line in `CLAUDE.md` and the `verify-purrtine` skill.
 
 ---
 

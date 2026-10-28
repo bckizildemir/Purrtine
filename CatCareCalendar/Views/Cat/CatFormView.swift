@@ -154,9 +154,7 @@ struct CatFormView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .interactiveDismissDisabled(hasUnsavedChanges)
-        .sheet(isPresented: $formData.showingPhotoOptions) {
-            photoOptionsSheet
-        }
+        .photosPicker(isPresented: $formData.isShowingPhotoLibrary, selection: $formData.selectedPhoto, matching: .images)
         .alert(String(localized: .catEditDeleteConfirmationTitle), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: .actionCancel), role: .cancel) { }
             Button(String(localized: .actionDelete), role: .destructive) {
@@ -225,7 +223,10 @@ struct CatFormView: View {
                     formData: $formData,
                     hasChangedPhoto: $hasChangedPhoto,
                     existingCat: existingCat,
-                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) }
+                    onRetryPhotoLoad: retryPhotoLoad,
+                    onChooseFromLibrary: openPhotoLibrary,
+                    onTakePhoto: openCamera,
+                    onRemovePhoto: removePhoto
                 )
 
                 // Essential Fields
@@ -303,144 +304,14 @@ struct CatFormView: View {
         .padding(.top, 20)
     }
 
-    // MARK: - Photo Options Sheet
-    @ViewBuilder
-    private var photoOptionsSheet: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                if case .onboarding = mode {
-                    if #available(iOS 26, *) {
-                        GlassEffectContainer(spacing: 12) {
-                            onboardingPhotoActions
-                        }
-                    } else {
-                        onboardingPhotoActions
-                    }
-                } else {
-                    Text(.catAddPhotoSelect)
-                        .font(.headline)
-                        .padding(.top)
-
-                    VStack(spacing: 16) {
-                        // Photo Library
-                        PhotosPicker(selection: $formData.selectedPhoto, matching: .images) {
-                            Label(String(localized: .catAddPhotoGallery), systemImage: "photo.on.rectangle")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(.blue.opacity(0.1))
-                                .foregroundStyle(.blue)
-                                .cornerRadius(12)
-                        }
-                        .buttonStyle(.plain)
-                        .onChange(of: formData.selectedPhoto) { _, _ in
-                            formData.showingPhotoOptions = false
-                        }
-
-                        // Camera
-                        cameraButton
-
-                    // Remove Photo (if exists)
-                    if formData.hasPhoto || (existingCat?.hasPhoto ?? false) {
-                        removePhotoButton
-                    }
-                    }
-                    .padding()
-                }
-
-                if case .onboarding = mode {
-                    Spacer(minLength: 0)
-                } else {
-                    Spacer()
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    SheetDismissButton {
-                        formData.showingPhotoOptions = false
-                    }
-                }
-            }
-        }
-        .presentationDetents(photoOptionsSheetDetents)
-    }
-
-    private var onboardingPhotoActions: some View {
-        HStack(spacing: 12) {
-            cameraButton
-            photoPickerButton
-        }
-        .padding(.horizontal)
-    }
-
-    private var photoOptionsSheetDetents: Set<PresentationDetent> {
-        if case .onboarding = mode {
-            return [.height(230)]
-        }
-        return [.medium]
-    }
-
-    @ViewBuilder
-    private var cameraButton: some View {
-        Button(action: {
-            formData.showingPhotoOptions = false
-            openCamera()
-        }) {
-            if case .onboarding = mode {
-                OnboardingPhotoActionLabel(
-                    title: String(localized: .catAddCamera),
-                    systemImage: "camera.fill",
-                    tint: .green
-                )
-                .tintedActionChip(tint: .green)
-            } else {
-                Label(String(localized: .catAddCamera), systemImage: "camera")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.green.opacity(0.1))
-                    .foregroundStyle(.green)
-                    .cornerRadius(12)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(!CameraPermissionHelper.isCameraAvailable)
-    }
-
-    @ViewBuilder
-    private var photoPickerButton: some View {
-        PhotosPicker(selection: $formData.selectedPhoto, matching: .images) {
-            OnboardingPhotoActionLabel(
-                title: String(localized: .catAddPhotoGallery),
-                systemImage: "photo.fill",
-                tint: .blue
-            )
-        }
-        .buttonStyle(.plain)
-        .tintedActionChip(tint: .blue)
-        .onChange(of: formData.selectedPhoto) { _, _ in
-            formData.showingPhotoOptions = false
-        }
-    }
-
-    @ViewBuilder
-    private var removePhotoButton: some View {
-        Button(action: {
-            formData.preparedPhotoData = nil
-            formData.capturedImage = nil
-            discardPhotoPick()
-            hasChangedPhoto = true
-            formData.showingPhotoOptions = false
-        }) {
-            Label(String(localized: .catAddRemovePhoto), systemImage: "trash")
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(.red.opacity(0.1))
-                .foregroundStyle(.red)
-                .cornerRadius(12)
-        }
-    }
-
     // MARK: - Actions
+    private func removePhoto() {
+        formData.preparedPhotoData = nil
+        formData.capturedImage = nil
+        discardPhotoPick()
+        hasChangedPhoto = true
+    }
+
     /// Forgets the photo-library pick, so a load still running for it is dropped when it ends
     /// instead of overwriting the photo the caregiver chose since.
     private func discardPhotoPick() {
@@ -453,22 +324,55 @@ struct CatFormView: View {
     /// A failed pick keeps the photo the form already had and shows why under the photo circle.
     private func loadSelectedPhoto(_ item: PhotosPickerItem?) {
         guard let item else { return }
+        startPhotoLoad(for: item) {
+            try await item.loadTransferable(type: Data.self)
+        }
+    }
+
+    /// Retry after a failed load: loads the same library pick again. An injected photo has no pick,
+    /// so under `-inject-test-photo` (Debug) Retry runs the injected load again (#52).
+    private func retryPhotoLoad() {
+        #if DEBUG
+        if formData.selectedPhoto == nil, AppLaunchConfiguration.current.injectedTestPhoto != nil {
+            openPhotoLibrary()
+            return
+        }
+        #endif
+        loadSelectedPhoto(formData.selectedPhoto)
+    }
+
+    /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
+    /// photo instead, because the system picker cannot be driven from a test (#52).
+    private func openPhotoLibrary() {
+        #if DEBUG
+        if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
+            formData.selectedPhoto = nil
+            startPhotoLoad(for: nil) { await injectedPhoto.load() }
+            return
+        }
+        #endif
+        formData.isShowingPhotoLibrary = true
+    }
+
+    /// `item` is the pick the load belongs to; `nil` for an injected photo, which has none.
+    private func startPhotoLoad(for item: PhotosPickerItem?, loadData: @escaping @MainActor () async throws -> Data?) {
         formData.isLoadingPhoto = true
         formData.photoProblem = nil
 
         Task {
             let outcome = await CatPhotoIntake.prepare {
-                try await item.loadTransferable(type: Data.self)
+                try await loadData()
             }
             // A newer pick replaced this one while it loaded; that load reports instead.
-            guard formData.selectedPhoto == item else { return }
+            // An injected load (`item == nil`) is current only while no library pick exists.
+            let isCurrent = item.map { formData.selectedPhoto == $0 } ?? (formData.selectedPhoto == nil)
+            guard isCurrent else { return }
             formData.isLoadingPhoto = false
 
             switch outcome {
             case .ready(let data):
                 formData.preparedPhotoData = data
                 formData.capturedImage = nil // Clear captured image when gallery photo is selected
-                formData.showingPhotoOptions = false
                 hasChangedPhoto = true
             case .loadFailed:
                 formData.photoProblem = .loadFailed
@@ -580,21 +484,6 @@ struct CatFormView: View {
             onDelete?()
             dismiss()
         }
-    }
-}
-
-private struct OnboardingPhotoActionLabel: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline)
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity, minHeight: 84)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
     }
 }
 
