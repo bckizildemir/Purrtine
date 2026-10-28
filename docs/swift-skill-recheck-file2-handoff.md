@@ -90,9 +90,6 @@ comes up, `FeedingFieldSupport` is the seam to reuse.
 The project uses file-system synchronized groups, so a new `.swift` file under `CatCareCalendar/`
 joins the target with no `project.pbxproj` edit.
 
-Prefer `xcodebuildmcp`. Call `session_show_defaults` first. One simulator at a time — this machine
-has 16GB.
-
 ```bash
 # Unit tests only (283 tests, all green as of file 1's fix commit)
 # via xcodebuildmcp: test_sim({ extraArgs: ["-only-testing:CatCareCalendarTests"] })
