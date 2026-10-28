@@ -523,8 +523,9 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(updatedRow.waitForExistence(timeout: 5))
 
         let deleteButton = app.buttons["taskRow.delete.\(updatedTitle)"].firstMatch
-        let didRevealDelete = performGesture(on: updatedRow, revealing: deleteButton) { updatedRow.swipeLeft() }
-        XCTAssertTrue(didRevealDelete)
+        performGesture(on: updatedRow, revealing: deleteButton) {
+            updatedRow.swipeLeft()
+        }
         deleteButton.tap()
 
         XCTAssertFalse(updatedRow.waitForExistence(timeout: 2))
@@ -911,10 +912,9 @@ final class CriticalFlowsUITests: XCTestCase {
         let catCard = app.buttons["cats.card.UI Test Cat"]
         XCTAssertTrue(catCard.waitForExistence(timeout: 5))
         let addTaskMenuItem = app.buttons["Add Task"]
-        let didRevealMenu = performGesture(on: catCard, revealing: addTaskMenuItem) {
+        performGesture(on: catCard, revealing: addTaskMenuItem) {
             catCard.press(forDuration: 1.2)
         }
-        XCTAssertTrue(didRevealMenu)
         addTaskMenuItem.tap()
 
         XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: 5))
@@ -1663,8 +1663,7 @@ final class CriticalFlowsUITests: XCTestCase {
     /// On CI a swipe on a freshly reloaded list, or a long press right after a card appears, can be
     /// a no-op. The helper waits until `target` is hittable, runs `gesture`, waits up to `timeout`
     /// for `revealed`, and runs `gesture` exactly once more if `revealed` is still absent.
-    /// Returns whether `revealed` exists; callers keep their own assertion on it.
-    @discardableResult
+    /// Asserts that `revealed` exists after the retry.
     private func performGesture(
         on target: XCUIElement,
         revealing revealed: XCUIElement,
@@ -1672,8 +1671,11 @@ final class CriticalFlowsUITests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line,
         gesture: () -> Void
-    ) -> Bool {
-        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: target)
+    ) {
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: target
+        )
         let hittableResult = XCTWaiter().wait(for: [hittable], timeout: 5)
         XCTAssertEqual(
             hittableResult,
@@ -1684,10 +1686,18 @@ final class CriticalFlowsUITests: XCTestCase {
         )
 
         gesture()
-        if revealed.waitForExistence(timeout: timeout) { return true }
+        if revealed.waitForExistence(timeout: timeout) { return }
 
-        gesture()
-        return revealed.waitForExistence(timeout: timeout)
+        XCTContext.runActivity(named: "Retrying gesture (#71): first attempt did not reveal \(revealed)") { _ in
+            gesture()
+        }
+        _ = revealed.waitForExistence(timeout: timeout)
+        XCTAssertTrue(
+            revealed.exists,
+            "Gesture on \(target) did not reveal \(revealed) after one retry",
+            file: file,
+            line: line
+        )
     }
 
     /// Navigates from a fresh launch to an open custom-task add sheet.
