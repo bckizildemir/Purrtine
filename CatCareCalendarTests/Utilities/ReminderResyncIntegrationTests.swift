@@ -51,7 +51,9 @@ struct ReminderResyncIntegrationTests {
         let nextScheduleId = try #require(task.activeSchedule?.id)
         try await sut.resync()
 
+        // The daily series is cut by its cap, so a nudge is pending too; it belongs to no schedule.
         let identifiers = fakeCenter.pendingRequests.map(\.identifier)
+            .filter { $0 != NotificationManager.nudgeIdentifier }
         #expect(nextScheduleId != fixture.scheduleId)
         #expect(identifiers.isEmpty == false)
         #expect(identifiers.allSatisfy { $0.contains(nextScheduleId.uuidString) })

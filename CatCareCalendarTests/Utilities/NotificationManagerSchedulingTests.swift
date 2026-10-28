@@ -378,7 +378,12 @@ struct NotificationManagerSchedulingTests {
             makeInfo(frequency: frequency, frequencyInterval: interval, reminderMinutes: 0)
         ])
 
-        #expect(fakeCenter.addedRequests.count == expectedCount)
+        let nudgeIdentifier = NotificationManager.nudgeIdentifier
+        let reminders = fakeCenter.addedRequests.filter { $0.identifier != nudgeIdentifier }
+        let nudges = fakeCenter.addedRequests.filter { $0.identifier == nudgeIdentifier }
+        #expect(reminders.count == expectedCount)
+        // An endless series stops at its own cap, so exactly one nudge covers the cut tail.
+        #expect(nudges.count == 1)
     }
 
     private var settingsWithoutOverdueAlerts: NotificationSettings {
