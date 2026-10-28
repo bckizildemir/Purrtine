@@ -42,7 +42,7 @@ Scripts/xcb.sh test --only CatCareCalendarTests/TaskActionServiceTests
 cd functions && npm test                                              # Cloud Function
 ```
 
-Agents and the local loop run only the changed suites with `--only`; CI runs the whole unit suite. Unit tests use Swift Testing; UI tests use XCTest. CI builds the app, runs the unit tests with a coverage floor, and builds Release on every push and pull request.
+Agents and the local loop run only the changed suites with `--only`; CI runs the whole unit suite. Unit tests use Swift Testing; UI tests use XCTest. CI builds the app, runs the unit tests with a coverage floor, and builds Release on every push and pull request. A separate job runs the UI tests on every push to main and on each pull request that changes app code, UI tests, the Xcode project or the workflow.
 
 ## Project layout
 
