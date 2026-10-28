@@ -55,7 +55,7 @@ Two consequences an agent must respect:
 open CatCareCalendar.xcodeproj
 
 # Build from CLI
-Scripts/xcb.sh build --os 18.5
+Scripts/xcb.sh build
 
 # Local loop: the unit scheme (no UI test build, no coverage), only the suites you touched;
 # --only takes a Swift Testing suite or test name and is repeatable
