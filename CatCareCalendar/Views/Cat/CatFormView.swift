@@ -223,7 +223,8 @@ struct CatFormView: View {
                     formData: $formData,
                     hasChangedPhoto: $hasChangedPhoto,
                     existingCat: existingCat,
-                    onRetryPhotoLoad: { loadSelectedPhoto(formData.selectedPhoto) },
+                    onRetryPhotoLoad: retryPhotoLoad,
+                    onChooseFromLibrary: openPhotoLibrary,
                     onTakePhoto: openCamera,
                     onRemovePhoto: removePhoto
                 )
@@ -323,15 +324,49 @@ struct CatFormView: View {
     /// A failed pick keeps the photo the form already had and shows why under the photo circle.
     private func loadSelectedPhoto(_ item: PhotosPickerItem?) {
         guard let item else { return }
+        startPhotoLoad(for: item) {
+            try await item.loadTransferable(type: Data.self)
+        }
+    }
+
+    /// Retry after a failed load: loads the same library pick again. An injected photo has no pick,
+    /// so under `-inject-test-photo` (Debug) Retry runs the injected load again (#52).
+    private func retryPhotoLoad() {
+        #if DEBUG
+        if formData.selectedPhoto == nil, AppLaunchConfiguration.current.injectedTestPhoto != nil {
+            openPhotoLibrary()
+            return
+        }
+        #endif
+        loadSelectedPhoto(formData.selectedPhoto)
+    }
+
+    /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
+    /// photo instead, because the system picker cannot be driven from a test (#52).
+    private func openPhotoLibrary() {
+        #if DEBUG
+        if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
+            formData.selectedPhoto = nil
+            startPhotoLoad(for: nil) { await injectedPhoto.load() }
+            return
+        }
+        #endif
+        formData.isShowingPhotoLibrary = true
+    }
+
+    /// `item` is the pick the load belongs to; `nil` for an injected photo, which has none.
+    private func startPhotoLoad(for item: PhotosPickerItem?, loadData: @escaping @MainActor () async throws -> Data?) {
         formData.isLoadingPhoto = true
         formData.photoProblem = nil
 
         Task {
             let outcome = await CatPhotoIntake.prepare {
-                try await item.loadTransferable(type: Data.self)
+                try await loadData()
             }
             // A newer pick replaced this one while it loaded; that load reports instead.
-            guard formData.selectedPhoto == item else { return }
+            // An injected load (`item == nil`) is current only while no library pick exists.
+            let isCurrent = item.map { formData.selectedPhoto == $0 } ?? (formData.selectedPhoto == nil)
+            guard isCurrent else { return }
             formData.isLoadingPhoto = false
 
             switch outcome {

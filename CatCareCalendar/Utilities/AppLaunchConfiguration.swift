@@ -82,6 +82,23 @@ struct AppLaunchConfiguration {
     /// UI-test-only: keeps UIKit animations on, which `-ui-testing` otherwise turns off, so a UI test
     /// can reach a race between a closing presentation and the next one (#31). Debug builds only.
     var keepsAnimations: Bool { isUITesting && hasArgument("-keep-animations") }
+    /// UI-test-only: "choose from library" feeds a generated photo to the same code the system photo
+    /// picker feeds, because that picker runs out of process (#52). Takes `-inject-test-photo`
+    /// (default `rotated`), `-inject-test-photo=<name>` or `-inject-test-photo <name>`; an unknown
+    /// name falls back to the default. Debug builds only, gated on `isUITesting` like the ones above.
+    var injectedTestPhoto: InjectedTestPhoto? {
+        guard isUITesting else { return nil }
+        let flag = "-inject-test-photo"
+        for argument in arguments {
+            if argument == flag {
+                return value(for: flag).flatMap(InjectedTestPhoto.init(rawValue:)) ?? .default
+            }
+            if argument.hasPrefix(flag + "=") {
+                return InjectedTestPhoto(rawValue: String(argument.dropFirst(flag.count + 1))) ?? .default
+            }
+        }
+        return nil
+    }
     #endif
     var disablesCloudServices: Bool { isUITesting || isUnitTesting || isRunningForPreviews }
     var resetsOnboarding: Bool { hasArgument("-reset-onboarding") }

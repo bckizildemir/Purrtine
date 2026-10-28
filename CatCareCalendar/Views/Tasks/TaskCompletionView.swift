@@ -101,7 +101,7 @@ struct TaskCompletionView: View {
         }
         .confirmationDialog(String(localized: .catAddPhotoSelect), isPresented: $showingPhotoSourceDialog, titleVisibility: .visible) {
             Button(String(localized: .catAddPhotoLibrary)) {
-                showingLibraryPicker = true
+                openPhotoLibrary()
             }
             if CameraPermissionHelper.isCameraAvailable {
                 Button(String(localized: .catAddCamera)) {
@@ -415,11 +415,36 @@ private extension TaskCompletionView {
     
     func loadPendingLibraryItem(_ item: PhotosPickerItem?) {
         guard let item else { return }
+        loadLibraryPhoto {
+            try await item.loadTransferable(type: Data.self)
+        }
+    }
 
+    /// Opens the system photo library. Under `-inject-test-photo` (Debug) it loads the generated
+    /// photo instead, because the system picker cannot be driven from a test (#52).
+    func openPhotoLibrary() {
+        #if DEBUG
+        if let injectedPhoto = AppLaunchConfiguration.current.injectedTestPhoto {
+            loadLibraryPhoto {
+                // The real picker keeps the user in a system sheet for seconds, so the confirmation
+                // dialog that opened it is long gone when the crop cover appears. The injected load
+                // finishes at once, while the dialog still closes; UIKit drops a cover presented
+                // during that dismissal. No SwiftUI state says the dismissal animation ended, so
+                // wait it out here, in the Debug-only path.
+                try? await Task.sleep(for: .milliseconds(600))
+                return await injectedPhoto.load()
+            }
+            return
+        }
+        #endif
+        showingLibraryPicker = true
+    }
+
+    private func loadLibraryPhoto(loadData: @escaping @MainActor () async throws -> Data?) {
         isLoadingPhotos = true
 
         Task {
-            let data = try? await item.loadTransferable(type: Data.self)
+            let data = try? await loadData()
             // Decode off the main actor (the enclosing view is @MainActor, so a plain Task would
             // decode on main).
             let uiImage = await Task.detached { data.flatMap { UIImage(data: $0) } }.value
