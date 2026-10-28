@@ -6713,6 +6713,40 @@
         }
       }
     },
+    "notification.nudge.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the app to keep reminders going"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hatırlatmaların devam etmesi için uygulamayı aç"
+          }
+        }
+      }
+    },
+    "notification.nudge.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders are running low"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hatırlatmalar azalıyor"
+          }
+        }
+      }
+    },
     "notification.overdue_task" : {
       "extractionState" : "manual",
       "localizations" : {
