@@ -231,6 +231,53 @@ struct NotificationManagerResyncTests {
         #expect(try singleNudge(in: fakeCenter) == nil)
     }
 
+    /// A recurring series that stops inside its cap is not cut: the caregiver asked for the reminders
+    /// to end on that date, so nothing is running out.
+    @Test
+    func aRecurringSeriesThatEndsInsideItsCapGetsNoNudge() async throws {
+        let calendar = Calendar.current
+        let firstDue = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())))
+        let endDate = try #require(calendar.date(byAdding: .day, value: 5, to: firstDue))
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: [
+            makeInfo(taskId: UUID(), scheduledDate: firstDue, frequency: .daily, endDate: endDate)
+        ])
+
+        let reminders = fakeCenter.pendingRequests
+            .filter { $0.content.userInfo["taskId"] != nil && $0.identifier.contains("overdue") == false }
+        #expect(reminders.count == 6)
+        #expect(try singleNudge(in: fakeCenter) == nil)
+    }
+
+    /// A series the 12-month horizon stops keeps producing occurrences, so its reminders would stop
+    /// silently once the last scheduled one fires (#93).
+    @Test
+    func aSeriesStoppedByTheSchedulingHorizonGetsANudgeADayBeforeItsLastReminder() async throws {
+        // Every three months, six slots: the horizon keeps 5 of them.
+        let calendar = Calendar.current
+        let firstDue = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())))
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+
+        try await sut.resyncCareTaskNotifications(with: [
+            makeInfo(
+                taskId: UUID(),
+                scheduledDate: firstDue,
+                frequency: .monthly,
+                frequencyInterval: 3
+            )
+        ])
+
+        let reminders = fakeCenter.pendingRequests
+            .filter { $0.content.userInfo["taskId"] != nil && $0.identifier.contains("overdue") == false }
+        let nudge = try #require(try singleNudge(in: fakeCenter))
+        let lastReminder = try #require(try reminders.map(fireDate(of:)).max())
+        #expect(reminders.count == 5)
+        #expect(try fireDate(of: nudge) == lastReminder.addingTimeInterval(-86_400))
+    }
+
     @Test
     func aSecondResyncKeepsOneNudgeWithoutReAddingIt() async throws {
         let infos = try await starterTaskInfos()
@@ -338,7 +385,9 @@ struct NotificationManagerResyncTests {
         scheduleId: UUID = UUID(),
         title: String = "Feed Mochi",
         scheduledDate: Date = Date().addingTimeInterval(86_400),
-        frequency: CareTaskFrequency = .once
+        frequency: CareTaskFrequency = .once,
+        frequencyInterval: Int = 1,
+        endDate: Date? = nil
     ) -> NotificationScheduleInfo {
         NotificationScheduleInfo(
             scheduleId: scheduleId,
@@ -352,8 +401,8 @@ struct NotificationManagerResyncTests {
             scheduledDate: scheduledDate,
             scheduledTime: nil,
             frequency: frequency,
-            frequencyInterval: 1,
-            endDate: nil,
+            frequencyInterval: frequencyInterval,
+            endDate: endDate,
             customDays: nil,
             reminderMinutes: 0
         )
