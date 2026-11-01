@@ -239,7 +239,16 @@ final class CriticalFlowsUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(taskList.frame.maxY, tabBar.frame.minY)
             XCTAssertEqual(viewModeButton.frame.midY, addButton.frame.midY, accuracy: 2)
             XCTAssertLessThan(viewModeButton.frame.midX, addButton.frame.midX)
-            XCTAssertLessThanOrEqual(firstTask.frame.minY - taskList.frame.minY, 64)
+
+            // #67 moved the filter row into a top safe-area inset on the list, so the filter row
+            // and the section header now travel inside the list and the list itself starts at
+            // the top of the content area. The first row therefore sits below that chrome
+            // instead of 64 pt under the list top; what stays true on any device is that the
+            // chrome is above the first row and the row is clear of the floating tab bar.
+            let taskSearchField = app.searchFields.firstMatch
+            XCTAssertTrue(taskSearchField.waitForExistence(timeout: 5))
+            XCTAssertGreaterThan(firstTask.frame.minY, taskSearchField.frame.maxY)
+            XCTAssertLessThan(firstTask.frame.maxY, tabBar.frame.minY)
 
             attachScreenshot(named: "Tasks-iOS26-expanded")
 
@@ -1060,9 +1069,17 @@ final class CriticalFlowsUITests: XCTestCase {
 
         let settingsView = app.descendants(matching: .any)["settings.view"].firstMatch
         XCTAssertTrue(settingsView.waitForExistence(timeout: 5))
+
+        // `-launch-route settings` opens the More hub. The caregiver row lives in the Settings
+        // screen that the hub's "Settings" row pushes, not on the hub itself.
+        let appSettingsRow = app.buttons["settings.appSettings.row"]
+        XCTAssertTrue(appSettingsRow.waitForExistence(timeout: 5))
+        waitUntilHittable(appSettingsRow)
+        appSettingsRow.tap()
+
         let caregiversRow = app.buttons["settings.caregivers.row"]
         for _ in 0..<6 where !caregiversRow.exists || !caregiversRow.isHittable {
-            settingsView.swipeUp()
+            app.swipeUp()
         }
         XCTAssertTrue(caregiversRow.waitForExistence(timeout: 5))
         caregiversRow.tap()
