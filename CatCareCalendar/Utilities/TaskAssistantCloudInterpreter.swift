@@ -29,11 +29,21 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
 
     private let region: String
     private let functionName = "interpretTaskAssistantRequest"
+    private let signIn: @MainActor () async throws -> Void
 
     /// `nonisolated` so callers can build one in a default argument, which Swift evaluates
     /// outside the main actor. The stored properties are immutable, so this is safe.
-    nonisolated init(region: String = "europe-west1") {
+    /// `signIn` runs before every call (it returns at once once a session exists), so the
+    /// anonymous Firebase account is created on the first consented cloud request, never
+    /// at launch. Tests inject a spy.
+    nonisolated init(
+        region: String = "europe-west1",
+        signIn: @escaping @MainActor () async throws -> Void = {
+            try await FirebaseBootstrapper.ensureSignedInAnonymously()
+        }
+    ) {
         self.region = region
+        self.signIn = signIn
     }
 
     func interpret(
@@ -41,6 +51,8 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
         tasks: [CareTask],
         referenceDate: Date
     ) async throws -> TaskAssistantInterpreter.Interpretation {
+        try await signIn()
+
         guard FirebaseApp.app() != nil else {
             throw CloudInterpreterError.firebaseNotConfigured
         }

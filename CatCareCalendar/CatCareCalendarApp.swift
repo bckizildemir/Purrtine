@@ -84,9 +84,9 @@ struct CatCareCalendarApp: App {
                     // Bring Firebase up after the first frame rather than in App.init, keeping the
                     // SDK's setup off the launch critical path. The task-assistant cloud tier is the
                     // only consumer and it fails gracefully to the on-device heuristic if it somehow
-                    // runs before this completes.
+                    // runs before this completes. Configuring creates no account: the anonymous
+                    // sign-in waits for the first consented cloud request (#12).
                     FirebaseBootstrapper.configureIfNeeded()
-                    await FirebaseBootstrapper.ensureSignedInAnonymously()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // The unit-test host skips this, as it skips the launch-time permission check,

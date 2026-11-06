@@ -43,13 +43,20 @@ enum FirebaseBootstrapper {
         FirebaseApp.configure(options: options)
     }
 
+    enum SignInError: Error {
+        case firebaseNotConfigured
+        case signInFailed
+    }
+
     /// The task assistant's cloud tier is gated on Firebase Auth (anonymous is enough —
-    /// this app has no accounts), so every device needs a signed-in session before it
-    /// can call the interpretation function.
-    static func ensureSignedInAnonymously() async {
+    /// this app has no accounts), so the device needs a signed-in session before it
+    /// can call the interpretation function. Call this only when a cloud request is about
+    /// to run with the user's consent: it creates the Firebase account on first use (#12).
+    /// Throws when no session exists afterwards, so the caller fails like any cloud failure.
+    static func ensureSignedInAnonymously() async throws {
         // `Auth.auth()` raises if Firebase was never configured (missing plist — see
-        // configureIfNeeded()), so skip sign-in entirely in that case.
-        guard FirebaseApp.app() != nil else { return }
+        // configureIfNeeded()), so stop here in that case.
+        guard FirebaseApp.app() != nil else { throw SignInError.firebaseNotConfigured }
 
         await signInOperation.run {
             guard Auth.auth().currentUser == nil else { return }
@@ -60,5 +67,7 @@ enum FirebaseBootstrapper {
                 print("[FirebaseBootstrapper] Anonymous sign-in failed: \(error)")
             }
         }
+
+        guard Auth.auth().currentUser != nil else { throw SignInError.signInFailed }
     }
 }
