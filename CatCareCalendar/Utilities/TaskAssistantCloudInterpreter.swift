@@ -1,4 +1,3 @@
-import FirebaseCore
 import FirebaseFunctions
 import Foundation
 
@@ -21,7 +20,6 @@ protocol TaskAssistantCloudInterpreting: Sendable {
 /// selects among the task/cat ids this client sends — never trust it beyond that.
 struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
     enum CloudInterpreterError: Error {
-        case firebaseNotConfigured
         case invalidResponse
         case unknownTask
         case noMatch
@@ -51,11 +49,8 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
         tasks: [CareTask],
         referenceDate: Date
     ) async throws -> TaskAssistantInterpreter.Interpretation {
+        // Signing in also configures Firebase, so `Functions` below is safe to use afterwards.
         try await signIn()
-
-        guard FirebaseApp.app() != nil else {
-            throw CloudInterpreterError.firebaseNotConfigured
-        }
 
         let payload = requestPayload(text: text, tasks: tasks, referenceDate: referenceDate)
         let result = try await Functions.functions(region: region)

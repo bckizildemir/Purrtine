@@ -6,10 +6,12 @@ and that call only runs after the user has given cloud consent.
 
 ## What changed
 
-- `CatCareCalendarApp` still calls `FirebaseBootstrapper.configureIfNeeded()` after the first frame:
-  configuring creates no account, and the App Check provider must be set before the SDK configures.
-  It no longer signs in.
-- `FirebaseBootstrapper.ensureSignedInAnonymously()` now throws (`firebaseNotConfigured`, `signInFailed`).
+- `CatCareCalendarApp` no longer touches Firebase at launch. Configuring the SDK starts App Check,
+  which contacts Apple (App Attest) and Google at once, so it moved into the consented path.
+- `FirebaseBootstrapper.ensureSignedInAnonymously()` now throws (`cloudServicesDisabled` under UI
+  tests, unit tests and previews; `firebaseNotConfigured` without the plist; `signInFailed`). It calls
+  `configureIfNeeded()` first, which still sets the App Check provider before `FirebaseApp.configure`.
+- The duplicate `firebaseNotConfigured` check in the interpreter is gone.
 - `FirebaseTaskAssistantCloudInterpreter` takes a `signIn` closure (default: the bootstrapper) and
   awaits it before each call. A failure throws, so `TaskAssistantViewModel` keeps the heuristic
   answer, as it does for any cloud failure.

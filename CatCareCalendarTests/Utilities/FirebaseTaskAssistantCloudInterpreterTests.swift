@@ -3,8 +3,9 @@ import SwiftData
 import Testing
 @testable import CatCareCalendar
 
-/// The anonymous Firebase sign-in is deferred to the first cloud call (#12). These tests pin
-/// the seam: the sign-in closure the adapter owns. Nothing here reaches Firebase.
+/// The anonymous Firebase sign-in, and with it the SDK configuration, is deferred to the first
+/// consented cloud call (#12). These tests pin the seam: the sign-in closure the adapter owns.
+/// Nothing here reaches Firebase.
 @MainActor
 struct FirebaseTaskAssistantCloudInterpreterTests {
     @MainActor
@@ -20,38 +21,35 @@ struct FirebaseTaskAssistantCloudInterpreterTests {
 
     private struct SignInFailure: Error {}
 
-    @Test
-    func buildingTheInterpreterDoesNotSignIn() {
-        let spy = SignInSpy()
-
-        _ = FirebaseTaskAssistantCloudInterpreter(signIn: { try await spy.signIn() })
-
-        #expect(spy.callCount == 0)
+    private func makeDefaults(consentGranted: Bool) throws -> (defaults: UserDefaults, suiteName: String) {
+        let suiteName = "FirebaseTaskAssistantCloudInterpreterTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.set(consentGranted, forKey: SettingsPreferences.taskAssistantCloudConsentGrantedKey)
+        return (defaults, suiteName)
     }
 
     @Test
-    func interpretSignsInBeforeAnythingElse() async throws {
-        let task = CareTask(title: "Feed Luna", category: .feeding)
-        let spy = SignInSpy()
-        let sut = FirebaseTaskAssistantCloudInterpreter(signIn: { try await spy.signIn() })
-
-        // Firebase is not configured in the test host, so the call stops right after the
-        // sign-in with `firebaseNotConfigured`. That error proves the sign-in came first.
-        await #expect(throws: FirebaseTaskAssistantCloudInterpreter.CloudInterpreterError.self) {
-            _ = try await sut.interpret(text: "x", tasks: [task], referenceDate: Date())
-        }
-
-        #expect(spy.callCount == 1)
-    }
-
-    @Test
-    func signInFailureSurfacesAsTheCallsError() async {
+    func interpretSignsInFirstAndSurfacesAFailureAsTheCallsError() async {
         let spy = SignInSpy()
         spy.error = SignInFailure()
         let sut = FirebaseTaskAssistantCloudInterpreter(signIn: { try await spy.signIn() })
 
         await #expect(throws: SignInFailure.self) {
             _ = try await sut.interpret(text: "x", tasks: [], referenceDate: Date())
+        }
+
+        #expect(spy.callCount == 1)
+    }
+
+    @Test
+    func defaultSignInDoesNotReachFirebaseInTheUnitTestHost() async {
+        await #expect(throws: FirebaseBootstrapper.SignInError.cloudServicesDisabled) {
+            try await FirebaseBootstrapper.ensureSignedInAnonymously()
+        }
+
+        await #expect(throws: FirebaseBootstrapper.SignInError.cloudServicesDisabled) {
+            _ = try await FirebaseTaskAssistantCloudInterpreter()
+                .interpret(text: "x", tasks: [], referenceDate: Date())
         }
     }
 
@@ -61,8 +59,8 @@ struct FirebaseTaskAssistantCloudInterpreterTests {
         let task = CareTask(title: "Feed Luna", category: .feeding)
         container.mainContext.insert(task)
         let spy = SignInSpy()
-        let defaults = UserDefaults(suiteName: "FirebaseTaskAssistantCloudInterpreterTests.\(UUID().uuidString)")!
-        defaults.set(false, forKey: SettingsPreferences.taskAssistantCloudConsentGrantedKey)
+        let (defaults, suiteName) = try makeDefaults(consentGranted: false)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         let sut = TaskAssistantViewModel(
             cloudInterpreter: FirebaseTaskAssistantCloudInterpreter(signIn: { try await spy.signIn() }),
             userDefaults: defaults
@@ -81,8 +79,8 @@ struct FirebaseTaskAssistantCloudInterpreterTests {
         container.mainContext.insert(task)
         let spy = SignInSpy()
         spy.error = SignInFailure()
-        let defaults = UserDefaults(suiteName: "FirebaseTaskAssistantCloudInterpreterTests.\(UUID().uuidString)")!
-        defaults.set(true, forKey: SettingsPreferences.taskAssistantCloudConsentGrantedKey)
+        let (defaults, suiteName) = try makeDefaults(consentGranted: true)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         let sut = TaskAssistantViewModel(
             cloudInterpreter: FirebaseTaskAssistantCloudInterpreter(signIn: { try await spy.signIn() }),
             userDefaults: defaults
