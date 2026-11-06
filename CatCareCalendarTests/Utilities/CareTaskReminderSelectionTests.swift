@@ -82,29 +82,29 @@ struct CareTaskReminderSelectionTests {
     @Test
     func aSeriesCutByItsOwnCapGetsANudgeEvenWhenTheSetIsNotFull() throws {
         let selected = (0..<3).map { makeCandidate("c\($0)", minute: 5_000 + $0) }
-        let capEnd = minutes(3_000)
+        let cutEnd = minutes(3_000)
 
-        let date = try #require(nudgeDate(selected: selected, candidateCount: 3, capEnds: [capEnd]))
+        let date = try #require(nudgeDate(selected: selected, candidateCount: 3, cutEnds: [cutEnd]))
 
-        #expect(date == capEnd.addingTimeInterval(-86_400))
+        #expect(date == cutEnd.addingTimeInterval(-86_400))
     }
 
     @Test
-    func theEarliestCutEndWinsOverTheLastSelectedReminderAndOtherCappedSeries() throws {
+    func theEarliestCutEndWinsOverTheLastSelectedReminderAndOtherCutSeries() throws {
         let selected = (0..<3).map { makeCandidate("c\($0)", minute: 9_000 + $0) }
 
         let date = try #require(
-            nudgeDate(selected: selected, candidateCount: 8, capEnds: [minutes(6_000), minutes(4_000)])
+            nudgeDate(selected: selected, candidateCount: 8, cutEnds: [minutes(6_000), minutes(4_000)])
         )
 
         #expect(date == minutes(4_000).addingTimeInterval(-86_400))
     }
 
     @Test
-    func aLastSelectedReminderBeforeEveryCappedEndWinsWhenTheLimitCutTheSet() throws {
+    func aLastSelectedReminderBeforeEveryCutEndWinsWhenTheLimitCutTheSet() throws {
         let selected = (0..<3).map { makeCandidate("c\($0)", minute: 3_000 + $0) }
 
-        let date = try #require(nudgeDate(selected: selected, candidateCount: 4, capEnds: [minutes(9_000)]))
+        let date = try #require(nudgeDate(selected: selected, candidateCount: 4, cutEnds: [minutes(9_000)]))
 
         #expect(date == selected[2].fireDate.addingTimeInterval(-86_400))
     }
@@ -120,12 +120,33 @@ struct CareTaskReminderSelectionTests {
     }
 
     @Test
-    func theMidpointUsesTheEarliestCappedEnd() throws {
+    func theMidpointUsesTheEarliestCutEnd() throws {
         let selected = (0..<3).map { makeCandidate("c\($0)", minute: 5_000 + $0) }
 
-        let date = try #require(nudgeDate(selected: selected, candidateCount: 3, capEnds: [minutes(600)]))
+        let date = try #require(nudgeDate(selected: selected, candidateCount: 3, cutEnds: [minutes(600)]))
 
         #expect(date == minutes(300))
+    }
+
+    @Test
+    func theNudgeWaitsAnHourWhenTheEarliestEndIsOnlyMinutesAway() throws {
+        // 60 reminders inside the hour: the last one is 2 minutes out, so the midpoint would land a
+        // minute from now, while the caregiver is still using the app.
+        let selected = (0..<59).map { makeCandidate("c\($0)", minute: $0 == 58 ? 2 : 0) }
+
+        let date = try #require(nudgeDate(selected: selected, candidateCount: 60))
+
+        #expect(date == start.addingTimeInterval(3_600))
+    }
+
+    @Test
+    func theNudgeWaitsAnHourWhenTheLeadTimeWouldLandMinutesFromNow() throws {
+        // The earliest end is 24 hours and 2 minutes out, so "24 hours before" is 2 minutes from now.
+        let selected = (0..<3).map { makeCandidate("c\($0)", minute: 1_442) }
+
+        let date = try #require(nudgeDate(selected: selected, candidateCount: 4))
+
+        #expect(date == start.addingTimeInterval(3_600))
     }
 
     @Test
@@ -151,13 +172,13 @@ struct CareTaskReminderSelectionTests {
     private func nudgeDate(
         selected: [CareTaskReminderCandidate],
         candidateCount: Int,
-        capEnds: [Date] = [],
+        cutEnds: [Date] = [],
         now: Date? = nil
     ) -> Date? {
         CareTaskReminderSelection.nudgeFireDate(
             selected: selected,
             candidateCount: candidateCount,
-            cappedSeriesEnds: capEnds,
+            cutSeriesEnds: cutEnds,
             now: now ?? start
         )
     }
