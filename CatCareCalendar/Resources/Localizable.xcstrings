@@ -11275,13 +11275,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If Whiskers can't understand a request on its own, it can ask AI services for help. Requests are never stored or used for training — change this anytime in Settings."
+            "value" : "If Whiskers can't understand a request on its own, it can send the request text, with your task and cat names, to our Firebase server in the EU and to Groq, an AI service. They are not used for training. Groq may keep them for up to 30 days only to fix errors or stop abuse. Change this anytime in Settings."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whiskers bir isteği kendi başına anlayamazsa, yardım için yapay zeka servislerine başvurabilir. İstekler asla saklanmaz veya eğitim için kullanılmaz; bunu istediğiniz zaman Ayarlar'dan değiştirebilirsiniz."
+            "value" : "Whiskers bir isteği kendi başına anlayamazsa, istek metnini görev ve kedi adlarınızla birlikte AB'deki Firebase sunucumuza ve bir yapay zeka servisi olan Groq'a gönderebilir. Bu veriler eğitim için kullanılmaz. Groq bunları yalnızca hataları gidermek veya kötüye kullanımı önlemek için en fazla 30 gün saklayabilir. Bunu istediğiniz zaman Ayarlar'dan değiştirebilirsiniz."
           }
         }
       }
