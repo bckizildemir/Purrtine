@@ -19,11 +19,13 @@ fallback sends data, and only after the user consents in the app.
 
 ### Why each type
 
-- **Other User Content.** When the user consents, the Task Assistant sends the typed or dictated request text,
-  plus task titles and cat names, to the Firebase Cloud Function and on to Groq to interpret the request.
-  It is not linked to an identity.
-- **User ID.** The app signs in anonymously with Firebase Authentication. The anonymous uid authorizes calls to
-  the Cloud Function (with App Check). It is not linked to a name, email or any other identity.
+- **Other User Content.** Only after the user consents to the cloud assistant, the Task Assistant sends the typed
+  or dictated request text, plus task titles and cat names, to the Firebase Cloud Function and on to Groq to
+  interpret the request. A user who never consents sends nothing. It is not linked to an identity.
+- **User ID.** Only after the user consents to the cloud assistant, the app signs in anonymously with Firebase
+  Authentication, on the first Task Assistant cloud request. The anonymous uid authorizes calls to the Cloud
+  Function (with App Check). It is not linked to a name, email or any other identity. A user who never consents
+  gets no uid.
 
 ### Everything else: not collected
 
