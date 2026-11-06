@@ -161,7 +161,7 @@ function parseModelResponse(content) {
   try {
     return JSON.parse(jsonCandidate);
   } catch {
-    logger.warn("taskInterpreter.parseFailed", { contentPreview: trimmed.slice(0, 300) });
+    logger.warn("taskInterpreter.parseFailed", { contentLength: trimmed.length });
     throw new HttpsError("data-loss", "Provider response could not be parsed.", { reason: "parsing" });
   }
 }

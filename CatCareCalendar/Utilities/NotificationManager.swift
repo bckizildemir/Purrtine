@@ -368,9 +368,9 @@ final class NotificationManager:
     /// nothing is selected, so the diff removes every care-task reminder and every snooze — that wipe
     /// is intended: the caregiver asked for silence.
     ///
-    /// The "open the app" nudge rides the same diff: when the 59 limit or a series' own cap cut any
-    /// reminders short, one nudge request is wanted (see `CareTaskReminderSelection.nudgeFireDate`);
-    /// otherwise a pending one is removed.
+    /// The "open the app" nudge rides the same diff: when the 59 limit, a series' own cap, or the
+    /// scheduling horizon cut any reminders short, one nudge request is wanted (see
+    /// `CareTaskReminderSelection.nudgeFireDate`); otherwise a pending one is removed.
     ///
     /// Throws when a request cannot be added, and `CancellationError` when cancelled. A cancelled pass
     /// can stop between adds; that stays safe because every cancellation comes from
@@ -401,14 +401,14 @@ final class NotificationManager:
         let now = Date()
         let pass = areRemindersOn
             ? selectedReminderCandidates(for: infos, now: now)
-            : ReminderSelectionPass(selected: [], candidateCount: 0, cappedSeriesEnds: [])
+            : ReminderSelectionPass(selected: [], candidateCount: 0, cutSeriesEnds: [])
         var wantedRequests = pass.selected.map(reminderRequest(for:))
         // The nudge shares the diff: an unchanged one is kept, a moved one replaced in place under
         // its fixed identifier, and one that is no longer wanted falls into `staleIds`.
         if let nudgeDate = CareTaskReminderSelection.nudgeFireDate(
             selected: pass.selected,
             candidateCount: pass.candidateCount,
-            cappedSeriesEnds: pass.cappedSeriesEnds,
+            cutSeriesEnds: pass.cutSeriesEnds,
             now: now
         ) {
             wantedRequests.append(nudgeRequest(firedAt: nudgeDate))
@@ -444,8 +444,8 @@ final class NotificationManager:
         let selected: [CareTaskReminderCandidate]
         /// Candidates before the limit; more than `selected.count` means the limit cut the set.
         let candidateCount: Int
-        /// The last produced reminder's fire date of each series that its own cap cut short.
-        let cappedSeriesEnds: [Date]
+        /// The last produced reminder's fire date of each series that was cut short.
+        let cutSeriesEnds: [Date]
     }
 
     /// The requests a resync wants pending: the soonest reminders across every eligible schedule.
@@ -454,7 +454,7 @@ final class NotificationManager:
         now: Date
     ) -> ReminderSelectionPass {
         var candidates: [CareTaskReminderCandidate] = []
-        var cappedSeriesEnds: [Date] = []
+        var cutSeriesEnds: [Date] = []
         let eligibleInfos = infos.filter {
             NotificationSchedulingEligibility.allows(
                 info: $0,
@@ -465,15 +465,15 @@ final class NotificationManager:
         for info in eligibleInfos {
             let series = reminderCandidates(for: info, now: now)
             candidates += series.candidates
-            if let capEnd = series.capEnd {
-                cappedSeriesEnds.append(capEnd)
+            if let cutEnd = series.cutEnd {
+                cutSeriesEnds.append(cutEnd)
             }
         }
 
         return ReminderSelectionPass(
             selected: CareTaskReminderSelection.soonest(candidates),
             candidateCount: candidates.count,
-            cappedSeriesEnds: cappedSeriesEnds
+            cutSeriesEnds: cutSeriesEnds
         )
     }
 
@@ -513,7 +513,7 @@ final class NotificationManager:
     private func reminderCandidates(
         for info: NotificationScheduleInfo,
         now: Date
-    ) -> (candidates: [CareTaskReminderCandidate], capEnd: Date?) {
+    ) -> (candidates: [CareTaskReminderCandidate], cutEnd: Date?) {
         let identifierPrefix = "\(info.taskId.uuidString)_\(info.scheduleId.uuidString)"
         let series = calculateReminderOccurrences(for: info, offsetMinutes: info.reminderMinutes ?? 0, now: now)
         var candidates = series.occurrences
@@ -543,7 +543,7 @@ final class NotificationManager:
                 )
             }
         }
-        return (candidates, series.capEnd)
+        return (candidates, series.cutEnd)
     }
 
     /// A pending request the resync owns: it carries a task, and it is neither a snooze nor a debug
@@ -638,14 +638,14 @@ final class NotificationManager:
         let fireDate: Date
     }
 
-    /// The occurrences one series produced, and when its per-series cap cut it short.
+    /// The occurrences one series produced, and where something cut it short.
     private struct ReminderOccurrenceSeries {
         let occurrences: [ReminderOccurrence]
-        /// Fire date of the last produced reminder when the cap stopped the series although it has
-        /// more occurrences it did not produce; `nil` when the series ended on its own.
-        let capEnd: Date?
+        /// Fire date of the last produced reminder when something stopped the series while it goes
+        /// on — its own cap or the scheduling horizon; `nil` when it ended on its own.
+        let cutEnd: Date?
 
-        static let empty = ReminderOccurrenceSeries(occurrences: [], capEnd: nil)
+        static let empty = ReminderOccurrenceSeries(occurrences: [], cutEnd: nil)
     }
 
     private func calculateReminderOccurrences(
@@ -699,8 +699,12 @@ final class NotificationManager:
         let horizon = occurrence.flatMap {
             calendar.date(byAdding: .month, value: Self.schedulingHorizonMonths, to: $0)
         }
+        var stoppedByHorizon = false
         while let dueDate = occurrence, occurrences.count < maximumCount {
-            if let horizon, dueDate > horizon { break }
+            if let horizon, dueDate > horizon {
+                stoppedByHorizon = true
+                break
+            }
             guard let reminderDate = calendar.date(
                 byAdding: .minute,
                 value: -offsetMinutes,
@@ -715,12 +719,16 @@ final class NotificationManager:
         }
 
         // The loop leaves `occurrence` on the next one it did not take: when the count cap ended it
-        // and one exists, the series was cut short. A horizon stop or a natural end is not a cut.
+        // and one exists, the series was cut short. A natural end is not a cut.
         let isCutByCap = occurrences.count == maximumCount && occurrence != nil
-        return ReminderOccurrenceSeries(
-            occurrences: occurrences,
-            capEnd: isCutByCap ? occurrences.last?.fireDate : nil
-        )
+        // A horizon stop is a cut too (#93): the series goes on, but nothing past the horizon is
+        // scheduled, so reminders would stop silently once the last produced one fires. It counts
+        // only when the pass produced more than one reminder: with a single one — an interval longer
+        // than the horizon — opening the app cannot schedule more either, so the nudge would only
+        // fire before that lone reminder.
+        let isCutByHorizon = stoppedByHorizon && occurrences.count > 1
+        let cutEnd = isCutByCap || isCutByHorizon ? occurrences.last?.fireDate : nil
+        return ReminderOccurrenceSeries(occurrences: occurrences, cutEnd: cutEnd)
     }
 
     // MARK: - Quick Actions

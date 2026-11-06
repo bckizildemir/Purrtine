@@ -356,6 +356,9 @@ struct NotificationManagerSchedulingTests {
         // The leading reminder is still scheduled; only the far-future tail is dropped.
         #expect(scheduled.count == 1)
         #expect(scheduled.allSatisfy { $0 <= horizon })
+        // The horizon cut the series, but a single reminder leaves nothing for a nudge to extend:
+        // opening the app cannot schedule more of an interval longer than the horizon (#93).
+        #expect(fakeCenter.addedRequests.allSatisfy { $0.identifier != NotificationManager.nudgeIdentifier })
     }
 
     @Test(arguments: [

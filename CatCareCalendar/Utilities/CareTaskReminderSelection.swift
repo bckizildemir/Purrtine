@@ -22,41 +22,49 @@ enum CareTaskReminderSelection {
     /// How long before the earliest cut end the nudge fires: 24 hours.
     private static let nudgeLeadTime: TimeInterval = 24 * 3_600
 
+    /// The closest the nudge may fire to `now`: 1 hour. A resync runs while the caregiver is using
+    /// the app, so a nudge computed a minute out would interrupt them in the app they are already in.
+    private static let minimumGap: TimeInterval = 3_600
+
     /// When the "open the app" nudge should fire, or `nil` for none.
     ///
-    /// Reminders run out when something cut them short: the `limit` dropped candidates, or a series'
-    /// own cap stopped it before its natural end. With no cut, nothing runs out and there is no nudge.
-    /// Otherwise the nudge fires `nudgeLeadTime` before the EARLIEST of the last selected reminder and the
-    /// last reminder of every series cut by its own cap, because the caregiver must return before the
-    /// first of them goes quiet. If that moment has already passed, the nudge fires at the midpoint
-    /// between `now` and that earliest end instead. Each resync recomputes it, so the nudge moves
-    /// ahead of an active caregiver and never fires on every app open.
+    /// Reminders run out when something cut them short: the `limit` dropped candidates, or a series
+    /// stopped before its natural end — by its own cap, or by the scheduling horizon while it goes
+    /// on. With no cut, nothing runs out and there is no nudge. Otherwise the nudge fires
+    /// `nudgeLeadTime` before the EARLIEST of the last selected reminder and the last reminder of every
+    /// cut series, because the caregiver must return before the first of them goes quiet. If that
+    /// moment has already passed, the nudge fires at the midpoint between `now` and that earliest end
+    /// instead. Either way it never fires sooner than `minimumGap` after `now` — even when that lands
+    /// after the earliest end — so a full set whose last reminder is minutes away does not nudge the
+    /// caregiver about the app they are using. Each resync recomputes it, so the nudge moves ahead of
+    /// an active caregiver and never fires on every app open.
     ///
     /// - Parameters:
     ///   - selected: The reminders kept by `soonest(_:limit:)`.
     ///   - candidateCount: How many candidates there were before the limit; more than `selected.count`
     ///     means the limit cut the set.
-    ///   - cappedSeriesEnds: For each series cut by its own cap, the fire date of its last produced reminder.
+    ///   - cutSeriesEnds: For each series cut short, the fire date of its last produced reminder.
     ///   - now: Injected so tests control the clock.
     static func nudgeFireDate(
         selected: [CareTaskReminderCandidate],
         candidateCount: Int,
-        cappedSeriesEnds: [Date],
+        cutSeriesEnds: [Date],
         now: Date
     ) -> Date? {
         let isCutByLimit = candidateCount > selected.count
-        guard isCutByLimit || cappedSeriesEnds.isEmpty == false else { return nil }
+        guard isCutByLimit || cutSeriesEnds.isEmpty == false else { return nil }
 
-        var ends = cappedSeriesEnds
+        var ends = cutSeriesEnds
         if let lastSelected = selected.map(\.fireDate).max() {
             ends.append(lastSelected)
         }
         guard let earliestEnd = ends.min(), earliestEnd > now else { return nil }
 
         let leadDate = earliestEnd.addingTimeInterval(-nudgeLeadTime)
-        if leadDate > now { return leadDate }
-        let midpoint = now.addingTimeInterval(earliestEnd.timeIntervalSince(now) / 2)
-        return midpoint > now ? midpoint : nil
+        let computedDate = leadDate > now
+            ? leadDate
+            : now.addingTimeInterval(earliestEnd.timeIntervalSince(now) / 2)
+        return max(computedDate, now.addingTimeInterval(minimumGap))
     }
 
     /// The `limit` soonest candidates, soonest first. A tie breaks by identifier, so the result does
