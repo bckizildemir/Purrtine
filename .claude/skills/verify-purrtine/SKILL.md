@@ -150,7 +150,7 @@ Proof standards:
   device's pending notification store into the evidence and counts the pending requests per title (more than 0 = scheduled; the app caps the total at 60).
   A delivered banner needs its time to pass; prove it with a shot only when the change is about delivery.
   Say which side effects you did not prove.
-- The system photo picker runs out of process; axe sees none of its cells. Never claim a real photo pick: say in the report that the photo pick was not checked by hand. The `-inject-test-photo` launch flag (#52) is for the UI-test harness only; it needs `-ui-testing`, which this skill never uses, so it is not a proof path here.
+- The system photo picker runs out of process; axe sees none of its cells. `features/cat-photo.md` drives it anyway (`simctl addmedia`, a `$V shot` screenshot, a coordinate tap read from the shot); claim a real pick only after that recipe ran. The `-inject-test-photo` launch flag (#52) is for the UI-test harness only; it needs `-ui-testing`, which this skill never uses, so it is not a proof path here.
 - Add a `feature=… entry=… result=…` line to `run.txt` for each feature you drove.
 - In the PR: attach the key screenshots (drag them into the PR description on GitHub, or upload with
   `gh`), and name the evidence folder and the feature files you followed.
@@ -232,13 +232,15 @@ and the same screen size as the recorded runs. Measure again before you change t
   reports an empty tree, call xcodebuildmcp `open_sim`.
 - **Out-of-process system UI.** The photo picker (`catForm.photoMenu` → Photo Library) runs out of
   process; axe sees none of its cells. The camera choice asks for camera access, and the simulator
-  has no camera. Do not claim a photo path; say it was not checked by hand (see Rules).
+  has no camera. Drive the library choice with `features/cat-photo.md`; without it, say the pick was not
+  checked by hand (see Rules).
 - **Debug-only screens exist.** More → Developer Tools (`settings.developerTools`) and its notification
   history are in every Debug build. Never use them for data or proof.
 - **Cloud tier.** `GoogleService-Info.plist` is gitignored, so a fresh worktree has none and Firebase
-  stays off. The owner's main checkout has it (seen 2026-10-14): the build then signs in to Firebase at
-  launch, and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
+  stays off. The owner's main checkout has it (seen 2026-10-14): the build can reach Firebase (since #102 only on
+  the first consented cloud call, not at launch), and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
   assistant's cloud fallback alone in such a build.
+  `features/whiskers.md` has the exact cloud precondition and the 10-request cap.
 - **An optional hold blocks every build on the Mac.** Keep a held drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.

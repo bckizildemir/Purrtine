@@ -1,0 +1,69 @@
+# History
+
+History lists every completed task occurrence, newest first, with the task title, date, time and cats. A
+user can search it, and open it scoped to one task from Home → Routine Status. It has no filters, no
+grouping and no undo. Not yet proved (written from source 2026-11-07); the completion-to-History path was
+proved 2026-10-14 inside `complete-task.md`.
+
+## Sub-features
+
+- `history-list` rows `history.row.<task title>`: icon (green on time, orange late), title, date, time, cats.
+- `history-empty` three empty states: no tasks (`history.state.noTasks`, button
+  `history.createFirstTaskButton`), tasks but no completions (`history.state.noCompletions`, "No
+  statistics yet | Henüz istatistik yok"), a scoped task without completions (`history.state.taskNoCompletions`).
+- `history-search` the search field filters by task title, cat name or notes; no match shows
+  `history.state.searchEmpty` ("No Tasks Found | Görev Bulunamadı").
+- `history-scope` Home → Routine Status row opens History for that task: a header with the title,
+  "N completions | N tamamlanma" and "Show All | Tümünü Göster".
+- There is no undo: a completion is removed only by deleting the task (the writer's "undo" is an internal
+  rollback for failed saves).
+
+## How to get to it (user POV)
+
+- More | Daha Fazla tab → the History card (`settings.shortcut.history`, its value is this week's count).
+- Home tab → "Routine Status" section → a task row (`home.routineStatus.row.<title>`): History scoped to
+  that task.
+
+## Driving it with axe
+
+Preconditions:
+
+- Onboarding is done. For the empty state, nothing completed yet. For the list, complete "Daily Feeding"
+  from the Tasks tab (`complete-task.md`), and complete "Refresh Water" too for the search and scope
+  steps. Data only from user screens.
+
+Steps:
+
+- **Empty state first.** Before any completion: More → `settings.shortcut.history`. The tree holds
+  `history.view` and `history.state.noCompletions`; the card value on More reads 0. `vp shot history-empty`.
+  (A device with no task at all shows `history.state.noTasks`; a fresh run cannot be in that state after
+  onboarding with starter tasks.)
+- **Complete.** Per `complete-task.md`: Tasks tab, `vp tap --once --id 'taskRow.complete.Daily Feeding'`,
+  then the same for `Refresh Water`.
+- **List.** More tab (`BackButton` first if needed), `vp tap --id settings.shortcut.history`. The tree
+  holds `history.row.Daily Feeding` and `history.row.Refresh Water`; the one completed last is first
+  (compare their frames' y). Each row reads title, today's date, the time and `Miso`. The More card now
+  reads 2. `vp shot history-list`, `vp tree history-list`.
+- **Search.** The search field is in the navigation bar (no id; element type `SearchField`, label
+  `Search`, Turkish `Ara`; read `vp ui`). `vp tap --label Search --element-type SearchField`, then
+  `axe type 'Water' --udid $UDID`: only `history.row.Refresh Water` stays. Type a word that matches
+  nothing (`zzz`): `history.state.searchEmpty` shows. Search by cat name (`Miso`): both rows return. Clear
+  the field.
+- **Scope.** Home tab, `vp tap --id 'home.routineStatus.row.Daily Feeding'`. History opens on the More tab
+  scoped: header text `Daily Feeding`, `1 completions | 1 tamamlanma` (the string has no singular form), the button "Show All". Only `history.row.Daily Feeding` shows.
+  `vp tap --label "Show All"`: both rows show. `vp shot history-scoped`, `vp tree history-scoped`.
+  A scoped task without completions shows `history.state.taskNoCompletions` ("No completions for this
+  task | Bu görev için henüz tamamlama yok").
+- **Second view of a completion.** Home → Routine Status row reads `…, Last done today, Due tomorrow`
+  (see `complete-task.md`).
+- **Record.** `echo "feature=history entry=more-history result=pass" >> <evidence>/run.txt`.
+
+## Gotchas
+
+- The tab keeps its stack: after this recipe, More still shows History. Tap `BackButton` before other More
+  shortcuts.
+- Rows have no cat-filter, date-filter or grouping: do not look for chips. The old statistics source
+  strings (`history.this_week`, `history.filters`, …) are not used by this screen.
+- A task completed several times shows several rows with the same identifier `history.row.<title>`; count
+  rows by frame, not by id.
+- The scope survives until "Show All" is tapped; opening History from the More card resets it.
