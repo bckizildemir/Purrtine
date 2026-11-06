@@ -9,11 +9,15 @@ enum SettingsSupportConfiguration {
         URL(string: "https://bckizildemir.github.io/catcarecalendar-legal/terms/")
     }
 
-    static var appStoreReviewURL: URL? {
-        guard let appStoreID = bundleValue(for: "APP_STORE_ID"), appStoreID.isEmpty == false else {
-            return nil
-        }
+    static let publishedAppStoreID = "6761329008"
 
+    static var appStoreReviewURL: URL? {
+        appStoreReviewURL(infoPlistAppStoreID: bundleValue(for: "APP_STORE_ID"))
+    }
+
+    static func appStoreReviewURL(infoPlistAppStoreID: String?) -> URL? {
+        let configuredID = infoPlistAppStoreID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let appStoreID = configuredID.isEmpty ? publishedAppStoreID : configuredID
         return URL(string: "https://apps.apple.com/app/id\(appStoreID)?action=write-review")
     }
 
