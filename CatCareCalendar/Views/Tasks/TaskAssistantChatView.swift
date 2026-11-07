@@ -77,7 +77,10 @@ struct TaskAssistantChatView: View {
                 )
             }
         }
-        .onDisappear(perform: viewModel.stopDictation)
+        .onDisappear {
+            viewModel.stopDictation()
+            followTask?.cancel()
+        }
         .task {
             handleAppearance()
         }
@@ -231,6 +234,8 @@ private extension TaskAssistantChatView {
         .overlay(alignment: .bottomTrailing) {
             if !isAtBottom, !viewModel.messages.isEmpty {
                 Button {
+                    // The reader asked for the latest: follow new content again from here.
+                    isFollowingBottom = true
                     scrollToBottom()
                 } label: {
                     Image(systemName: "chevron.down.circle.fill")
@@ -255,6 +260,7 @@ private extension TaskAssistantChatView {
         followTask?.cancel()
         followTask = Task { @MainActor in
             for _ in 0..<Self.followAttempts {
+                guard !isAtBottom else { return }
                 scrollToBottom()
                 try? await Task.sleep(for: Self.followRetryInterval)
                 if Task.isCancelled || !isFollowingBottom || isAtBottom { return }

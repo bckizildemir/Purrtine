@@ -457,10 +457,10 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForExistence(timeout: 10))
     }
 
-    func testAssistantClarificationCardScrollsIntoViewWhenAmbiguous() {
+    func testAssistantDisambiguationCardScrollsIntoViewWhenAmbiguous() {
         // `long_task_list` seeds one cat + 18 identically-titled ".general" tasks, so the
-        // ambiguous "complete long task" ties every candidate and forces a clarification card
-        // (header + suggestion rows + Cancel) taller than the viewport with the keyboard up —
+        // ambiguous "complete long task" ties every candidate and forces a disambiguation card
+        // (header + three task rows + Cancel) taller than the viewport with the keyboard up —
         // the exact shipped repro where the chat failed to scroll the new card into view.
         let app = makeApp(
             additionalArguments: [
@@ -479,7 +479,7 @@ final class CriticalFlowsUITests: XCTestCase {
         app.buttons["taskAssistant.startChatButton"].tap()
 
         // First launch presents the cloud-consent sheet over the assistant. The heuristic
-        // clarification path never uses the cloud, so decline it if it appears. Match the
+        // disambiguation path never uses the cloud, so decline it if it appears. Match the
         // button by label — the sheet container's accessibility id isn't a queryable element.
         dismissAssistantCloudConsentIfNeeded(in: app)
 
@@ -493,24 +493,26 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(sendButton.waitForExistence(timeout: 5))
         sendButton.tap()
 
-        // The tie shows the task-disambiguation card ("Found a few matching tasks, which one?",
-        // three rows + Cancel), the tall card this test needs. Its trailing "Cancel" button is its last element and exists in
-        // the hierarchy even when off-screen. With the shipped bug the chat did not auto-scroll
-        // to reveal the card (keyboard up), so it was not hittable. The fix must scroll it in.
-        let cancelClarification = app.buttons["Cancel"]
-        XCTAssertTrue(cancelClarification.waitForExistence(timeout: 5))
+        // The card's trailing Cancel button is its last element and exists in the hierarchy even
+        // when off-screen. With the shipped bug the chat did not auto-scroll to reveal the card
+        // (keyboard up), so it was not hittable. The fix must scroll it in.
+        let cancelDisambiguation = app.buttons["taskAssistant.cancelTaskDisambiguationButton"]
+        XCTAssertTrue(cancelDisambiguation.waitForExistence(timeout: 5))
         // The button exists as soon as the card is inserted; the auto-scroll lands a moment later
         // (after the card's transition and the keyboard settle), so poll for it instead of
         // reading `isHittable` once. No manual swipe: only the app's own scroll can pass.
         let becameHittable = expectation(
             for: NSPredicate(format: "isHittable == true"),
-            evaluatedWith: cancelClarification
+            evaluatedWith: cancelDisambiguation
         )
         let waitResult = XCTWaiter().wait(for: [becameHittable], timeout: 5)
         XCTAssertTrue(
             waitResult == .completed,
-            "Clarification card's trailing Cancel button must be on-screen — the chat should auto-scroll the card into view after send."
+            "Disambiguation card's trailing Cancel button must be on-screen — the chat should auto-scroll the card into view after send."
         )
+        // The bug needs the keyboard up. The composer is disabled while the assistant works, which
+        // can drop it, so prove the precondition still held when the card was on-screen.
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard must still be up for this test to prove the bug.")
     }
 
     func testTaskEditAndDeleteFlow() {
