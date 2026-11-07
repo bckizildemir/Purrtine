@@ -920,6 +920,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
         let catCard = app.buttons["cats.card.UI Test Cat"]
         XCTAssertTrue(catCard.waitForExistence(timeout: 5))
+        scrollUntilHittable(catCard, in: app)
         let addTaskMenuItem = app.buttons["Add Task"]
         performGesture(on: catCard, revealing: addTaskMenuItem) {
             catCard.press(forDuration: 1.2)
@@ -1092,8 +1093,10 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.tap()
         nameField.typeText("UI Avatar Caregiver")
+        dismissKeyboardIfPresent(in: app)
         let saveButton = app.buttons["addCaregiver.saveButton"]
-        waitUntilHittable(saveButton)
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        scrollUntilHittable(saveButton, in: app)
         saveButton.tap()
 
         let note = app.alerts["Caregiver saved, but the photo did not save."]
@@ -1673,6 +1676,36 @@ final class CriticalFlowsUITests: XCTestCase {
     private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = 5) {
         let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: element)
         wait(for: [hittable], timeout: timeout)
+    }
+
+    /// Swipes the app's main scroll view up until `element` has its centre inside the window, then
+    /// waits for it to be hittable. Bounded, so a missing element still fails in the caller's assertion.
+    ///
+    /// Reads `frame` instead of `isHittable` while scrolling: asking an off-screen or mid-scroll
+    /// element for hittability is what raises "Activation point invalid" on CI.
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 6) {
+        _ = element.waitForExistence(timeout: 5)
+        let window = app.windows.firstMatch
+        for _ in 0..<maxSwipes {
+            let frame = element.frame
+            let isCentreOnScreen = !frame.isEmpty && window.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
+            // Keep clear of the tab bar, which covers the bottom of the window.
+            let isAboveTabBar = !app.tabBars.firstMatch.exists || frame.midY < app.tabBars.firstMatch.frame.minY
+            if isCentreOnScreen, isAboveTabBar { break }
+            app.swipeUp()
+        }
+        waitUntilHittable(element)
+    }
+
+    /// Dismisses the keyboard through its toolbar Done button, when the form has one.
+    private func dismissKeyboardIfPresent(in app: XCUIApplication) {
+        guard app.keyboards.firstMatch.exists else { return }
+
+        let done = app.toolbars.buttons["Done"]
+        if done.waitForExistence(timeout: 2) {
+            done.tap()
+            _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 5)
+        }
     }
 
     /// Performs a gesture on `target` and waits for the element it reveals, with one retry (#71).
