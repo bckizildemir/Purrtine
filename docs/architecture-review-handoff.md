@@ -1,4 +1,4 @@
-# Handoff — CatCareCalendar architecture review
+# Handoff — Purrtine architecture review
 
 **From:** an unattended scheduled run on 2026-07-31, against `main` @ `5c6527e`.
 **For:** whichever agent or person picks up one of the tickets below.

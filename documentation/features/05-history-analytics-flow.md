@@ -1,5 +1,5 @@
 # History & Analytics Flow Documentation
-**CatCareCalendar - Completion history and lightweight insights**
+**Purrtine - Completion history and lightweight insights**
 
 ---
 

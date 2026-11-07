@@ -33,7 +33,7 @@ names them for you. `### Swift review skills` below covers the paths that hook c
 
 ## Project Overview
 
-CatCareCalendar is a local-first iOS app (SwiftUI + SwiftData) for cat owners to manage care routines, recurring tasks, and history across multiple cats. It targets iOS 18.4+ and uses Swift 6-style patterns (project file now reports `SWIFT_VERSION = 6.0`, verified 2026-09-24 against `project.pbxproj`, all configurations and targets). See the reconciliation notes at the top of "Agent Guide for Swift and SwiftUI" below before applying that section's iOS 26/Swift 6.2 version claims literally.
+Purrtine is a local-first iOS app (SwiftUI + SwiftData) for cat owners to manage care routines, recurring tasks, and history across multiple cats. It targets iOS 18.4+ and uses Swift 6-style patterns (project file now reports `SWIFT_VERSION = 6.0`, verified 2026-09-24 against `project.pbxproj`, all configurations and targets). See the reconciliation notes at the top of "Agent Guide for Swift and SwiftUI" below before applying that section's iOS 26/Swift 6.2 version claims literally.
 
 ### Dependencies
 

@@ -45,7 +45,7 @@ Preconditions:
 - **Swipe path.** `vp tap --label Tasks --element-type RadioButton`. Read the frame of
   `taskRow.Refresh Water` in `vp ui` and swipe right a short way:
   `axe swipe --start-x 100 --start-y <row mid-y> --end-x 220 --end-y <row mid-y> --duration 0.4 --udid $UDID`.
-  A `Button | Complete` shows at the row's leading edge (its id read `checkmark.circle.fill`, the SF Symbol
+  A `Button | Complete | Tamamla` shows at the row's leading edge (its id read `checkmark.circle.fill`, the SF Symbol
   name, in `vp ui` on 2026-10-14; the source sets no identifier, so tap by label).
   `vp shot swipe-revealed`, `vp tree swipe-revealed`, then `vp tap --once --label Complete --element-type Button`.
   The row moves under `Tomorrow` like the circle path. `vp shot swipe-completed`, `vp tree swipe-completed`.
@@ -66,3 +66,7 @@ Preconditions:
 - An occurrence that went overdue earlier today moves to Tomorrow when completed. An older overdue
   occurrence moves to the day after its own scheduled day, so a task overdue for several days stays
   overdue (`TaskActionService.swift`). A fresh run's onboarding tasks are due today, so the recipe holds.
+- Measured 2026-11-07: the Today list shows the newest-created task first (Brush coat above Daily Feeding), so row
+  positions shift; read `vp ui` each time. In Turkish the swipe button label is "Tamamla" (id `checkmark.circle.fill`).
+- Home now lists Routine Status before Today & Overdue (PR #105); Routine Status stays first after a completion
+  and reads "Last done today, Due tomorrow".

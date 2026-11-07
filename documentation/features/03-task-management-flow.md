@@ -1,5 +1,5 @@
 # Task Management Flow Documentation
-**CatCareCalendar - Task creation, browsing, editing, and completion**
+**Purrtine - Task creation, browsing, editing, and completion**
 
 ---
 

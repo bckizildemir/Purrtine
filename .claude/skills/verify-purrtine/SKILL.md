@@ -1,6 +1,6 @@
 ---
 name: verify-purrtine
-description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14 on iOS 26.5 and 2026-10-15 on iOS 27.0), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
+description: Drive the real Purrtine iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14 on iOS 26.5 and 2026-10-15 on iOS 27.0), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
 ---
 
 # verify-purrtine
@@ -35,7 +35,8 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
   project's pristine SimSlim template `iPhone 12 slim tmpl (Purrtine)` (profile
   `Scripts/simslim-profile.json`: everything off except `photos` and `siri`), so each run starts
   as a brand-new user: no app, no data. Never boot the template, install on it, or touch any other
-  simulator. One run per project at a time (the verify lock `/tmp/verify-purrtine.lock`); a TriQ
+  simulator. One run per lock folder: `/tmp/verify-purrtine.lock` by default. For two runs at once (English and Turkish),
+  set `VP_LOCK_DIR=/tmp/verify-purrtine-<name>.lock` on every `vp` call of each run (see "Parallel runs"). A TriQ
   run can drive at the same time. Machine-wide at most `SLIM_SIM_MAX` verify clones exist
   (default 2, shared with TriQ): `$V start` waits for a free slot.
 
@@ -132,6 +133,23 @@ axe tap -x 195 -y 420 --tap-style physical --udid $UDID   # only when an element
 The recipes are in `features/` — read `features/README.md`, then the feature's file. Data comes only
 from the journeys there: [Onboarding](features/onboarding.md) first, then Add Cat and Add Task.
 
+## Parallel runs
+
+Two verify runs of Purrtine can drive at once (for example an English and a Turkish pass; the check of
+PR #105 ran on a second slim simulator beside a Turkish pass on 2026-11-07, and neither blocked the other):
+
+```bash
+export VP_LOCK_DIR=/tmp/verify-purrtine-en.lock   # the other shell: /tmp/verify-purrtine-tr.lock
+$V start && $V build && $V install && $V launch
+```
+
+- Every `$V` call of a run needs the same `VP_LOCK_DIR` (a new shell does not keep it), and every
+  `/tmp/verify-purrtine.lock/...` path in these docs becomes `$VP_LOCK_DIR/...`.
+- At most `SLIM_SIM_MAX` (2) verify clones exist machine-wide, shared with TriQ; an extra `start` waits for a
+  slot. `start` prints nothing while it waits and is moved to the background after 180 s; read
+  `$V status` or `$VP_LOCK_DIR/owner` to see the holder.
+- `build` still shares the one xcb build lock, so the second build waits for the first.
+
 ## Evidence
 
 ```bash
@@ -150,7 +168,7 @@ Proof standards:
   device's pending notification store into the evidence and counts the pending requests per title (more than 0 = scheduled; the app caps the total at 60).
   A delivered banner needs its time to pass; prove it with a shot only when the change is about delivery.
   Say which side effects you did not prove.
-- The system photo picker runs out of process; axe sees none of its cells. Never claim a real photo pick: say in the report that the photo pick was not checked by hand. The `-inject-test-photo` launch flag (#52) is for the UI-test harness only; it needs `-ui-testing`, which this skill never uses, so it is not a proof path here.
+- The system photo picker runs out of process; axe sees none of its cells. `features/cat-photo.md` drives it anyway (`simctl addmedia`, a `$V shot` screenshot, a coordinate tap read from the shot); claim a real pick only after that recipe ran. The `-inject-test-photo` launch flag (#52) is for the UI-test harness only; it needs `-ui-testing`, which this skill never uses, so it is not a proof path here.
 - Add a `feature=… entry=… result=…` line to `run.txt` for each feature you drove.
 - In the PR: attach the key screenshots (drag them into the PR description on GitHub, or upload with
   `gh`), and name the evidence folder and the feature files you followed.
@@ -212,7 +230,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   folder, which can be `CatCareCalendarUITests-Runner.app`. `$V build` takes `CatCareCalendar.app`
   from the same folder by name.
 - **Shared DerivedData.** Every worktree builds into one DerivedData. `$V build` copies the app into
-  the run's lock folder at once and fails when a newer CatCareCalendar build log exists; run it again.
+  the run's lock folder at once and fails when a newer Purrtine build log exists; run it again.
 - **A fresh device copies the Mac's languages** (`en-TR`, `tr-TR` on 2026-10-14). `$V start` always
   writes the device language (`en-US` or `tr-TR`) and reboots, so the language you asked for is the
   one the app sees. `$V doctor` prints it.
@@ -232,16 +250,26 @@ and the same screen size as the recorded runs. Measure again before you change t
   reports an empty tree, call xcodebuildmcp `open_sim`.
 - **Out-of-process system UI.** The photo picker (`catForm.photoMenu` → Photo Library) runs out of
   process; axe sees none of its cells. The camera choice asks for camera access, and the simulator
-  has no camera. Do not claim a photo path; say it was not checked by hand (see Rules).
+  has no camera. Drive the library choice with `features/cat-photo.md`; without it, say the pick was not
+  checked by hand (see Rules).
 - **Debug-only screens exist.** More → Developer Tools (`settings.developerTools`) and its notification
   history are in every Debug build. Never use them for data or proof.
 - **Cloud tier.** `GoogleService-Info.plist` is gitignored, so a fresh worktree has none and Firebase
-  stays off. The owner's main checkout has it (seen 2026-10-14): the build then signs in to Firebase at
-  launch, and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
+  stays off. The owner's main checkout has it (seen 2026-10-14): the build can reach Firebase (since #102 only on
+  the first consented cloud call, not at launch), and the Whiskers assistant's cloud fallback calls a paid function. `$V doctor` warns; leave the
   assistant's cloud fallback alone in such a build.
+  `features/whiskers.md` has the exact cloud precondition and the 10-request cap.
 - **An optional hold blocks every build on the Mac.** Keep a held drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.
+- **A frozen device.** After a SpringBoard lock-screen glitch (it appeared once after about 15 minutes) the
+  device stopped taking touches and `$V revive` did nothing. `xcrun simctl shutdown <UDID>` (that run's UDID),
+  then `$V revive`, fixed it.
+- **Wrong simulator in xcodebuildmcp.** `snapshot_ui` with no `simulatorId` read another simulator on
+  2026-11-07. Pass the run's UDID, or use `$V ui`.
+- **Unknown skill.** A skill added to a worktree after the session started cannot be loaded with the Skill
+  tool ("Unknown skill: verify-purrtine"). Read `SKILL.md` directly. A `sleep N; cat` wait is blocked by the
+  harness: use a background until-loop.
 - **A system-sheet tap can report a change that did not happen.** On 2026-10-27 `$V tap --label Allow`
   on the notification sheet said "screen changed", but the sheet stayed ("Requesting permission…").
   `axe tap -x X -y Y --tap-style physical --udid $UDID` on Allow's frame centre (from `$V ui`)

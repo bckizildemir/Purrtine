@@ -1,6 +1,6 @@
 # Swift review skill triggers — the setup, and how to port it
 
-**Written:** 2026-08-14 · **Updated:** 2026-08-26 · **Status:** installed in CatCareCalendar; pipe-tested, live fire still unverified (see §5)
+**Written:** 2026-08-14 · **Updated:** 2026-08-26 · **Status:** installed in Purrtine; pipe-tested, live fire still unverified (see §5)
 
 This document has two jobs. It records what was installed in this repo and why, and it gives another project everything needed to reproduce it. It is written to be readable by someone — or some agent — who cannot see this repo.
 
@@ -250,7 +250,7 @@ in `~/.claude.json` rather than in a tracked `.mcp.json`.
 
 **Three deliberate differences remain.** Each is a fact about the repo, not drift:
 
-| | CatCareCalendar | TTB |
+| | Purrtine | TTB |
 | --- | --- | --- |
 | Persistence skill | `swiftdata-pro` routed as an additive grep — 42 app-target files import SwiftData (2026-09-08) | dropped — persists through Firestore, zero `import SwiftData`, so the script has no such line |
 | Test path arm | `*Tests/*`, `*Tests.swift`, `*UITests*` | `*/Tests/*`, `*Tests.swift`, `*TTBUITests*` |
@@ -267,7 +267,7 @@ repo: perf work is not detectable from the shape of a diff, so the `CLAUDE.md` t
 route.
 
 **The two repos cannot contaminate each other.** A repo's `.claude/skills/` loads only for that
-repo, so CatCareCalendar never sees TTB's project skills and TTB never sees `testflight-release`.
+repo, so Purrtine never sees TTB's project skills and TTB never sees `testflight-release`.
 The only shared tree is `~/.claude/skills`, the 21 personal skills (`swift-style-guide` among them) both repos are meant to use. A `.agents/skills/` directory inside a repo is never
 read by Claude Code at all; TTB carried an empty `.agents/` as a leftover until 2026-08-16.
 

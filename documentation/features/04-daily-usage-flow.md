@@ -1,5 +1,5 @@
 # Daily Usage Flow Documentation
-**CatCareCalendar - Home dashboard and day-to-day interaction**
+**Purrtine - Home dashboard and day-to-day interaction**
 
 ---
 
