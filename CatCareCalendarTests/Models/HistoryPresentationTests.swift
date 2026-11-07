@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CatCareCalendar
 
@@ -104,16 +105,46 @@ struct HistoryPresentationTests {
         #expect(filtered == [first, second])
     }
 
+    private static let cutoff = Date(timeIntervalSince1970: 1_800_000_000)
+
     @Test
-    func completionWithoutCatsFallsBackToTheTasksAssignedCats() {
+    func oldCompletionWithoutCatsFallsBackToTheTasksAssignedCats() {
         let miso = Cat(name: "Miso")
         let task = CareTask(title: "Daily Feeding")
         task.assignedCats = [miso]
-        let orphaned = CareTaskCompletion()
-        orphaned.task = task
+        let old = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(-3_600))
+        old.task = task
 
-        #expect(HistoryPresentation.displayCats(for: orphaned) == [miso])
-        #expect(HistoryPresentation.filteredCompletions(from: [orphaned], query: "Miso") == [orphaned])
+        #expect(HistoryPresentation.displayCats(for: old, fallbackCutoff: Self.cutoff) == [miso])
+        #expect(HistoryPresentation.filteredCompletions(
+            from: [old], query: "Miso", fallbackCutoff: Self.cutoff
+        ) == [old])
+    }
+
+    @Test
+    func newCompletionWithoutCatsGetsNoFallback() {
+        // The deleted-cat case: completed for Miso only, Miso deleted, Luna still assigned.
+        let luna = Cat(name: "Luna")
+        let task = CareTask(title: "Daily Feeding")
+        task.assignedCats = [luna]
+        let new = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(3_600))
+        new.task = task
+
+        #expect(HistoryPresentation.displayCats(for: new, fallbackCutoff: Self.cutoff).isEmpty)
+        #expect(HistoryPresentation.filteredCompletions(
+            from: [new], query: "Luna", fallbackCutoff: Self.cutoff
+        ).isEmpty)
+    }
+
+    @Test
+    func noStoredCutoffMeansNoFallback() {
+        let task = CareTask(title: "Daily Feeding")
+        task.assignedCats = [Cat(name: "Miso")]
+        let completion = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(-3_600))
+        completion.task = task
+
+        #expect(HistoryPresentation.displayCats(for: completion, fallbackCutoff: nil).isEmpty)
+        #expect(HistoryPresentation.filteredCompletions(from: [completion], query: "Miso").isEmpty)
     }
 
     @Test
@@ -122,16 +153,19 @@ struct HistoryPresentationTests {
         let assigned = Cat(name: "Assigned")
         let task = CareTask(title: "Daily Feeding")
         task.assignedCats = [assigned]
-        let completion = CareTaskCompletion()
+        let completion = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(-3_600))
         completion.task = task
         completion.cats = [own]
 
-        #expect(HistoryPresentation.displayCats(for: completion) == [own])
-        #expect(HistoryPresentation.filteredCompletions(from: [completion], query: "Assigned").isEmpty)
+        #expect(HistoryPresentation.displayCats(for: completion, fallbackCutoff: Self.cutoff) == [own])
+        #expect(HistoryPresentation.filteredCompletions(
+            from: [completion], query: "Assigned", fallbackCutoff: Self.cutoff
+        ).isEmpty)
     }
 
     @Test
-    func completionWithoutCatsAndWithoutTaskShowsNoCats() {
-        #expect(HistoryPresentation.displayCats(for: CareTaskCompletion()).isEmpty)
+    func oldCompletionWithoutCatsAndWithoutTaskShowsNoCats() {
+        let completion = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(-3_600))
+        #expect(HistoryPresentation.displayCats(for: completion, fallbackCutoff: Self.cutoff).isEmpty)
     }
 }

@@ -30,15 +30,18 @@ struct HistoryView: View {
     // Derive once per render and reuse across the header, state, and list.
     let scopedTask = scopedTask
     let scopedCompletions = scopedCompletions(for: scopedTask)
+    let fallbackCutoff = HistoryCatFallbackCutoff().date
     let filteredCompletions = HistoryPresentation.filteredCompletions(
       from: scopedCompletions,
-      query: searchText
+      query: searchText,
+      fallbackCutoff: fallbackCutoff
     )
     let presentationState = HistoryPresentation.state(
       taskCount: allTasks.count,
       completions: scopedCompletions,
       searchText: searchText,
-      isTaskScoped: scopedTask != nil
+      isTaskScoped: scopedTask != nil,
+      fallbackCutoff: fallbackCutoff
     )
 
     return ZStack {
@@ -68,7 +71,7 @@ struct HistoryView: View {
           ScrollView {
             LazyVStack(spacing: 12) {
               ForEach(filteredCompletions) { completion in
-                CompletionHistoryRow(completion: completion)
+                CompletionHistoryRow(completion: completion, fallbackCutoff: fallbackCutoff)
               }
             }
             .padding(.horizontal)
@@ -198,6 +201,7 @@ struct HistoryView: View {
 
 struct CompletionHistoryRow: View {
   let completion: CareTaskCompletion
+  var fallbackCutoff: Date?
 
   var body: some View {
     HStack(spacing: 12) {
@@ -225,7 +229,7 @@ struct CompletionHistoryRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-          let displayCats = HistoryPresentation.displayCats(for: completion)
+          let displayCats = HistoryPresentation.displayCats(for: completion, fallbackCutoff: fallbackCutoff)
           if displayCats.isEmpty == false {
             Text(verbatim: "•")
               .font(.caption)

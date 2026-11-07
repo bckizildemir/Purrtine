@@ -172,7 +172,7 @@ struct SchemaBaselineTests {
     }
 
     @Test("The app builds its container from the current (V2) schema")
-    func appContainerCarriesVersionOneEntities() throws {
+    func appContainerCarriesCurrentSchemaEntities() throws {
         let configuration = AppLaunchConfiguration(
             arguments: [],
             environment: ["CATCARE_UNIT_TESTING": "1"]
@@ -193,7 +193,7 @@ struct SchemaBaselineTests {
     }
 
     @Test("The test factory builds its container from the current (V2) schema")
-    @MainActor func testFactoryCarriesVersionOneEntities() throws {
+    @MainActor func testFactoryCarriesCurrentSchemaEntities() throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
 
         let entityNames = container.schema.entities.map(\.name).sorted()

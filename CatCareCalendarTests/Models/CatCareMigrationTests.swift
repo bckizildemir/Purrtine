@@ -3,6 +3,8 @@ import SwiftData
 import Testing
 @testable import CatCareCalendar
 
+private final class FixtureBundleToken {}
+
 /// Proves the V1 to V2 stage on a real on-disk store written with the frozen V1 models.
 @Suite("Schema migration V1 to V2")
 @MainActor
@@ -81,6 +83,49 @@ struct CatCareMigrationTests {
                 // empty: the migration does not invent history (History falls back at read time).
                 let withCat = completions.filter { $0.cats.isEmpty == false }
                 #expect(withCat.map { $0.task?.title } == ["Brush coat"])
+                #expect(withCat.first?.cats == [cat])
+                #expect(cat.completions == withCat)
+            }
+        }
+    }
+
+    /// `PurrtineV1Store.sqlite` was written by the code on origin/main before schema V2 (see the PR
+    /// body): the real V1 models and `TaskActionService`, not the frozen copies. The app calls
+    /// `fatalError` when its container fails to open, so this proves a real shipped-layout store
+    /// opens under V2 instead of crashing every launch.
+    @Test("A store written by the pre-V2 app code opens under V2 and keeps its data")
+    func realVersionOneStoreFixtureMigrates() throws {
+        let fixture = try #require(
+            Bundle(for: FixtureBundleToken.self).url(forResource: "PurrtineV1Store", withExtension: "sqlite")
+        )
+        try SchemaBaselineHarness.withStore { url in
+            try FileManager.default.copyItem(at: fixture, to: url)
+
+            try SchemaBaselineHarness.open(
+                url,
+                schema: CatCareSchemaV2.self,
+                migrationPlan: CatCareMigrationPlan.self
+            ) { context in
+                let cats = try context.fetch(FetchDescriptor<Cat>())
+                let tasks = try context.fetch(FetchDescriptor<CareTask>())
+                let completions = try context.fetch(FetchDescriptor<CareTaskCompletion>())
+                #expect(cats.map(\.name) == ["Miso"])
+                #expect(tasks.count == 3)
+                // 3 starting schedules plus one next occurrence per recurring completion.
+                #expect(try context.fetch(FetchDescriptor<CareTaskSchedule>()).count == 7)
+                #expect(try context.fetch(FetchDescriptor<Caregiver>()).count == 1)
+                #expect(completions.count == 4)
+
+                let cat = try #require(cats.first)
+                #expect(Set(cat.tasks.map(\.title)) == Set(Self.taskTitles))
+                #expect(completions.allSatisfy { $0.task != nil && $0.caregiver != nil })
+                let completionsPerTask = Dictionary(grouping: completions, by: { $0.task?.title ?? "" })
+                    .mapValues(\.count)
+                #expect(completionsPerTask == ["Daily Feeding": 2, "Refresh Water": 1, "Brush coat": 1])
+
+                // Only the newest completion still had its cat in the old store, and it still does.
+                let withCat = completions.filter { $0.cats.isEmpty == false }
+                #expect(withCat.count == 1)
                 #expect(withCat.first?.cats == [cat])
                 #expect(cat.completions == withCat)
             }
