@@ -19,7 +19,7 @@ struct HomeRoutineStatusRowView: View {
 
                 Spacer(minLength: 12)
 
-                Text(formattedCompletionTimestamp)
+                Text(row.secondaryTimestampText)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -34,14 +34,4 @@ struct HomeRoutineStatusRowView: View {
         .accessibilityIdentifier("home.routineStatus.row.\(row.title)")
     }
 
-    private var formattedCompletionTimestamp: String {
-        guard let lastCompletionDate = row.lastCompletionDate else {
-            return row.secondaryTimestampText
-        }
-
-        return lastCompletionDate.formatted(.verbatim(
-            "\(day: .twoDigits)/\(month: .twoDigits)/\(year: .defaultDigits) \(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits)",
-            locale: Locale(identifier: "en_GB_POSIX"), timeZone: .current, calendar: .current
-        ))
-    }
 }

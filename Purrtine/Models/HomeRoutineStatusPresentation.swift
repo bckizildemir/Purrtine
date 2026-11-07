@@ -141,9 +141,7 @@ struct HomeRoutineStatusPresentation {
         locale: Locale,
         calendar: Calendar
     ) -> String {
-        lastCompletionDate.formatted(
-            Date.FormatStyle(date: .abbreviated, time: .shortened, locale: locale, calendar: calendar)
-        )
+        CompletionTimestamp.text(for: lastCompletionDate, locale: locale, calendar: calendar)
     }
 
     private static func dueStatusText(
