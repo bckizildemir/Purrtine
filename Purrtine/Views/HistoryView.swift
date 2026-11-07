@@ -217,7 +217,7 @@ struct CompletionHistoryRow: View {
           .foregroundStyle(.primary)
 
         HStack(spacing: 4) {
-          Text(completion.completedAt, format: .dateTime.day().month().year())
+          Text(completion.completedAt, format: CompletionTimestamp.dateStyle)
             .font(.caption)
             .foregroundStyle(.secondary)
 
@@ -225,7 +225,7 @@ struct CompletionHistoryRow: View {
             .font(.caption)
             .foregroundStyle(.tertiary)
 
-          Text(completion.completedAt, format: .dateTime.hour().minute())
+          Text(completion.completedAt, format: CompletionTimestamp.timeStyle)
             .font(.caption)
             .foregroundStyle(.secondary)
 
