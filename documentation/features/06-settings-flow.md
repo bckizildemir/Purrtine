@@ -1,5 +1,5 @@
 # Settings Flow Documentation
-**CatCareCalendar - Preferences, support, and app controls**
+**Purrtine - Preferences, support, and app controls**
 
 ---
 

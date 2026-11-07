@@ -1,9 +1,9 @@
 ---
 name: testflight-release
-description: Ship a new CatCareCalendar build to TestFlight external testers — checks for unpushed commits, updates the asc CLI, bumps the build number, archives/exports/uploads via App Store Connect, and assigns the build to External Testers and submits for Beta App Review. Use this whenever the user asks to "release", "ship", "push a new build", "send to TestFlight", "submit for external testing", or "update App Store Connect" for this app — even if they only mention one part of the pipeline (e.g. just "bump the version" or just "upload to ASC"), since these steps are normally done together.
+description: Ship a new Purrtine build to TestFlight external testers — checks for unpushed commits, updates the asc CLI, bumps the build number, archives/exports/uploads via App Store Connect, and assigns the build to External Testers and submits for Beta App Review. Use this whenever the user asks to "release", "ship", "push a new build", "send to TestFlight", "submit for external testing", or "update App Store Connect" for this app — even if they only mention one part of the pipeline (e.g. just "bump the version" or just "upload to ASC"), since these steps are normally done together.
 ---
 
-# TestFlight release (CatCareCalendar)
+# TestFlight release (Purrtine)
 
 This walks the whole path from "there's unshipped work sitting in a branch" to "a new build is live in TestFlight for external testers." Two Apple-side snags need attention: a Release-only compile break (Step 4) and an API key role that can block group assignment (Step 8).
 
@@ -13,7 +13,7 @@ Treat this as several checkpoints, not one script. **Stop and confirm with the u
 
 Save yourself a lookup — these don't change often:
 
-- App Store Connect app ID: `6761329008` ("Cat Care Calendar", bundle `com.berkecankizildemir.CatCareCalendar`)
+- App Store Connect app ID: `6761329008` ("Purrtine", bundle `com.berkecankizildemir.CatCareCalendar`)
 - Team ID: `A355549DDD`
 - External Testers group ID: `a6d6763f-f04a-46f7-a531-03a45170f5e5`
 - Internal Testers group ID: `2737969c-77cf-48ed-ab37-ef07c015c9ae`

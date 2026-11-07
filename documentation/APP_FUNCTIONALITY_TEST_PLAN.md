@@ -1,4 +1,4 @@
-# CatCareCalendar Iterative Functionality And Test Plan
+# Purrtine Iterative Functionality And Test Plan
 
 ## Handoff Rule For Agents
 

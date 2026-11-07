@@ -1,5 +1,5 @@
 # Cat Management Flow Documentation
-**CatCareCalendar - Cat profiles and multi-cat organization**
+**Purrtine - Cat profiles and multi-cat organization**
 
 ---
 

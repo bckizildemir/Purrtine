@@ -1,6 +1,6 @@
-# CatCareCalendar verification map
+# Purrtine verification map
 
-This directory is the maintained source for verifying what a user of CatCareCalendar sees. Read
+This directory is the maintained source for verifying what a user of Purrtine sees. Read
 this index before you drive the app, then use the matching feature file as the recipe. The harness
 is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh simulator; see
 `../SKILL.md` for launch, doctor and cleanup.

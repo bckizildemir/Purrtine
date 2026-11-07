@@ -1,6 +1,6 @@
-# CatCareCalendar Domain Context
+# Purrtine Domain Context
 
-CatCareCalendar is a local-first iOS app for cat owners. It tracks the recurring care work a
+Purrtine is a local-first iOS app for cat owners. It tracks the recurring care work a
 household owes its cats, and it tells the household when that work is due.
 
 ## Language

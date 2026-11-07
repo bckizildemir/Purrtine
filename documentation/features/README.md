@@ -1,11 +1,11 @@
-# CatCareCalendar Feature Documentation
+# Purrtine Feature Documentation
 **Living flow specifications for product and engineering**
 
 ---
 
 ## Purpose
 
-These documents describe the intended user flows for CatCareCalendar. They are written as living product and technical guidance, not as a changelog and not as a promise that every future-facing idea already exists in the current repo.
+These documents describe the intended user flows for Purrtine. They are written as living product and technical guidance, not as a changelog and not as a promise that every future-facing idea already exists in the current repo.
 
 ### Reading Rule
 - Treat each flow’s main sections as the current target product standard.

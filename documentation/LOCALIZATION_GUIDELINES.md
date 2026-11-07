@@ -1,6 +1,6 @@
 # Localization & Formatting Guidelines
 
-These guidelines capture the rules for localized copy in CatCareCalendar following the July 2026 migration to a String Catalog.
+These guidelines capture the rules for localized copy in Purrtine following the July 2026 migration to a String Catalog.
 
 ---
 
