@@ -1,0 +1,651 @@
+<!doctype html>
+<!--
+  PROTOTYPE round 3, throwaway (branch prototype/landing-page). Not production.
+  Owner verdict on round 2: D wins, but "when did I last…?" goes on top, not Whiskers.
+  Section order: top ("when did I last…?") → Whiskers (with a mic) → [tasks, optional] → calendar → questions → privacy.
+  Only the TOP section changes between variants: ?variant=F|G|H|I. I is built with Emil Kowalski's
+  emil-design-eng rules (custom ease-out, blur crossfade, press scale, pause when hidden).
+  ?tasks=1 (or the "Tasks" button in the bar) shows the optional tasks section.
+  Run: python3 -m http.server 8765 -d web/landing-prototype  →  http://localhost:8765/r3.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purrtine prototype, round 3</title>
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; }
+  img { display: block; }
+  :focus-visible { outline: 3px solid #2f8fd0; outline-offset: 3px; border-radius: 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  .pt {
+    --sky: #d9edf9; --glass: #eef7fd; --navy: #17324a; --muted: #4d6478; --line: rgba(23,50,74,.1);
+    --orange: #f2a541; --orange-deep: #b8690f; --cream: #fff6e8; --green: #2fa877; --blue: #2f8fd0; --white: #ffffff;
+    --ease-out: cubic-bezier(.23, 1, .32, 1);
+    --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+    --paw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='16.5' rx='5.6' ry='4.6'/%3E%3Ccircle cx='4.8' cy='10.2' r='2.3'/%3E%3Ccircle cx='9' cy='5.8' r='2.5'/%3E%3Ccircle cx='15' cy='5.8' r='2.5'/%3E%3Ccircle cx='19.2' cy='10.2' r='2.3'/%3E%3C/svg%3E");
+    background: linear-gradient(180deg, var(--sky) 0, var(--glass) 760px, var(--white) 760px);
+    color: var(--navy); font: 18px/1.6 "Nunito", system-ui, sans-serif; min-height: 100vh;
+  }
+  .pt .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
+  .pt header { display: flex; align-items: center; gap: 10px; padding: 22px 0; font-weight: 900; font-size: 20px; }
+  .pt header img { width: 38px; height: 38px; border-radius: 10px; }
+  .pt .hero { display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center; padding: 30px 0 80px; }
+  .pt h1 { font-weight: 900; font-size: clamp(40px, 6vw, 64px); line-height: 1.03; letter-spacing: -0.025em; margin: 0 0 20px; text-wrap: balance; }
+  .pt .lead { font-size: 20px; color: var(--muted); max-width: 30em; margin: 0 0 30px; }
+  .pt .store { display: inline-block; background: var(--navy); color: var(--white); border-radius: 16px; padding: 14px 22px; font-weight: 800; text-decoration: none; transition: transform .16s ease-out; }
+  .pt .store:active { transform: scale(.97); }
+  .pt .store span { display: block; font-size: 12px; font-weight: 600; opacity: .7; }
+  .pt .panel {
+    background: rgba(255,255,255,.78); border: 1px solid var(--line); border-radius: 30px; padding: 22px;
+    box-shadow: 0 30px 70px -30px rgba(23,50,74,.35); backdrop-filter: blur(8px);
+  }
+  .pt .hint { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  .pt section { padding: 80px 0; }
+  .pt .split { display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center; }
+  .pt .split.flip { grid-template-columns: 440px 1fr; }
+  .pt .split h2, .pt .answers h2 { font-size: 38px; line-height: 1.08; margin: 0 0 16px; font-weight: 900; letter-spacing: -0.02em; text-wrap: balance; }
+  .pt .split p { color: var(--muted); margin: 0 0 12px; max-width: 30em; }
+  .pt .answers { display: grid; grid-template-columns: 300px 1fr; gap: 48px; }
+  .pt dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 34px 40px; }
+  .pt dt { font-weight: 900; font-size: 20px; margin-bottom: 6px; }
+  .pt dd { margin: 0; color: var(--muted); }
+  .pt .private { background: var(--navy); color: var(--white); border-radius: 36px; padding: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .pt .private h2 { font-size: 34px; line-height: 1.1; margin: 0; font-weight: 900; }
+  .pt .private p { margin: 0 0 14px; color: #c5d6e4; }
+  .pt footer { padding: 40px 0 120px; color: var(--muted); font-size: 15px; display: flex; flex-wrap: wrap; gap: 22px; }
+  .pt footer a { color: var(--navy); }
+  .pt button { font: inherit; color: inherit; }
+
+  /* Variant switching: only the top section changes */
+  .top { display: none; }
+  body[data-variant="F"] #top-F, body[data-variant="G"] #top-G,
+  body[data-variant="H"] #top-H, body[data-variant="I"] #top-I { display: block; }
+  body:not(.with-tasks) #tasks { display: none; }
+
+  /* Number and text swaps: blur crossfade (emil-design-eng) */
+  .swap { display: inline-block; transition: opacity .2s ease-out, filter .2s ease-out, transform .2s var(--ease-out); }
+  .swap.out { opacity: 0; filter: blur(4px); transform: translateY(4px); }
+
+  /* ───── F: since board ───── */
+  #top-F .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  #top-F .board li { display: grid; grid-template-columns: 1fr auto 40px; gap: 14px; align-items: center; padding: 12px 6px; border-bottom: 1px solid var(--line); }
+  #top-F .board li:last-child { border-bottom: 0; }
+  #top-F .name strong { display: block; font-size: 17px; font-weight: 800; line-height: 1.25; }
+  #top-F .name small { color: var(--muted); font-size: 14px; }
+  #top-F .ago { font-weight: 900; font-size: 22px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  #top-F li.due .ago { color: var(--orange-deep); }
+  #top-F .bar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--glass); overflow: hidden; margin-top: -4px; }
+  #top-F .bar i { display: block; height: 100%; background: var(--green); transform-origin: left; transition: transform .45s var(--ease-out); }
+  #top-F li.due .bar i { background: var(--orange); }
+  #top-F .tick {
+    width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--orange); background: var(--white); cursor: pointer;
+    display: grid; place-items: center; padding: 0; transition: transform .16s ease-out, background-color .2s ease-out, border-color .2s ease-out;
+  }
+  #top-F .tick:active { transform: scale(.94); }
+  #top-F .tick svg { width: 18px; height: 18px; stroke: var(--white); opacity: 0; transition: opacity .2s ease-out; }
+  #top-F li.just .tick { background: var(--green); border-color: var(--green); }
+  #top-F li.just .tick svg { opacity: 1; }
+
+  /* ───── G: fridge notes ───── */
+  #top-G .fridge { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 10px; }
+  #top-G .note {
+    position: relative; border: 0; text-align: left; cursor: pointer; padding: 18px 18px 22px; border-radius: 6px 6px 18px 6px;
+    box-shadow: 0 14px 26px -16px rgba(23,50,74,.55); transform: rotate(var(--r)); transition: transform .2s var(--ease-out), box-shadow .2s ease-out;
+    min-height: 150px;
+  }
+  @media (hover: hover) and (pointer: fine) { #top-G .note:hover { transform: rotate(0deg) translateY(-3px); } }
+  #top-G .note:active { transform: rotate(0deg) scale(.97); }
+  #top-G .note::before { content: ""; position: absolute; top: -9px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--navy); box-shadow: inset -3px -3px 0 rgba(255,255,255,.25); }
+  #top-G .note b { display: block; font-weight: 900; font-size: 17px; }
+  #top-G .note .hand { display: block; font-family: "Caveat", cursive; font-size: 27px; line-height: 1.1; margin-top: 8px; }
+  #top-G .note .by { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  #top-G .note.n1 { background: #fff1cf; --r: -2.5deg; }
+  #top-G .note.n2 { background: #dff0fb; --r: 1.8deg; }
+  #top-G .note.n3 { background: #e6f6ee; --r: 1.2deg; }
+  #top-G .note.n4 { background: #ffe6d6; --r: -1.6deg; }
+  #top-G .note::after {
+    content: ""; position: absolute; right: 12px; bottom: 10px; width: 26px; height: 26px; background: var(--orange);
+    -webkit-mask: var(--paw) center / contain no-repeat; mask: var(--paw) center / contain no-repeat;
+    opacity: 0; transform: scale(1.6) rotate(-14deg); transition: opacity .2s ease-out, transform .28s var(--ease-out);
+  }
+  #top-G .note.just::after { opacity: 1; transform: none; }
+
+  /* ───── H: since rings ───── */
+  #top-H .rings { display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: center; }
+  #top-H svg.dial { width: 190px; height: 190px; transform: rotate(-90deg); }
+  #top-H .dial circle { fill: none; stroke-width: 13; stroke-linecap: round; }
+  #top-H .dial .track { stroke: var(--glass); }
+  #top-H .dial .val { transition: stroke-dashoffset .6s var(--ease-out); }
+  #top-H .legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  #top-H .legend button {
+    width: 100%; display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: start; text-align: left; border: 0;
+    background: transparent; padding: 7px 8px; border-radius: 12px; cursor: pointer; transition: background-color .15s ease-out, transform .16s ease-out;
+  }
+  @media (hover: hover) and (pointer: fine) { #top-H .legend button:hover { background: var(--glass); } }
+  #top-H .legend button:active { transform: scale(.97); }
+  #top-H .legend .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; }
+  #top-H .legend strong { display: block; font-size: 16px; font-weight: 800; line-height: 1.3; }
+  #top-H .legend small { color: var(--muted); font-size: 14px; }
+  #top-H .key { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+
+  /* ───── I: the question itself (emil-design-eng) ───── */
+  #top-I .ask { text-align: center; padding: 50px 0 90px; }
+  #top-I .q { font-weight: 900; font-size: clamp(34px, 5.6vw, 62px); line-height: 1.12; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
+  #top-I .pick {
+    font: inherit; letter-spacing: inherit; border: 0; cursor: pointer; color: var(--navy); background: var(--white);
+    border-radius: 999px; padding: 0 .38em .04em; box-shadow: 0 10px 30px -14px rgba(23,50,74,.45), inset 0 0 0 2px var(--orange);
+    transition: transform .16s ease-out; white-space: nowrap;
+  }
+  #top-I .pick:active { transform: scale(.97); }
+  #top-I .a { margin: 34px 0 6px; font-weight: 900; font-size: clamp(56px, 11vw, 132px); line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--orange-deep); }
+  #top-I .detail { color: var(--muted); font-size: 19px; margin: 0 0 8px; min-height: 1.6em; }
+  #top-I .detail .swap { transition-delay: .04s; }
+  #top-I .steps { display: flex; justify-content: center; gap: 8px; margin: 22px 0 34px; padding: 0; list-style: none; }
+  #top-I .steps button { width: 34px; height: 6px; border-radius: 3px; border: 0; padding: 0; background: rgba(23,50,74,.14); cursor: pointer; position: relative; overflow: hidden; }
+  #top-I .steps button::after { content: ""; position: absolute; inset: 0; background: var(--navy); transform: scaleX(0); transform-origin: left; }
+  #top-I .steps button[aria-current="true"]::after { transform: scaleX(1); transition: transform var(--dwell, 3.2s) linear; }
+  #top-I .steps.paused button[aria-current="true"]::after { transition: none; transform: scaleX(1); }
+  #top-I .sub { font-size: 20px; color: var(--muted); max-width: 32em; margin: 0 auto 28px; }
+
+  /* ───── Whiskers (second section) ───── */
+  .pt .who { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-weight: 900; }
+  .pt .who img { width: 36px; height: 36px; border-radius: 11px; }
+  .pt .who small { display: block; font-weight: 600; color: var(--muted); font-size: 13px; line-height: 1.2; }
+  .pt .chat { display: flex; flex-direction: column; gap: 8px; min-height: 170px; justify-content: flex-end; }
+  .pt .msg { max-width: 86%; padding: 10px 15px; border-radius: 20px; font-size: 16px; line-height: 1.45; }
+  .pt .msg.me { align-self: flex-end; background: var(--navy); color: var(--white); border-bottom-right-radius: 6px; }
+  .pt .msg.me .mic-tag { display: inline-flex; vertical-align: -2px; margin-right: 6px; opacity: .7; }
+  .pt .msg.cat { align-self: flex-start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+  .pt .msg .chip-done { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 800; color: var(--green); }
+  .pt .msg .chip-done::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+  .pt .msg.in { animation: msg-in .3s var(--ease-out) both; }
+  @keyframes msg-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+  .pt .typing { display: inline-flex; gap: 5px; padding: 4px 0; }
+  .pt .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .45; animation: blink 1.2s infinite; }
+  .pt .typing i:nth-child(2) { animation-delay: .2s; } .pt .typing i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 50% { opacity: 1; } }
+  .pt .composer { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 6px 6px 6px 16px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); }
+  .pt .composer .field { flex: 1; color: var(--muted); font-size: 15px; min-height: 1.5em; }
+  .pt .composer .field.live { color: var(--navy); }
+  .pt .mic {
+    position: relative; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--orange); color: var(--navy);
+    display: grid; place-items: center; cursor: pointer; transition: transform .16s ease-out, background-color .2s ease-out;
+  }
+  .pt .mic:active { transform: scale(.94); }
+  .pt .mic svg { width: 22px; height: 22px; }
+  .pt .mic::before, .pt .mic::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--orange); opacity: 0; }
+  .pt .mic.listening { background: var(--navy); color: var(--white); }
+  .pt .mic.listening::before { animation: ripple 1.2s ease-out infinite; }
+  .pt .mic.listening::after { animation: ripple 1.2s ease-out .4s infinite; }
+  @keyframes ripple { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+  .pt .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pt .chips button {
+    font-size: 14px; font-weight: 800; border: 1.5px solid var(--navy); color: var(--navy); background: var(--white);
+    border-radius: 999px; padding: 7px 13px; cursor: pointer; transition: background-color .15s ease-out, color .15s ease-out, transform .16s ease-out;
+  }
+  @media (hover: hover) and (pointer: fine) { .pt .chips button:hover { background: var(--navy); color: var(--white); } }
+  .pt .chips button:active { transform: scale(.97); }
+  .pt .chips button:disabled { opacity: .4; cursor: default; }
+  .pt .can { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
+  .pt .can li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+  .pt .can li span:first-child { width: 30px; height: 30px; border-radius: 10px; background: var(--cream); display: grid; place-items: center; color: var(--orange-deep); font-weight: 900; font-size: 15px; }
+  .pt .can strong { color: var(--navy); }
+
+  /* ───── Tasks (optional section) ───── */
+  .pt .tasks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 30px; }
+  .pt .task {
+    border: 1px solid var(--line); background: var(--white); border-radius: 22px; padding: 18px; text-align: left; cursor: pointer;
+    transition: transform .16s ease-out, box-shadow .2s ease-out;
+  }
+  .pt .task:active { transform: scale(.97); }
+  .pt .task .cat { font-size: 13px; color: var(--muted); font-weight: 700; }
+  .pt .task strong { display: block; font-size: 18px; font-weight: 900; margin: 4px 0 12px; }
+  .pt .task .rep { display: inline-block; font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--glass); color: var(--blue); }
+  .pt .task .rem { display: block; font-size: 14px; color: var(--muted); margin-top: 10px; }
+  .pt .tasks-head { max-width: 640px; }
+  .pt .tasks-head h2 { font-size: 38px; line-height: 1.08; margin: 0 0 12px; font-weight: 900; letter-spacing: -0.02em; }
+  .pt .tasks-head p { color: var(--muted); margin: 0; }
+
+  /* ───── Calendar (last feature section) ───── */
+  .pt .month-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .pt .month-head strong { font-size: 22px; font-weight: 900; }
+  .pt .month-head span { font-size: 14px; color: var(--muted); }
+  .pt .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .pt .grid b { font-size: 12px; text-align: center; color: var(--muted); font-weight: 800; }
+  .pt .d {
+    aspect-ratio: 1; border-radius: 12px; background: var(--glass); border: 0; font-size: 13px; font-weight: 800;
+    padding: 4px 6px; text-align: left; position: relative; cursor: pointer;
+    transition: transform .15s var(--ease-out), background-color .15s ease-out, color .15s ease-out;
+  }
+  @media (hover: hover) and (pointer: fine) { .pt .d:not(.empty):hover { transform: translateY(-2px); } }
+  .pt .d:active:not(.empty) { transform: scale(.95); }
+  .pt .d.paw::after {
+    content: ""; position: absolute; right: 5px; bottom: 5px; width: 15px; height: 15px; background: var(--orange);
+    -webkit-mask: var(--paw) center / contain no-repeat; mask: var(--paw) center / contain no-repeat;
+  }
+  .pt .d.today { background: var(--cream); box-shadow: inset 0 0 0 2px var(--orange); }
+  .pt .d.empty { background: transparent; cursor: default; }
+  .pt .d[aria-pressed="true"] { background: var(--navy); color: var(--white); }
+  .pt .d[aria-pressed="true"].paw::after { background: var(--white); }
+  .pt .d.stamp::after { animation: stamp .3s var(--ease-out); }
+  @keyframes stamp { from { transform: scale(1.9) rotate(-12deg); opacity: 0; } }
+  .pt .readout { margin: 14px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--cream); color: var(--orange-deep); font-weight: 700; font-size: 15px; min-height: 50px; }
+
+  @media (max-width: 860px) {
+    .pt .hero, .pt .split, .pt .split.flip, .pt .answers, .pt .private { grid-template-columns: 1fr; }
+    .pt .split.flip .panel { order: 2; }
+    .pt dl { grid-template-columns: 1fr; }
+    .pt .private { padding: 32px 24px; border-radius: 28px; }
+    .pt .hero { padding-bottom: 50px; gap: 34px; }
+    .pt section { padding: 56px 0; }
+    .pt .tasks { grid-template-columns: 1fr 1fr; }
+    #top-H .rings { grid-template-columns: 1fr; justify-items: center; }
+    #top-G .fridge { gap: 14px; padding: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pt *, .pt *::before, .pt *::after { animation: none !important; transition-property: opacity !important; }
+    .swap.out { filter: none; transform: none; }
+  }
+
+  /* prototype switcher (not part of any design) */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 99;
+    display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px;
+    background: #ff2e93; color: #fff; font: 600 14px/1 ui-sans-serif, system-ui, sans-serif;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35); max-width: calc(100vw - 24px);
+  }
+  .proto-bar button { height: 36px; min-width: 36px; border-radius: 999px; border: 0; background: rgba(255,255,255,.2); color: #fff; font-size: 15px; cursor: pointer; padding: 0 10px; }
+  .proto-bar span { padding: 0 8px; white-space: nowrap; }
+</style>
+</head>
+<body class="pt" data-variant="F">
+<div class="wrap">
+  <header><img src="icon.png" alt="" width="38" height="38">Purrtine</header>
+</div>
+
+<!-- ═════════ TOP F: since board ═════════ -->
+<div class="top" id="top-F" data-name="Since board">
+  <div class="wrap hero">
+    <div>
+      <h1>Never wonder when you last fed, dosed or brushed your cat.</h1>
+      <p class="lead">Purrtine remembers every routine you keep, so the answer to “when did I last…?” is always one look away.</p>
+      <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+    </div>
+    <div class="panel">
+      <ul class="board" id="f-board"></ul>
+      <p class="hint">Tick one. It starts again from “just now”.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════ TOP G: fridge notes ═════════ -->
+<div class="top" id="top-G" data-name="Fridge notes">
+  <div class="wrap hero">
+    <div>
+      <h1>Never wonder when you last fed, dosed or brushed your cat.</h1>
+      <p class="lead">Like notes on the fridge, but they write themselves. Every task you tick says when it was done and who did it.</p>
+      <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+    </div>
+    <div>
+      <div class="fridge" id="g-fridge"></div>
+      <p class="hint" style="text-align:center">Tap a note when you do the task.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════ TOP H: since rings ═════════ -->
+<div class="top" id="top-H" data-name="Since rings">
+  <div class="wrap hero">
+    <div>
+      <h1>Never wonder when you last fed, dosed or brushed your cat.</h1>
+      <p class="lead">Each ring fills as a routine gets closer to its next time. Do the task, and the ring starts again.</p>
+      <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+    </div>
+    <div class="panel">
+      <div class="rings">
+        <svg class="dial" viewBox="0 0 200 200" aria-hidden="true" id="h-dial"></svg>
+        <ul class="legend" id="h-legend"></ul>
+      </div>
+      <p class="key">A full ring means it is time again.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════ TOP I: the question itself (emil-design-eng) ═════════ -->
+<div class="top" id="top-I" data-name="The question (Emil skill)">
+  <div class="wrap ask">
+    <h1 class="sr">Purrtine: know when you last did each care task for your cat.</h1>
+    <p class="q" aria-live="polite">When did I last <button class="pick" type="button" id="i-pick" aria-label="Change the question"><span class="swap" id="i-word">brush Pamuk</span></button>?</p>
+    <p class="a"><span class="swap" id="i-ago">3 days ago</span></p>
+    <p class="detail"><span class="swap" id="i-detail">Sunday at 20:40, by Ayşe. Due again today.</span></p>
+    <ol class="steps" id="i-steps" aria-label="Questions"></ol>
+    <p class="sub">Purrtine keeps each cat's routine, reminds you before something is late, and remembers every task you tick.</p>
+    <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+  </div>
+</div>
+
+<!-- ═════════ 2: Whiskers ═════════ -->
+<section>
+  <div class="wrap split">
+    <div>
+      <h2>Let Whiskers handle the little things.</h2>
+      <p>Say it or type it, in English or Turkish. Whiskers finds the right task and does the rest.</p>
+      <ul class="can">
+        <li><span aria-hidden="true">✓</span><span><strong>“fed Luna”</strong> ticks breakfast and saves it to History.</span></li>
+        <li><span aria-hidden="true">↻</span><span><strong>“snooze the pill 1 hour”</strong> moves the reminder.</span></li>
+        <li><span aria-hidden="true">→</span><span><strong>“open the vet visit”</strong> takes you to the task.</span></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="who"><img src="icon.png" alt="" width="36" height="36"><span>Whiskers<small>your helper in Purrtine</small></span></div>
+      <div class="chat" id="w-chat" aria-live="polite"></div>
+      <div class="composer">
+        <span class="field" id="w-field">Tap the mic and talk</span>
+        <button class="mic" type="button" id="w-mic" aria-label="Talk to Whiskers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+        </button>
+      </div>
+      <div class="chips" id="w-chips" aria-label="Or try a message">
+        <button type="button" data-say="snooze">snooze Luna's pill 1 hour</button>
+        <button type="button" data-say="tr">Pamuk'u besledim</button>
+        <button type="button" data-say="open">open Luna's vet visit</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ 3 (optional): tasks ═════════ -->
+<section id="tasks">
+  <div class="wrap">
+    <div class="tasks-head">
+      <h2>Every cat, its own rhythm.</h2>
+      <p>Set each task once: how often it repeats and when to remind you. Purrtine does the counting.</p>
+    </div>
+    <div class="tasks" id="t-list"></div>
+    <p class="hint">Tap a task to change how often it repeats.</p>
+  </div>
+</section>
+
+<!-- ═════════ 4: calendar ═════════ -->
+<section>
+  <div class="wrap split flip">
+    <div class="panel">
+      <div class="month-head"><strong>November</strong><span>Luna and Pamuk</span></div>
+      <div class="grid" id="c-grid"><b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b></div>
+      <p class="readout" aria-live="polite">Tap a day to see what was done.</p>
+    </div>
+    <div>
+      <h2>A paw for every day you kept the routine.</h2>
+      <p>The calendar shows each cat's tasks day by day. Tap a day to see what was done and who did it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ 5: questions ═════════ -->
+<section>
+  <div class="wrap answers">
+    <h2>The questions every cat home asks</h2>
+    <dl>
+      <div><dt>“Did anyone feed her?”</dt><dd>Everyone who cares for your cats ticks the same list, and Purrtine notes who did each task.</dd></div>
+      <div><dt>“When was her last flea drop?”</dt><dd>History shows every task you completed, with the date, the time and your notes.</dd></div>
+      <div><dt>“What’s due today?”</dt><dd>Home shows today's tasks for all your cats. A reminder comes before one is late.</dd></div>
+      <div><dt>“Can't it just do it for me?”</dt><dd>Almost. Tell Whiskers “fed Luna”, and it ticks the task, so you don't have to look for it.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="private">
+    <h2>Your cats' routine stays on your iPhone.</h2>
+    <div>
+      <p>No account, no ads, no tracking. Reminders are notifications on your device.</p>
+      <p>Whiskers can ask a server for help with a hard sentence only after you allow it, and you can turn that off in Settings.</p>
+    </div>
+  </div>
+  <footer><a href="https://bckizildemir.github.io/catcarecalendar-legal/privacy/">Privacy</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/terms/">Terms</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/support/">Support</a><span>© 2026 Purrtine</span></footer>
+</div>
+
+<nav class="proto-bar" aria-label="Prototype variant switcher">
+  <button type="button" data-step="-1" aria-label="Previous variant">‹</button>
+  <span id="proto-label">F</span>
+  <button type="button" data-step="1" aria-label="Next variant">›</button>
+  <button type="button" id="proto-tasks" aria-pressed="false">Tasks: off</button>
+</nav>
+
+<script>
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Shared data: one home, two cats. "ago" is what the app knows from History.
+  var routines = [
+    { id: 'breakfast', name: 'Breakfast', cat: 'Luna', ago: '3 hours ago', when: 'today at 08:04, by you', due: false, fill: .14, ask: 'feed Luna' },
+    { id: 'pill', name: 'Thyroid pill', cat: 'Luna', ago: '23 hours ago', when: 'yesterday at 09:02, by you. Due again now.', due: true, fill: .96, ask: "give Luna her pill" },
+    { id: 'brush', name: 'Brushing', cat: 'Pamuk', ago: '3 days ago', when: 'Sunday at 20:40, by Ayşe. Due again today.', due: true, fill: 1, ask: 'brush Pamuk' },
+    { id: 'flea', name: 'Flea drop', cat: 'both cats', ago: '26 days ago', when: 'October 12, by you. Next in 4 days.', due: false, fill: .86, ask: 'give the flea drop' },
+    { id: 'vet', name: 'Vet visit', cat: 'Luna', ago: '2 months ago', when: 'September 9. Next in 1 month.', due: false, fill: .66, ask: 'take Luna to the vet' }
+  ];
+  function swapText(el, text) {
+    if (reduce) { el.textContent = text; return; }
+    el.classList.add('out');
+    setTimeout(function () { el.textContent = text; el.classList.remove('out'); }, 160);
+  }
+
+  // Switcher: ?variant=F|G|H|I, ?tasks=1, arrows, ← → keys.
+  (function () {
+    var keys = ['F', 'G', 'H', 'I'], label = document.getElementById('proto-label'), tb = document.getElementById('proto-tasks');
+    var params = new URLSearchParams(location.search);
+    function sync() {
+      var u = new URL(location.href); u.searchParams.set('variant', document.body.dataset.variant);
+      if (document.body.classList.contains('with-tasks')) u.searchParams.set('tasks', '1'); else u.searchParams.delete('tasks');
+      history.replaceState(null, '', u);
+    }
+    function show(v) {
+      if (keys.indexOf(v) < 0) v = 'F';
+      document.body.dataset.variant = v;
+      label.textContent = v + ' (' + document.getElementById('top-' + v).dataset.name + ')';
+      sync(); window.scrollTo(0, 0);
+    }
+    function step(d) { var i = keys.indexOf(document.body.dataset.variant); show(keys[(i + d + keys.length) % keys.length]); }
+    document.querySelectorAll('.proto-bar [data-step]').forEach(function (b) { b.onclick = function () { step(+b.dataset.step); }; });
+    function setTasks(on) { document.body.classList.toggle('with-tasks', on); tb.textContent = 'Tasks: ' + (on ? 'on' : 'off'); tb.setAttribute('aria-pressed', String(on)); sync(); }
+    tb.onclick = function () { setTasks(!document.body.classList.contains('with-tasks')); };
+    document.addEventListener('keydown', function (e) {
+      if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
+      if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
+    });
+    setTasks(params.get('tasks') === '1');
+    show(params.get('variant') || 'F');
+  })();
+
+  // F: since board.
+  (function () {
+    var ul = document.getElementById('f-board');
+    routines.slice(0, 4).forEach(function (r) {
+      var li = document.createElement('li'); if (r.due) li.className = 'due';
+      li.innerHTML = '<span class="name"><strong>' + r.name + '</strong><small>' + r.cat + '</small></span>' +
+        '<span class="ago"><span class="swap">' + r.ago + '</span></span>' +
+        '<button class="tick" type="button" aria-pressed="false" aria-label="Mark ' + r.name + ' done"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>' +
+        '<span class="bar" aria-hidden="true"><i style="transform:scaleX(' + r.fill + ')"></i></span>';
+      li.querySelector('.tick').addEventListener('click', function () {
+        var on = !li.classList.contains('just'), b = this;
+        li.classList.toggle('just', on); li.classList.toggle('due', !on && r.due);
+        b.setAttribute('aria-pressed', String(on));
+        swapText(li.querySelector('.ago .swap'), on ? 'just now' : r.ago);
+        li.querySelector('.bar i').style.transform = 'scaleX(' + (on ? 0 : r.fill) + ')';
+      });
+      ul.appendChild(li);
+    });
+  })();
+
+  // G: fridge notes.
+  (function () {
+    var box = document.getElementById('g-fridge');
+    var notes = [
+      { n: 'n1', t: 'Breakfast, Luna', h: 'today, 08:04', by: 'by you' },
+      { n: 'n2', t: 'Thyroid pill, Luna', h: 'yesterday, 09:02', by: 'by you' },
+      { n: 'n3', t: 'Litter box', h: 'yesterday, 18:10', by: 'by Ayşe' },
+      { n: 'n4', t: 'Brushing, Pamuk', h: 'Sunday, 20:40', by: 'by Ayşe' }
+    ];
+    notes.forEach(function (x) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'note ' + x.n; b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<b>' + x.t + '</b><span class="hand swap">' + x.h + '</span><span class="by swap">' + x.by + '</span>';
+      b.addEventListener('click', function () {
+        var on = !b.classList.contains('just');
+        b.classList.toggle('just', on); b.setAttribute('aria-pressed', String(on));
+        swapText(b.querySelector('.hand'), on ? 'just now' : x.h);
+        swapText(b.querySelector('.by'), on ? 'by you' : x.by);
+      });
+      box.appendChild(b);
+    });
+  })();
+
+  // H: since rings.
+  (function () {
+    var svg = document.getElementById('h-dial'), legend = document.getElementById('h-legend');
+    var colors = ['var(--green)', 'var(--orange)', 'var(--blue)', 'var(--navy)'], radii = [88, 70, 52, 34];
+    routines.slice(0, 4).forEach(function (r, i) {
+      var c = 2 * Math.PI * radii[i];
+      var NS = 'http://www.w3.org/2000/svg';
+      var tr = document.createElementNS(NS, 'circle'); tr.setAttribute('class', 'track'); tr.setAttribute('cx', 100); tr.setAttribute('cy', 100); tr.setAttribute('r', radii[i]);
+      var v = document.createElementNS(NS, 'circle'); v.setAttribute('class', 'val'); v.setAttribute('cx', 100); v.setAttribute('cy', 100); v.setAttribute('r', radii[i]);
+      v.style.stroke = colors[i]; v.style.strokeDasharray = c; v.style.strokeDashoffset = c * (1 - Math.max(r.fill, .02));
+      svg.appendChild(tr); svg.appendChild(v);
+      var li = document.createElement('li');
+      li.innerHTML = '<button type="button" aria-pressed="false"><span class="dot" style="background:' + colors[i] + '"></span><span><strong>' + r.name + ', ' + r.cat + '</strong><small class="swap">' + r.ago + (r.due ? ', due now' : '') + '</small></span></button>';
+      var b = li.querySelector('button');
+      b.addEventListener('click', function () {
+        var on = b.getAttribute('aria-pressed') !== 'true';
+        b.setAttribute('aria-pressed', String(on));
+        v.style.strokeDashoffset = c * (1 - (on ? .02 : Math.max(r.fill, .02)));
+        swapText(b.querySelector('small'), on ? 'just now' : r.ago + (r.due ? ', due now' : ''));
+      });
+      legend.appendChild(li);
+    });
+  })();
+
+  // I: the question itself (emil-design-eng: blur crossfade, ease-out, press scale, pause when hidden or touched).
+  (function () {
+    var word = document.getElementById('i-word'), ago = document.getElementById('i-ago'), det = document.getElementById('i-detail');
+    var steps = document.getElementById('i-steps'), pick = document.getElementById('i-pick');
+    var order = [2, 0, 1, 3, 4], at = 0, timer = null, stopped = reduce, DWELL = 3200;
+    steps.style.setProperty('--dwell', DWELL + 'ms');
+    order.forEach(function (ri, k) {
+      var li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('aria-label', 'When did I last ' + routines[ri].ask + '?');
+      b.addEventListener('click', function () { stop(); go(k); });
+      li.appendChild(b); steps.appendChild(li);
+    });
+    var bars = steps.querySelectorAll('button');
+    function go(k) {
+      at = (k + order.length) % order.length;
+      var r = routines[order[at]];
+      swapText(word, r.ask); swapText(ago, r.ago);
+      swapText(det, r.when.charAt(0).toUpperCase() + r.when.slice(1));
+      bars.forEach(function (b, j) { b.setAttribute('aria-current', 'false'); });
+      void steps.offsetWidth; // restart the progress fill
+      bars[at].setAttribute('aria-current', 'true');
+      if (!stopped) { clearTimeout(timer); timer = setTimeout(function () { go(at + 1); }, DWELL); }
+    }
+    function stop() { stopped = true; clearTimeout(timer); steps.classList.add('paused'); }
+    pick.addEventListener('click', function () { stop(); go(at + 1); });
+    document.addEventListener('visibilitychange', function () {
+      if (stopped) return;
+      if (document.hidden) clearTimeout(timer); else timer = setTimeout(function () { go(at + 1); }, DWELL);
+    });
+    if (reduce) steps.classList.add('paused');
+    bars[0].setAttribute('aria-current', 'true');
+    if (!stopped) timer = setTimeout(function () { go(1); }, DWELL);
+  })();
+
+  // Whiskers: real commands only (complete, postpone, open), by voice or text.
+  (function () {
+    var box = document.getElementById('w-chat'), field = document.getElementById('w-field'), mic = document.getElementById('w-mic');
+    var replies = {
+      voice:  ['fed Luna and Pamuk', 'Done. Breakfast is ticked for both cats at 08:12.', 'Saved to History'],
+      fed:    ['fed Luna', "Done. Luna's breakfast is ticked for today at 08:04.", 'Saved to History'],
+      snooze: ["snooze Luna's pill 1 hour", "Done. Luna's thyroid pill moves to 10:00, and I'll remind you then."],
+      tr:     ["Pamuk'u besledim", "Tamam. Pamuk'un kahvaltısı 08:15'te işaretlendi.", 'Geçmişe kaydedildi'],
+      open:   ["open Luna's vet visit", "Opening Luna's vet visit. It's due on Friday at 11:00."]
+    };
+    function bubble(who, html) { var m = document.createElement('div'); m.className = 'msg ' + who + ' in'; m.innerHTML = html; box.appendChild(m); while (box.children.length > 4) box.removeChild(box.firstChild); return m; }
+    function say(key, spoken) {
+      var r = replies[key];
+      bubble('me', (spoken ? '<span class="mic-tag" aria-label="spoken">🎙</span>' : '') + r[0]);
+      var t = bubble('cat', '<span class="typing" aria-label="Whiskers is typing"><i></i><i></i><i></i></span>');
+      setTimeout(function () { t.innerHTML = r[1] + (r[2] ? '<br><span class="chip-done">' + r[2] + '</span>' : ''); }, reduce ? 0 : 700);
+    }
+    var used = false;
+    mic.addEventListener('click', function () {
+      if (mic.classList.contains('listening')) return;
+      mic.classList.add('listening'); mic.setAttribute('aria-label', 'Listening');
+      field.classList.add('live'); field.textContent = 'Listening…';
+      var words = (used ? replies.fed[0] : replies.voice[0]).split(' '), i = 0;
+      var iv = setInterval(function () {
+        i++; field.textContent = words.slice(0, i).join(' ');
+        if (i >= words.length) {
+          clearInterval(iv);
+          setTimeout(function () {
+            mic.classList.remove('listening'); mic.setAttribute('aria-label', 'Talk to Whiskers');
+            field.classList.remove('live'); field.textContent = 'Tap the mic and talk';
+            say(used ? 'fed' : 'voice', true); used = true;
+          }, 350);
+        }
+      }, reduce ? 1 : 260);
+    });
+    document.querySelectorAll('#w-chips button').forEach(function (b) {
+      b.addEventListener('click', function () { b.disabled = true; say(b.dataset.say, false); });
+    });
+    bubble('me', '<span class="mic-tag" aria-label="spoken">🎙</span>fed Luna');
+    bubble('cat', "Done. Luna's breakfast is ticked for today at 08:04.<br><span class=\"chip-done\">Saved to History</span>");
+  })();
+
+  // Tasks (optional): tap a card to cycle how often it repeats.
+  (function () {
+    var list = document.getElementById('t-list');
+    var reps = ['Every day', 'Every 2 days', 'Every 3 days', 'Every week', 'Every 2 weeks', 'Every month', 'Every 3 months'];
+    [
+      { t: 'Breakfast', c: 'Luna', r: 0, rem: 'Reminder at 08:00' },
+      { t: 'Thyroid pill', c: 'Luna', r: 0, rem: 'Reminder at 09:00' },
+      { t: 'Brushing', c: 'Pamuk', r: 2, rem: 'Reminder at 20:30' },
+      { t: 'Flea drop', c: 'Luna and Pamuk', r: 5, rem: 'Reminder at 10:00' }
+    ].forEach(function (x) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'task';
+      b.innerHTML = '<span class="cat">' + x.c + '</span><strong>' + x.t + '</strong><span class="rep swap">' + reps[x.r] + '</span><span class="rem">' + x.rem + '</span>';
+      b.addEventListener('click', function () { x.r = (x.r + 1) % reps.length; swapText(b.querySelector('.rep'), reps[x.r]); });
+      list.appendChild(b);
+    });
+  })();
+
+  // Calendar: paws; tap a day to read what was done. (Known issues parked by the owner for later.)
+  (function () {
+    var grid = document.getElementById('c-grid'), out = grid.parentNode.querySelector('.readout'), today = 18, offset = 6;
+    var log = {
+      3: 'Flea drop for both cats.', 7: 'Brushed Pamuk. Nail trim for Luna, by Ayşe.', 12: 'Vet visit for Luna.',
+      16: 'Brushed Pamuk.', 18: 'Breakfast at 08:04. The thyroid pill and the litter box are still to do.'
+    };
+    for (var i = 0; i < offset; i++) { var e = document.createElement('span'); e.className = 'd empty'; grid.appendChild(e); }
+    for (var d = 1; d <= 30; d++) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'd' + (d < today ? ' paw' : '') + (d === today ? ' today' : '');
+      b.textContent = d; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'November ' + d);
+      (function (day, btn) {
+        btn.addEventListener('click', function () {
+          grid.querySelectorAll('[aria-pressed="true"]').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+          if (btn.classList.contains('paw')) { btn.classList.remove('stamp'); void btn.offsetWidth; btn.classList.add('stamp'); }
+          out.textContent = 'November ' + day + ': ' + (log[day] || (day < today ? 'Breakfast, dinner, pill and litter: all done.' : day === today ? 'In progress.' : 'Planned: breakfast, dinner, pill and litter.'));
+        });
+      })(d, b);
+      grid.appendChild(b);
+    }
+  })();
+</script>
+</body>
+</html>
