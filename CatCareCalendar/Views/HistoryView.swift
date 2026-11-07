@@ -85,7 +85,7 @@ struct HistoryView: View {
       visualTitle: Text(.historyTitle),
       usesEditorToolbarRole: false
     )
-    .searchable(text: $searchText)
+    .searchable(text: $searchText, prompt: String(localized: .historySearchPlaceholder))
     .accessibilityIdentifier("history.view")
   }
 

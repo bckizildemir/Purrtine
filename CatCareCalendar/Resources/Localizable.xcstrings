@@ -24,13 +24,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         }
       }
@@ -75,13 +75,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar is a comprehensive app that helps cat owners manage their pet care routines. With task scheduling, reminders, and detailed tracking features, it ensures your cats' health and happiness."
+            "value" : "Purrtine is a comprehensive app that helps cat owners manage their pet care routines. With task scheduling, reminders, and detailed tracking features, it helps you keep your cats' care routine on track."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar, kedi sahiplerinin pet bakım rutinlerini yönetmelerine yardımcı olan kapsamlı bir uygulamadır. Görev zamanlaması, hatırlatmalar ve detaylı takip özellikleri ile kedilerinizin sağlığını ve mutluluğunu garanti altına alır."
+            "value" : "Purrtine, kedi sahiplerinin pet bakım rutinlerini yönetmelerine yardımcı olan kapsamlı bir uygulamadır. Görev zamanlaması, hatırlatmalar ve detaylı takip özellikleri ile kedilerinin bakım rutinini düzenli tutmana yardımcı olur."
           }
         }
       }
@@ -109,13 +109,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar is developed by cat lovers for cat lovers. Your feedback and suggestions are very valuable to us."
+            "value" : "Purrtine is developed by cat lovers for cat lovers. Your feedback and suggestions are very valuable to us."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar, kedi severler tarafından kedi severler için geliştirilmiştir. Geri bildirimleriniz ve önerileriniz bizim için çok değerli."
+            "value" : "Purrtine, kedi severler tarafından kedi severler için geliştirilmiştir. Geri bildirimlerin ve önerilerin bizim için çok değerli."
           }
         }
       }
@@ -1067,7 +1067,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bakıcı kaydedilmedi. Tekrar deneyin."
+            "value" : "Bakıcı kaydedilmedi. Tekrar dene."
           }
         }
       }
@@ -1186,7 +1186,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görevleri tamamlayabilmek için en az bir bakıcı eklemelisiniz"
+            "value" : "Görevleri tamamlayabilmek için en az bir bakıcı eklemelisin"
           }
         }
       }
@@ -1356,7 +1356,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedinizin yaşını sayı olarak girin"
+            "value" : "Kedinin yaşını sayı olarak gir"
           }
         }
       }
@@ -1526,7 +1526,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fotoğraf çekmek için kamera izniniz gerekiyor. Lütfen ayarlardan izin verin."
+            "value" : "Fotoğraf çekmek için kamera iznin gerekiyor. Lütfen ayarlardan izin ver."
           }
         }
       }
@@ -1577,7 +1577,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Virgülle ayırın"
+            "value" : "Virgülle ayır"
           }
         }
       }
@@ -2002,7 +2002,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ adlı kediyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+            "value" : "%@ adlı kediyi silmek istediğine emin misin? Bu işlem geri alınamaz."
           }
         }
       }
@@ -2053,7 +2053,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ kaldırıldı, ancak bu değişiklik henüz kaydedilemedi. Uygulama verilerinizi bir sonraki kaydedişinde kaydedilecek."
+            "value" : "%@ kaldırıldı, ancak bu değişiklik henüz kaydedilemedi. Uygulama verilerini bir sonraki kaydedişinde kaydedilecek."
           }
         }
       }
@@ -2087,7 +2087,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ silindi, ancak hatırlatıcılar güncellenemedi. Uygulamayı bir sonraki açışınızda güncellenecekler."
+            "value" : "%@ silindi, ancak hatırlatıcılar güncellenemedi. Uygulamayı bir sonraki açışında güncellenecekler."
           }
         }
       }
@@ -2495,7 +2495,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ hakkında bilgi ekleyerek bakımını kişiselleştirin ve sağlığını takip edin."
+            "value" : "%@ hakkında bilgi ekleyerek bakımını kişiselleştir ve sağlığını takip et."
           }
         }
       }
@@ -2512,7 +2512,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bilgi ekleyin"
+            "value" : "Bilgi ekle"
           }
         }
       }
@@ -2665,7 +2665,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ için doğum günü eklemek üzere dokunun"
+            "value" : "%@ için doğum günü eklemek üzere dokun"
           }
         }
       }
@@ -2682,7 +2682,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ için cinsiyet eklemek üzere dokunun"
+            "value" : "%@ için cinsiyet eklemek üzere dokun"
           }
         }
       }
@@ -2699,7 +2699,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ için kilo eklemek üzere dokunun"
+            "value" : "%@ için kilo eklemek üzere dokun"
           }
         }
       }
@@ -2886,7 +2886,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tam ekran açmak için çift dokunun"
+            "value" : "Tam ekran açmak için çift dokun"
           }
         }
       }
@@ -2903,7 +2903,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fotoğrafı görüntülemek için dokunun"
+            "value" : "Fotoğrafı görüntülemek için dokun"
           }
         }
       }
@@ -3090,7 +3090,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ adlı kediyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve tüm görevleri de silinecek."
+            "value" : "%@ adlı kediyi silmek istediğine emin misin? Bu işlem geri alınamaz ve tüm görevleri de silinecek."
           }
         }
       }
@@ -3141,7 +3141,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kaydedilmemiş değişiklikleriniz var"
+            "value" : "Kaydedilmemiş değişikliklerin var"
           }
         }
       }
@@ -3764,13 +3764,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search cats..."
+            "value" : "Search cats"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedi ara..."
+            "value" : "Kedi ara"
           }
         }
       }
@@ -3957,7 +3957,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Onaylamak için 'SİL' yazın"
+            "value" : "Onaylamak için 'SİL' yaz"
           }
         }
       }
@@ -3974,7 +3974,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu işlem tüm kedilerinizi, görevlerinizi ve geçmişinizi kalıcı olarak silecektir. Bu işlem geri alınamaz!"
+            "value" : "Bu işlem tüm kedilerini, görevlerini ve geçmişini kalıcı olarak silecektir. Bu işlem geri alınamaz!"
           }
         }
       }
@@ -4178,7 +4178,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Daha önce dışa aktardığınız verileri geri yükleyebilirsiniz."
+            "value" : "Daha önce dışa aktardığın verileri geri yükleyebilirsin."
           }
         }
       }
@@ -4518,7 +4518,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Değişiklikleriniz kaydedilmedi. Tekrar deneyin."
+            "value" : "Değişikliklerin kaydedilmedi. Tekrar dene."
           }
         }
       }
@@ -4637,7 +4637,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Purrtine için bildirimler kapalı. Hatırlatmaları ertelemek için Ayarlar'dan açın."
+            "value" : "Purrtine için bildirimler kapalı. Hatırlatmaları ertelemek için Ayarlar'dan aç."
           }
         }
       }
@@ -4671,7 +4671,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bunu kaydedecek bir bakıcı eklenmemiş. Ayarlar'dan bir bakıcı ekleyin."
+            "value" : "Bunu kaydedecek bir bakıcı eklenmemiş. Ayarlar'dan bir bakıcı ekle."
           }
         }
       }
@@ -4688,7 +4688,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ertelemek için geçerli bir dakika sayısı seçin."
+            "value" : "Ertelemek için geçerli bir dakika sayısı seç."
           }
         }
       }
@@ -5657,7 +5657,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu görevi tamamladığınızda geçmişi burada görünecek."
+            "value" : "Bu görevi tamamladığında geçmişi burada görünecek."
           }
         }
       }
@@ -6174,7 +6174,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zamanlanmış görevleri tamamladığınızda rutin geçmişi burada görünür."
+            "value" : "Zamanlanmış görevleri tamamladığında rutin geçmişi burada görünür."
           }
         }
       }
@@ -6657,7 +6657,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gözden geçirmeniz gereken bir bakım göreviniz var."
+            "value" : "Gözden geçirmen gereken bir bakım görevin var."
           }
         }
       }
@@ -6980,7 +6980,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedi bakım hatırlatıcıları almak için bildirim iznine ihtiyacımız var. Lütfen ayarlardan bildirimleri açınız."
+            "value" : "Kedi bakım hatırlatıcıları almak için bildirim iznine ihtiyacımız var. Lütfen ayarlardan bildirimleri aç."
           }
         }
       }
@@ -7218,7 +7218,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hangi kategorilerdeki görevler için bildirim almak istediğinizi seçin."
+            "value" : "Hangi kategorilerdeki görevler için bildirim almak istediğini seç."
           }
         }
       }
@@ -7303,7 +7303,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yalnızca Acil öncelikli görevler için bildirim gönderin."
+            "value" : "Yalnızca Acil öncelikli görevler için bildirim gönder."
           }
         }
       }
@@ -7354,7 +7354,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yaklaşan bakım görevleri için hatırlatma ve gecikme kontrolü planlayın."
+            "value" : "Yaklaşan bakım görevleri için hatırlatma ve gecikme kontrolü planla."
           }
         }
       }
@@ -7405,7 +7405,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bildirim tercihlerinizi yapılandırın"
+            "value" : "Bildirim tercihlerini yapılandır"
           }
         }
       }
@@ -7575,7 +7575,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bildirimler reddedildi. Hatırlatmaları tekrar açmak için Ayarlar'a gidin."
+            "value" : "Bildirimler reddedildi. Hatırlatmaları tekrar açmak için Ayarlar'a git."
           }
         }
       }
@@ -7609,7 +7609,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Güncel bildirim izni durumunu yenileyin."
+            "value" : "Güncel bildirim izni durumunu yenile."
           }
         }
       }
@@ -7626,7 +7626,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görev hatırlatmaları ve gecikme uyarıları göndermek için erişim isteyin."
+            "value" : "Görev hatırlatmaları ve gecikme uyarıları göndermek için erişim iste."
           }
         }
       }
@@ -7643,7 +7643,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hatırlatmaları açmadan önce bildirim izni verin."
+            "value" : "Hatırlatmaları açmadan önce bildirim izni ver."
           }
         }
       }
@@ -7796,7 +7796,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bildirim içeriğine görev başlığını, kedileri ve notları ekleyin."
+            "value" : "Bildirim içeriğine görev başlığını, kedileri ve notları ekle."
           }
         }
       }
@@ -8459,7 +8459,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedinizi tanıyalım"
+            "value" : "Kedini tanıyalım"
           }
         }
       }
@@ -8629,7 +8629,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İlk Kediniz"
+            "value" : "İlk Kedin"
           }
         }
       }
@@ -8680,7 +8680,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hoş Geldiniz"
+            "value" : "Hoş Geldin"
           }
         }
       }
@@ -8799,7 +8799,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedinizi düzenli olarak besleyin"
+            "value" : "Kedini düzenli olarak besle"
           }
         }
       }
@@ -8833,7 +8833,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kum kabını temizleyin ve gerekirse kumunu değiştirin"
+            "value" : "Kum kabını temizle ve gerekirse kumunu değiştir"
           }
         }
       }
@@ -9496,7 +9496,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uygulama ayarlarını yönetin"
+            "value" : "Uygulama ayarlarını yönet"
           }
         }
       }
@@ -9547,7 +9547,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uygulamanın görünümünü seçin veya cihazınızın görünüm ayarını kullanın."
+            "value" : "Uygulamanın görünümünü seç veya cihazının görünüm ayarını kullan."
           }
         }
       }
@@ -9615,7 +9615,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verilerinizi yedeklemek ve geri yüklemek için bu seçenekleri kullanabilirsiniz."
+            "value" : "Verilerini yedeklemek ve geri yüklemek için bu seçenekleri kullanabilirsin."
           }
         }
       }
@@ -9626,13 +9626,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Manage family members and caregivers"
+            "value" : "Manage caregivers"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aile üyelerini ve bakıcıları yönet"
+            "value" : "Bakıcıları yönet"
           }
         }
       }
@@ -9700,7 +9700,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamamlanan görevleri Görevler sekmesinden dilediğiniz zaman gizleyebilirsiniz."
+            "value" : "Tamamlanan görevleri Görevler sekmesinden dilediğin zaman gizleyebilirsin."
           }
         }
       }
@@ -10006,7 +10006,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hatırlatmaları ve gecikme uyarılarını etkinleştirmek için önce bildirim izni verin."
+            "value" : "Hatırlatmaları ve gecikme uyarılarını etkinleştirmek için önce bildirim izni ver."
           }
         }
       }
@@ -10159,7 +10159,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sorularınızı ve geri bildirimlerinizi her zaman iletebilirsiniz."
+            "value" : "Sorularını ve geri bildirimlerini her zaman iletebilirsin."
           }
         }
       }
@@ -10204,13 +10204,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When Whiskers can't understand a request using what's already on your device, it can ask an AI service for help. Requests are never stored or used to train AI models."
+            "value" : "When Whiskers can't understand a request using what's already on your device, it can ask an AI service for help. Purrtine keeps no copy of the request. The service, Groq, may keep a request for up to 30 days to fix errors or stop abuse, and does not use it to train AI models."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whiskers bir isteği cihazınızdaki bilgilerle anlayamadığında, yardım için bir yapay zeka servisine başvurabilir. İstekler asla saklanmaz veya yapay zeka modellerini eğitmek için kullanılmaz."
+            "value" : "Whiskers bir isteği cihazındaki bilgilerle anlayamadığında, yardım için bir yapay zeka servisine başvurabilir. Purrtine isteğin bir kopyasını saklamaz. Servis olan Groq, hataları gidermek veya kötüye kullanımı önlemek için bir isteği en fazla 30 gün saklayabilir ve yapay zeka modellerini eğitmek için kullanmaz."
           }
         }
       }
@@ -10244,7 +10244,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görevlerin varsayılan görünümünü seçin."
+            "value" : "Görevlerin varsayılan görünümünü seç."
           }
         }
       }
@@ -10516,7 +10516,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Değişiklikleri silmek istediğinizden emin misiniz?"
+            "value" : "Değişiklikleri silmek istediğinden emin misin?"
           }
         }
       }
@@ -11281,7 +11281,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whiskers bir isteği kendi başına anlayamazsa, istek metnini görev ve kedi adlarınızla birlikte AB'deki Firebase sunucumuza ve bir yapay zeka servisi olan Groq'a gönderebilir. Bu veriler eğitim için kullanılmaz. Groq bunları yalnızca hataları gidermek veya kötüye kullanımı önlemek için en fazla 30 gün saklayabilir. Bunu istediğiniz zaman Ayarlar'dan değiştirebilirsiniz."
+            "value" : "Whiskers bir isteği kendi başına anlayamazsa, istek metnini görev ve kedi adlarınla birlikte AB'deki Firebase sunucumuza ve bir yapay zeka servisi olan Groq'a gönderebilir. Bu veriler eğitim için kullanılmaz. Groq bunları yalnızca hataları gidermek veya kötüye kullanımı önlemek için en fazla 30 gün saklayabilir. Bunu istediğin zaman Ayarlar'dan değiştirebilirsin."
           }
         }
       }
@@ -11961,7 +11961,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bildirimleri açabileceğiniz Ayarlar uygulamasındaki Purrtine sayfasını açar."
+            "value" : "Bildirimleri açabileceğin Ayarlar uygulamasındaki Purrtine sayfasını açar."
           }
         }
       }
@@ -12750,7 +12750,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamamlanan görevin fotoğrafını ekleyebilirsiniz (isteğe bağlı)"
+            "value" : "Tamamlanan görevin fotoğrafını ekleyebilirsin (isteğe bağlı)"
           }
         }
       }
@@ -14151,7 +14151,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görev listenizden kaldırıldı. Uygulama silme işlemini henüz tamamlayamadı; bir sonraki kayıtta tamamlayacak."
+            "value" : "Görev listenden kaldırıldı. Uygulama silme işlemini henüz tamamlayamadı; bir sonraki kayıtta tamamlayacak."
           }
         }
       }
@@ -14287,7 +14287,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görevleri filtrelemek için çift dokunun"
+            "value" : "Görevleri filtrelemek için çift dokun"
           }
         }
       }
@@ -14372,7 +14372,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seçili filtre veya aramanızla eşleşen bir görev yok."
+            "value" : "Seçili filtre veya aramanla eşleşen bir görev yok."
           }
         }
       }
@@ -14508,7 +14508,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görev ayrıntılarını görmek için dokunun"
+            "value" : "Görev ayrıntılarını görmek için dokun"
           }
         }
       }
@@ -14661,7 +14661,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Başlık, not veya kedi adına göre görev bulmak için yazmaya başlayın."
+            "value" : "Başlık, not veya kedi adına göre görev bulmak için yazmaya başla."
           }
         }
       }
@@ -14678,7 +14678,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Farklı bir görev başlığı, not veya kedi adı deneyin."
+            "value" : "Farklı bir görev başlığı, not veya kedi adı dene."
           }
         }
       }
@@ -14689,13 +14689,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search tasks..."
+            "value" : "Search tasks"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görev ara..."
+            "value" : "Görev ara"
           }
         }
       }
@@ -14899,7 +14899,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Farklı bir kategori veya anahtar kelime deneyin."
+            "value" : "Farklı bir kategori veya anahtar kelime dene."
           }
         }
       }
@@ -14944,13 +14944,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search tasks..."
+            "value" : "Search tasks"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görev ara..."
+            "value" : "Görev ara"
           }
         }
       }
@@ -16548,7 +16548,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kedinizin aşı randevusunu planlayın"
+            "value" : "Kedinin aşı randevusunu planla"
           }
         }
       }
@@ -16599,7 +16599,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Randevuya kedinizin aşı karnesini getirin."
+            "value" : "Randevuya kedinin aşı karnesini getir."
           }
         }
       }
@@ -17263,6 +17263,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "yıl"
+          }
+        }
+      }
+    },
+    "history.search_placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search history"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçmişte ara"
           }
         }
       }
