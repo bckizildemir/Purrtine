@@ -3,12 +3,12 @@ import SwiftData
 
 /// The first named version of the persistent store layout.
 ///
-/// The app has not shipped, so V1 is a baseline rather than the record of a past
-/// release: it pins today's layout so a later change becomes a visible, testable
-/// V2 plus a migration stage instead of a silent store rewrite.
+/// V1 describes the store as the first builds wrote it. Its models are the frozen
+/// copies in `CatCareSchemaV1Models.swift`, not the live types, so a later change to a
+/// live model cannot rewrite V1. The one deliberate difference from V2: V1's
+/// `CareTaskCompletion.cats` has no inverse on `Cat`.
 ///
-/// Add a model type here only together with a new version. Never edit V1 after a
-/// build reaches a store you must keep.
+/// Never edit V1 or its frozen models.
 enum CatCareSchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
 
@@ -22,8 +22,6 @@ enum CatCareSchemaV1: VersionedSchema {
         ]
     }
 
-    /// The single, shared `Schema` instance for this version. Every caller that needs a
-    /// `Schema` for this store layout should use this instead of constructing its own
-    /// `Schema(versionedSchema: CatCareSchemaV1.self)`.
+    /// The shared `Schema` instance for this version.
     static let schema = Schema(versionedSchema: CatCareSchemaV1.self)
 }

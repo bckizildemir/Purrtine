@@ -25,6 +25,9 @@ struct CatCareCalendarApp: App {
             // Create default caregiver synchronously on first launch
             // This prevents race conditions when creating tasks
             CaregiverBootstrapper.ensureDefaultCaregiverExists(in: container.mainContext)
+
+            // First launch of a build with schema V2: History's old-row cat fallback ends here.
+            HistoryCatFallbackCutoff().recordIfNeeded()
             AppLaunchBootstrapper.seedInitialDataIfNeeded(in: container.mainContext, using: configuration)
             
             #if DEBUG

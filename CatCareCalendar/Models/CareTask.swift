@@ -98,7 +98,7 @@ final class CareTaskCompletion: Hashable {
 
     // Relationships
     @Relationship var task: CareTask?
-    @Relationship(deleteRule: .nullify) var cats: [Cat] = []
+    @Relationship(deleteRule: .nullify, inverse: \Cat.completions) var cats: [Cat] = []
     @Relationship var caregiver: Caregiver?
 
     init() {

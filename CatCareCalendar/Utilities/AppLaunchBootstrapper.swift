@@ -67,10 +67,10 @@ enum AppLaunchBootstrapper {
     static func makeModelContainer(
         using configuration: AppLaunchConfiguration = .current
     ) throws -> ModelContainer {
-        // The model list lives in `CatCareSchemaV1` so the store layout is a named,
-        // testable version instead of an inline argument list. `SchemaBaselineTests`
-        // proves a store written under this schema reopens through the plan intact.
-        let schema = CatCareSchemaV1.schema
+        // The model list lives in `CatCareSchemaV2` (the current version) so the store layout is a
+        // named, testable version instead of an inline argument list. `SchemaBaselineTests` and
+        // `CatCareMigrationTests` prove a V1 store reopens through the plan intact.
+        let schema = CatCareSchemaV2.schema
 
         if configuration.usesInMemoryStore {
             let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
