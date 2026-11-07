@@ -22,7 +22,116 @@
   body { margin: 0; }
   img { display: block; }
   .variant { display: none; min-height: 100vh; }
-  body[data-variant="A"] #A, body[data-variant="B"] #B, body[data-variant="C"] #C { display: block; }
+  body[data-variant="A"] #A, body[data-variant="B"] #B, body[data-variant="C"] #C,
+  body[data-variant="D"] #D, body[data-variant="E"] #E { display: block; }
+
+  /* ───────── Round 2 (D, E): A's theme + B's Whiskers chat + C's calendar ───────── */
+  .pt {
+    --sky: #d9edf9; --glass: #eef7fd; --navy: #17324a; --muted: #4d6478; --line: rgba(23,50,74,.1);
+    --orange: #f2a541; --orange-deep: #b8690f; --cream: #fff6e8; --green: #2fa877; --white: #ffffff;
+    --ease-out: cubic-bezier(.23, 1, .32, 1);
+    --paw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='16.5' rx='5.6' ry='4.6'/%3E%3Ccircle cx='4.8' cy='10.2' r='2.3'/%3E%3Ccircle cx='9' cy='5.8' r='2.5'/%3E%3Ccircle cx='15' cy='5.8' r='2.5'/%3E%3Ccircle cx='19.2' cy='10.2' r='2.3'/%3E%3C/svg%3E");
+    background: linear-gradient(180deg, var(--sky) 0, var(--glass) 760px, var(--white) 760px);
+    color: var(--navy); font: 18px/1.6 "Nunito", system-ui, sans-serif;
+  }
+  .pt .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
+  .pt header { display: flex; align-items: center; gap: 10px; padding: 22px 0; font-weight: 900; font-size: 20px; }
+  .pt header img { width: 38px; height: 38px; border-radius: 10px; }
+  .pt .hero { display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center; padding: 30px 0 80px; }
+  .pt h1 { font-weight: 900; font-size: clamp(40px, 6vw, 64px); line-height: 1.03; letter-spacing: -0.025em; margin: 0 0 20px; text-wrap: balance; }
+  .pt .lead { font-size: 20px; color: var(--muted); max-width: 30em; margin: 0 0 30px; }
+  .pt .store { display: inline-block; background: var(--navy); color: var(--white); border-radius: 16px; padding: 14px 22px; font-weight: 800; text-decoration: none; }
+  .pt .store span { display: block; font-size: 12px; font-weight: 600; opacity: .7; }
+  .pt .panel {
+    background: rgba(255,255,255,.78); border: 1px solid var(--line); border-radius: 30px; padding: 22px;
+    box-shadow: 0 30px 70px -30px rgba(23,50,74,.35); backdrop-filter: blur(8px);
+  }
+  .pt .hint { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  .pt section { padding: 80px 0; }
+  .pt .split { display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center; }
+  .pt .split.flip { grid-template-columns: 440px 1fr; }
+  .pt .split h2, .pt .answers h2, .pt .center h2 { font-size: 38px; line-height: 1.08; margin: 0 0 16px; font-weight: 900; letter-spacing: -0.02em; text-wrap: balance; }
+  .pt .split p { color: var(--muted); margin: 0 0 12px; max-width: 30em; }
+  .pt .center { max-width: 640px; margin: 0 auto; text-align: center; }
+  .pt .center p { color: var(--muted); margin: 0 0 30px; }
+  .pt .answers { display: grid; grid-template-columns: 300px 1fr; gap: 48px; }
+  .pt dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 34px 40px; }
+  .pt dt { font-weight: 900; font-size: 20px; margin-bottom: 6px; }
+  .pt dd { margin: 0; color: var(--muted); }
+  .pt .private { background: var(--navy); color: var(--white); border-radius: 36px; padding: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .pt .private h2 { font-size: 34px; line-height: 1.1; margin: 0; font-weight: 900; }
+  .pt .private p { margin: 0 0 14px; color: #c5d6e4; }
+  .pt footer { padding: 40px 0 120px; color: var(--muted); font-size: 15px; display: flex; flex-wrap: wrap; gap: 22px; }
+  .pt footer a { color: var(--navy); }
+
+  /* Whiskers chat (from B, in A's colours) */
+  .pt .who { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-weight: 900; }
+  .pt .who img { width: 36px; height: 36px; border-radius: 11px; }
+  .pt .who small { display: block; font-weight: 600; color: var(--muted); font-size: 13px; line-height: 1.2; }
+  .pt .chat { display: flex; flex-direction: column; gap: 8px; min-height: 196px; }
+  .pt .msg { max-width: 86%; padding: 10px 15px; border-radius: 20px; font-size: 16px; line-height: 1.45; }
+  .pt .msg.me { align-self: flex-end; background: var(--navy); color: var(--white); border-bottom-right-radius: 6px; }
+  .pt .msg.cat { align-self: flex-start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+  .pt .msg .chip-done { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 800; color: var(--green); }
+  .pt .msg .chip-done::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--green); -webkit-mask: radial-gradient(circle, #000 60%, transparent 62%); mask: radial-gradient(circle, #000 60%, transparent 62%); }
+  .pt .msg.in { animation: msg-in .32s var(--ease-out) both; }
+  @keyframes msg-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+  .pt .typing { display: inline-flex; gap: 5px; padding: 4px 0; }
+  .pt .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .45; animation: blink 1.2s infinite; }
+  .pt .typing i:nth-child(2) { animation-delay: .2s; } .pt .typing i:nth-child(3) { animation-delay: .4s; }
+  .pt .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .pt .chips button {
+    font: inherit; font-size: 14px; font-weight: 800; border: 1.5px solid var(--navy); color: var(--navy); background: var(--white);
+    border-radius: 999px; padding: 7px 13px; cursor: pointer;
+    transition: background-color .15s ease-out, color .15s ease-out, transform .12s ease-out;
+  }
+  @media (hover: hover) { .pt .chips button:hover { background: var(--navy); color: var(--white); } }
+  .pt .chips button:active { transform: scale(.97); }
+  .pt .chips button:disabled { opacity: .4; cursor: default; }
+
+  /* Calendar (from C, in A's colours) */
+  .pt .month-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .pt .month-head strong { font-size: 22px; font-weight: 900; }
+  .pt .month-head span { font-size: 14px; color: var(--muted); }
+  .pt .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .pt .grid b { font-size: 12px; text-align: center; color: var(--muted); font-weight: 800; }
+  .pt .d {
+    aspect-ratio: 1; border-radius: 12px; background: var(--glass); border: 0; font: inherit; font-size: 13px; font-weight: 800;
+    color: var(--navy); padding: 4px 6px; text-align: left; position: relative; cursor: pointer;
+    transition: transform .15s var(--ease-out), background-color .15s ease-out, color .15s ease-out;
+  }
+  @media (hover: hover) { .pt .d:not(.empty):hover { transform: translateY(-2px); } }
+  .pt .d:active:not(.empty) { transform: scale(.95); }
+  .pt .d.paw::after {
+    content: ""; position: absolute; right: 5px; bottom: 5px; width: 15px; height: 15px; background: var(--orange);
+    -webkit-mask: var(--paw) center / contain no-repeat; mask: var(--paw) center / contain no-repeat;
+  }
+  .pt .d.today { background: var(--cream); box-shadow: inset 0 0 0 2px var(--orange); }
+  .pt .d.empty { background: transparent; cursor: default; }
+  .pt .d[aria-pressed="true"] { background: var(--navy); color: var(--white); }
+  .pt .d[aria-pressed="true"].paw::after { background: var(--white); }
+  .pt .d.stamp::after { animation: stamp .3s var(--ease-out); }
+  @keyframes stamp { from { transform: scale(1.9) rotate(-12deg); opacity: 0; } }
+  .pt .readout { margin: 14px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--cream); color: var(--orange-deep); font-weight: 700; font-size: 15px; min-height: 50px; }
+  .pt .today-pulse { animation: pulse 1.6s var(--ease-out) .9s 2; }
+  @keyframes pulse { 50% { box-shadow: inset 0 0 0 2px var(--orange), 0 0 0 6px rgba(242,165,65,.28); } }
+
+  /* E: the long thread reveals message by message */
+  .pt .thread { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+  .pt .thread .msg { opacity: 0; transform: translateY(10px); transition: opacity .35s ease-out, transform .35s var(--ease-out); }
+  .pt .thread .msg.seen { opacity: 1; transform: none; }
+  .pt .thread .note { align-self: center; color: var(--muted); font-size: 13px; font-weight: 700; margin: 18px 0 4px; }
+  .pt .thread .chips { justify-content: center; }
+
+  @media (max-width: 860px) {
+    .pt .hero, .pt .split, .pt .split.flip, .pt .answers, .pt .private { grid-template-columns: 1fr; }
+    .pt .split.flip .panel { order: 2; }
+    .pt dl { grid-template-columns: 1fr; }
+    .pt .private { padding: 32px 24px; border-radius: 28px; }
+    .pt .hero { padding-bottom: 50px; }
+    .pt section { padding: 56px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pt .thread .msg { opacity: 1; transform: none; } }
   :focus-visible { outline: 3px solid #2f8fd0; outline-offset: 3px; border-radius: 6px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
@@ -181,7 +290,122 @@
   .proto-bar span { padding: 0 10px; white-space: nowrap; }
 </style>
 </head>
-<body data-variant="A">
+<body data-variant="D">
+
+<!-- ═════════ D: round 2, chat in the hero, calendar below ═════════ -->
+<div class="variant pt" id="D" data-name="Chat first">
+  <div class="wrap">
+    <header><img src="icon.png" alt="" width="38" height="38">Purrtine</header>
+    <div class="hero">
+      <div>
+        <h1>Never wonder when you last fed, dosed or brushed your cat.</h1>
+        <p class="lead">Purrtine keeps each cat's routine, reminds you before something is late, and remembers every task you tick. Or just tell Whiskers what you did.</p>
+        <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+      </div>
+      <div class="panel">
+        <div class="who"><img src="icon.png" alt="" width="36" height="36"><span>Whiskers<small>your helper in Purrtine</small></span></div>
+        <div class="chat" id="d-chat" aria-live="polite"></div>
+        <div class="chips" id="d-chips" aria-label="Try a message">
+          <button type="button" data-say="snooze">snooze Luna's pill 1 hour</button>
+          <button type="button" data-say="tr">Pamuk'u besledim</button>
+          <button type="button" data-say="brush">brushed both cats</button>
+        </div>
+        <p class="hint">Tap a message to try it.</p>
+      </div>
+    </div>
+  </div>
+  <section>
+    <div class="wrap split flip">
+      <div class="panel">
+        <div class="month-head"><strong>November</strong><span>Luna and Pamuk</span></div>
+        <div class="grid" data-cal><b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b></div>
+        <p class="readout" aria-live="polite">Tap a day to see what was done.</p>
+      </div>
+      <div>
+        <h2>A paw for every day you kept the routine.</h2>
+        <p>The calendar shows each cat's tasks day by day. Tap a day to see what was done and who did it.</p>
+        <p>Home shows every routine with the last time you did it, so “when did I last…?” has an answer at a glance.</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="wrap answers">
+      <h2>The questions every cat home asks</h2>
+      <dl>
+        <div><dt>“Did anyone feed her?”</dt><dd>Everyone who cares for your cats ticks the same list, and Purrtine notes who did each task.</dd></div>
+        <div><dt>“When was her last flea drop?”</dt><dd>History shows every task you completed, with the date, the time and your notes.</dd></div>
+        <div><dt>“What’s due today?”</dt><dd>Home shows today's tasks for all your cats. A reminder comes before one is late.</dd></div>
+        <div><dt>“Can I just say it?”</dt><dd>Tell Whiskers “fed Luna” in English or Turkish, and it ticks the task for you.</dd></div>
+      </dl>
+    </div>
+  </section>
+  <div class="wrap">
+    <div class="private">
+      <h2>Your cats' routine stays on your iPhone.</h2>
+      <div>
+        <p>No account, no ads, no tracking. Reminders are notifications on your device.</p>
+        <p>Whiskers can ask a server for help with a hard sentence only after you allow it, and you can turn that off in Settings.</p>
+      </div>
+    </div>
+    <footer><a href="https://bckizildemir.github.io/catcarecalendar-legal/privacy/">Privacy</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/terms/">Terms</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/support/">Support</a><span>© 2026 Purrtine</span></footer>
+  </div>
+</div>
+
+<!-- ═════════ E: round 2, calendar in the hero, the Whiskers thread below ═════════ -->
+<div class="variant pt" id="E" data-name="Calendar first">
+  <div class="wrap">
+    <header><img src="icon.png" alt="" width="38" height="38">Purrtine</header>
+    <div class="hero">
+      <div>
+        <h1>Know when you last did it, for every cat.</h1>
+        <p class="lead">Feeding, medicine, litter, brushing and vet visits on one calendar. Purrtine reminds you before something is late and keeps a paw for every day you kept the routine.</p>
+        <a class="store" href="#" aria-disabled="true"><span>Coming soon on the</span>App Store</a>
+      </div>
+      <div class="panel">
+        <div class="month-head"><strong>November</strong><span>Luna and Pamuk</span></div>
+        <div class="grid" data-cal data-pulse><b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b></div>
+        <p class="readout" aria-live="polite">Tap a day to see what was done.</p>
+      </div>
+    </div>
+  </div>
+  <section>
+    <div class="wrap center">
+      <h2>Or just tell Whiskers.</h2>
+      <p>Whiskers is the helper inside Purrtine. Say what you did, in English or Turkish, and it ticks, snoozes or opens the task.</p>
+      <div class="thread" id="e-thread" aria-live="polite">
+        <span class="note">Tuesday morning</span>
+        <div class="msg me">fed Luna and Pamuk</div>
+        <div class="msg cat">Done. Breakfast is ticked for both cats at 08:12.<br><span class="chip-done">Saved to History</span></div>
+        <div class="msg me">snooze Luna's pill 1 hour</div>
+        <div class="msg cat">Done. The thyroid pill moves to 10:00, and I'll remind you then.</div>
+        <div class="msg me">Pamuk'un tırnaklarını kestim</div>
+        <div class="msg cat">Tamam. Pamuk'un tırnak kesimi bugün için işaretlendi.<br><span class="chip-done">Geçmişe kaydedildi</span></div>
+        <span class="note">About Purrtine</span>
+        <div class="msg me">Do I need an account?</div>
+        <div class="msg cat">No. Your cats, tasks, history and photos stay on your iPhone. There are no ads and no tracking.</div>
+        <div class="msg me">Do you send what I type somewhere?</div>
+        <div class="msg cat">Only if you allow it. I understand most messages on your iPhone. For a hard one I can ask a server, but only after you say yes.</div>
+        <div class="msg me">When can I get it?</div>
+        <div class="msg cat">Soon on the App Store, for iPhone, in English and Turkish.</div>
+        <div class="chips" id="e-chips" aria-label="Try a message">
+          <button type="button" data-say="brush">brushed both cats</button>
+          <button type="button" data-say="open">open Luna's vet visit</button>
+          <button type="button" data-say="tr">Pamuk'u besledim</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="wrap">
+    <div class="private">
+      <h2>Your cats' routine stays on your iPhone.</h2>
+      <div>
+        <p>No account, no ads, no tracking. Reminders are notifications on your device.</p>
+        <p>Whiskers' cloud help is off until you allow it, and you can turn it off again in Settings.</p>
+      </div>
+    </div>
+    <footer><a href="https://bckizildemir.github.io/catcarecalendar-legal/privacy/">Privacy</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/terms/">Terms</a><a href="https://bckizildemir.github.io/catcarecalendar-legal/support/">Support</a><span>© 2026 Purrtine</span></footer>
+  </div>
+</div>
 
 <!-- ═════════ A: a day of care ═════════ -->
 <div class="variant" id="A" data-name="A day of care">
@@ -316,10 +540,10 @@
 <script>
   // Prototype switcher: ?variant=A|B|C, arrows, ← → keys.
   (function () {
-    var keys = ['A', 'B', 'C'];
+    var keys = ['D', 'E', 'A', 'B', 'C'];
     var label = document.getElementById('proto-label');
     function show(v) {
-      if (keys.indexOf(v) < 0) v = 'A';
+      if (keys.indexOf(v) < 0) v = 'D';
       document.body.dataset.variant = v;
       label.textContent = v + ' (' + document.getElementById(v).dataset.name + ')';
       var u = new URL(location.href); u.searchParams.set('variant', v); history.replaceState(null, '', u);
@@ -331,8 +555,83 @@
       var t = e.target; if (t.closest && t.closest('input,textarea,[contenteditable]')) return;
       if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
     });
-    show(new URLSearchParams(location.search).get('variant') || 'A');
+    show(new URLSearchParams(location.search).get('variant') || 'D');
   })();
+
+  // D + E: Whiskers chat. Only real app commands: tick (complete), snooze (postpone), open.
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var replies = {
+    fed:    ['fed Luna', "Done. Luna's breakfast is ticked for today at 08:12.", 'Saved to History'],
+    snooze: ["snooze Luna's pill 1 hour", "Done. Luna's thyroid pill moves to 10:00, and I'll remind you then."],
+    tr:     ["Pamuk'u besledim", "Tamam. Pamuk'un kahvaltısı 08:15'te işaretlendi.", 'Geçmişe kaydedildi'],
+    brush:  ['brushed both cats', 'Done. Brushing is ticked for Luna and Pamuk.', 'Saved to History'],
+    open:   ["open Luna's vet visit", "Opening Luna's vet visit. It's due on Friday at 11:00."]
+  };
+  function bubble(box, who, html, before) {
+    var m = document.createElement('div'); m.className = 'msg ' + who + ' in seen'; m.innerHTML = html;
+    box.insertBefore(m, before || null); return m;
+  }
+  function say(box, key, before, done) {
+    var r = replies[key];
+    bubble(box, 'me', r[0], before);
+    var t = bubble(box, 'cat', '<span class="typing" aria-label="Whiskers is typing"><i></i><i></i><i></i></span>', before);
+    setTimeout(function () {
+      t.innerHTML = r[1] + (r[2] ? '<br><span class="chip-done">' + r[2] + '</span>' : '');
+      if (done) done();
+    }, reduce ? 0 : 750);
+  }
+  function wireChips(chips, box, before) {
+    chips.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        b.disabled = true;
+        say(box, b.dataset.say, before);
+      });
+    });
+  }
+  (function () {
+    var box = document.getElementById('d-chat');
+    setTimeout(function () { say(box, 'fed'); }, reduce ? 0 : 500);
+    wireChips(document.getElementById('d-chips'), box);
+  })();
+  (function () {
+    var thread = document.getElementById('e-thread'), chips = document.getElementById('e-chips');
+    wireChips(chips, thread, chips);
+    var msgs = thread.querySelectorAll('.msg');
+    if (reduce || !('IntersectionObserver' in window)) { msgs.forEach(function (m) { m.classList.add('seen'); }); return; }
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e, i) {
+        if (!e.isIntersecting) return;
+        setTimeout(function () { e.target.classList.add('seen'); }, i * 90);
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px' });
+    msgs.forEach(function (m) { io.observe(m); });
+  })();
+
+  // D + E: calendar with paws; tap a day to read what was done.
+  document.querySelectorAll('.pt [data-cal]').forEach(function (grid) {
+    var out = grid.parentNode.querySelector('.readout'), today = 18, offset = 6; // Nov 2026 starts on a Sunday
+    var log = {
+      3: 'Flea drop for both cats.', 7: 'Brushed Pamuk. Nail trim for Luna, by Ayşe.', 12: 'Vet visit for Luna.',
+      16: 'Brushed Pamuk.', 18: 'Breakfast at 08:04 and the thyroid pill at 09:02. The litter box is still to do.'
+    };
+    for (var i = 0; i < offset; i++) { var e = document.createElement('span'); e.className = 'd empty'; grid.appendChild(e); }
+    for (var d = 1; d <= 30; d++) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'd' + (d < today ? ' paw' : '') + (d === today ? ' today' : '');
+      if (d === today && grid.hasAttribute('data-pulse') && !reduce) b.classList.add('today-pulse');
+      b.textContent = d; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'November ' + d);
+      (function (day, btn) {
+        btn.addEventListener('click', function () {
+          grid.querySelectorAll('[aria-pressed="true"]').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+          if (btn.classList.contains('paw')) { btn.classList.remove('stamp'); void btn.offsetWidth; btn.classList.add('stamp'); }
+          out.textContent = 'November ' + day + ': ' + (log[day] || (day < today ? 'Breakfast, dinner, pill and litter: all done.' : day === today ? 'In progress.' : 'Planned: breakfast, dinner, pill and litter.'));
+        });
+      })(d, b);
+      grid.appendChild(b);
+    }
+  });
 
   // A: tick a task, it is written down.
   (function () {
