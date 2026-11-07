@@ -493,13 +493,22 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(sendButton.waitForExistence(timeout: 5))
         sendButton.tap()
 
-        // The clarification card's trailing "Cancel" button is its last element and exists in
+        // The tie shows the task-disambiguation card ("Found a few matching tasks, which one?",
+        // three rows + Cancel), the tall card this test needs. Its trailing "Cancel" button is its last element and exists in
         // the hierarchy even when off-screen. With the shipped bug the chat did not auto-scroll
         // to reveal the card (keyboard up), so it was not hittable. The fix must scroll it in.
         let cancelClarification = app.buttons["Cancel"]
         XCTAssertTrue(cancelClarification.waitForExistence(timeout: 5))
+        // The button exists as soon as the card is inserted; the auto-scroll lands a moment later
+        // (after the card's transition and the keyboard settle), so poll for it instead of
+        // reading `isHittable` once. No manual swipe: only the app's own scroll can pass.
+        let becameHittable = expectation(
+            for: NSPredicate(format: "isHittable == true"),
+            evaluatedWith: cancelClarification
+        )
+        let waitResult = XCTWaiter().wait(for: [becameHittable], timeout: 5)
         XCTAssertTrue(
-            cancelClarification.isHittable,
+            waitResult == .completed,
             "Clarification card's trailing Cancel button must be on-screen — the chat should auto-scroll the card into view after send."
         )
     }

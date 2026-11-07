@@ -15,8 +15,24 @@ struct TaskAssistantChatView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPresentingCloudConsent = false
     @State private var isAtBottom = true
+    /// True until the reader scrolls away; while true, growing content keeps the bottom in view.
+    @State private var isFollowingBottom = true
+    @State private var followTask: Task<Void, Never>?
     @State private var isComposerVisible = false
     @State private var scrollPosition = ScrollPosition()
+
+    /// Content height and the bottom of the visible rect, sampled on every scroll-geometry change.
+    private struct ScrollMetrics: Equatable {
+        let contentHeight: CGFloat
+        let visibleMaxY: CGFloat
+
+        func isNearBottom(within threshold: CGFloat) -> Bool {
+            visibleMaxY >= contentHeight - threshold
+        }
+    }
+
+    private static let followAttempts = 12
+    private static let followRetryInterval = Duration.milliseconds(250)
 
     /// How close (in points) to the content's bottom edge still counts as "at the bottom".
     private static let bottomThreshold: CGFloat = 24
@@ -168,17 +184,36 @@ private extension TaskAssistantChatView {
         .animation(.default, value: viewModel.pendingConfirmation == nil)
         .animation(.default, value: viewModel.taskCreationSession == nil)
         .animation(.default, value: viewModel.draftText.isEmpty)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
+        .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
+            ScrollMetrics(contentHeight: geometry.contentSize.height, visibleMaxY: geometry.visibleRect.maxY)
+        } action: { oldValue, newValue in
             // Drives the jump-to-latest chevron: within `bottomThreshold` of the content's
             // bottom edge (including any trailing card).
-            geometry.visibleRect.maxY >= geometry.contentSize.height - Self.bottomThreshold
-        } action: { _, newValue in
-            isAtBottom = newValue
+            isAtBottom = newValue.isNearBottom(within: Self.bottomThreshold)
+            // Follow growth explicitly while the reader has not scrolled away themselves.
+            if isFollowingBottom, newValue.contentHeight > oldValue.contentHeight {
+                followBottom()
+            }
+        }
+        .onScrollPhaseChange { oldPhase, newPhase in
+            switch newPhase {
+            case .interacting:
+                // A drag means the reader takes over.
+                isFollowingBottom = false
+            case .idle:
+                if oldPhase == .interacting || oldPhase == .decelerating {
+                    // The reader's scroll settled: follow again only if they ended at the bottom.
+                    isFollowingBottom = isAtBottom
+                }
+            default:
+                break
+            }
         }
         .onChange(of: viewModel.scrollToBottomToken) { _, _ in
             // The user just sent a message or picked a suggestion — bring them to the bottom
             // even if they'd scrolled up. When already at the bottom the follow above handles
             // it, so skip a competing animated scroll.
+            isFollowingBottom = true
             if !isAtBottom {
                 scrollToBottom()
             }
@@ -211,10 +246,24 @@ private extension TaskAssistantChatView {
         }
     }
 
+    /// Scrolls to the bottom and keeps retrying until the scroll view reports it is there. A
+    /// scroll command issued while the scroll view is still settling (the new card's transition,
+    /// the keyboard resizing it) is dropped without an error, so one shot is not enough: with the
+    /// keyboard up, a send that produced a card taller than the viewport left it below the fold.
+    /// Each attempt respects Reduce Motion through `scrollToBottom()`.
+    private func followBottom() {
+        followTask?.cancel()
+        followTask = Task { @MainActor in
+            for _ in 0..<Self.followAttempts {
+                scrollToBottom()
+                try? await Task.sleep(for: Self.followRetryInterval)
+                if Task.isCancelled || !isFollowingBottom || isAtBottom { return }
+            }
+        }
+    }
+
     /// One-shot animated scroll to the content's bottom edge — used by the jump-to-latest
-    /// button and the send token (to bring a scrolled-up user down to their new message).
-    /// Respects Reduce Motion. The continuous "stick to the bottom as content grows" behavior
-    /// is handled at the layout level by `.defaultScrollAnchor(.bottom, for: .sizeChanges)`.
+    /// button, the send token and `followBottom()`. Respects Reduce Motion.
     private func scrollToBottom() {
         if reduceMotion {
             scrollPosition.scrollTo(edge: .bottom)
