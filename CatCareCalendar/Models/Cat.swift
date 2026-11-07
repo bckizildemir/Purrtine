@@ -18,6 +18,9 @@ final class Cat: Hashable {
     
     // Relationships
     @Relationship(deleteRule: .cascade) var tasks: [CareTask] = []
+    /// The inverse of `CareTaskCompletion.cats`. Without it a completion lost its cat as soon as a
+    /// later completion named the same cat (schema V2).
+    @Relationship(deleteRule: .nullify) var completions: [CareTaskCompletion] = []
     
     init(
         name: String,

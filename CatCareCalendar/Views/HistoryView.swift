@@ -225,12 +225,13 @@ struct CompletionHistoryRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-          if completion.cats.isEmpty == false {
+          let displayCats = HistoryPresentation.displayCats(for: completion)
+          if displayCats.isEmpty == false {
             Text(verbatim: "•")
               .font(.caption)
               .foregroundStyle(.tertiary)
 
-            Text(completion.cats.map(\.name).joined(separator: ", "))
+            Text(displayCats.map(\.name).joined(separator: ", "))
               .font(.caption)
               .foregroundStyle(.secondary)
               .lineLimit(1)

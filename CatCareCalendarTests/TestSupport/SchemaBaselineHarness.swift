@@ -147,12 +147,12 @@ enum SchemaBaselineHarness {
         try context.save()
     }
 
-    /// Reopens the store at `url` under the V1 schema and the migration plan, then
+    /// Reopens the store at `url` under the current (V2) schema and the migration plan, then
     /// reads the fixture back. This is the "second open" that every store test needs.
     static func reopenFixture(at url: URL) throws -> Fixture? {
         try open(
             url,
-            schema: CatCareSchemaV1.self,
+            schema: CatCareSchemaV2.self,
             migrationPlan: CatCareMigrationPlan.self
         ) { context in
             try readFixture(from: context)
@@ -183,6 +183,7 @@ enum SchemaBaselineHarness {
             ("CareTaskCompletion.cats", completion.cats.first == cat),
             ("CareTaskCompletion.caregiver", completion.caregiver == caregiver),
             ("Cat.tasks", cat.tasks.first == task),
+            ("Cat.completions", cat.completions.first == completion),
             ("Caregiver.completions", caregiver.completions.first == completion)
         ]
         let brokenEdges = edges.filter { $0.1 == false }.map(\.0)

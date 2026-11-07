@@ -11,10 +11,10 @@ import Testing
 @Suite("Schema baseline")
 @MainActor
 struct SchemaBaselineTests {
-    @Test("An on-disk store written under V1 reopens under the migration plan with no data loss")
+    @Test("An on-disk store written under V2 reopens under the migration plan with no data loss")
     func versionedStoreReopensWithoutDataLoss() throws {
         try SchemaBaselineHarness.withStore { url in
-            try SchemaBaselineHarness.open(url, schema: CatCareSchemaV1.self) { context in
+            try SchemaBaselineHarness.open(url, schema: CatCareSchemaV2.self) { context in
                 try SchemaBaselineHarness.seed(into: context)
             }
 
@@ -34,7 +34,7 @@ struct SchemaBaselineTests {
     @Test("The harness names the lost edges when a reopened store keeps its rows but loses a relationship")
     func harnessNamesBrokenRelationships() throws {
         try SchemaBaselineHarness.withStore { url in
-            try SchemaBaselineHarness.open(url, schema: CatCareSchemaV1.self) { context in
+            try SchemaBaselineHarness.open(url, schema: CatCareSchemaV2.self) { context in
                 try SchemaBaselineHarness.seed(into: context)
             }
 
@@ -47,7 +47,7 @@ struct SchemaBaselineTests {
             // reopen in production always runs the plan.
             try SchemaBaselineHarness.open(
                 url,
-                schema: CatCareSchemaV1.self,
+                schema: CatCareSchemaV2.self,
                 migrationPlan: CatCareMigrationPlan.self
             ) { context in
                 let schedule = try #require(try context.fetch(FetchDescriptor<CareTaskSchedule>()).first)
@@ -155,7 +155,23 @@ struct SchemaBaselineTests {
         #expect(SchemaBaselineHarness.fingerprint(of: CatCareSchemaV1.self) == Self.versionOneFingerprint)
     }
 
-    @Test("The app builds its container from the V1 schema")
+    @Test("The V2 schema layout matches the recorded baseline")
+    func versionTwoLayoutMatchesBaseline() {
+        #expect(SchemaBaselineHarness.fingerprint(of: CatCareSchemaV2.self) == Self.versionTwoFingerprint)
+    }
+
+    @Test("V2 differs from V1 only by the Cat.completions inverse of CareTaskCompletion.cats")
+    func versionTwoDiffersFromVersionOneByTheInverse() {
+        let oneLines = Set(Self.versionOneFingerprint.split(separator: "\n"))
+        let twoLines = Set(Self.versionTwoFingerprint.split(separator: "\n"))
+        #expect(oneLines.subtracting(twoLines) == ["  rel cats->Cat inverse=- rule=nullify toOne=false"])
+        #expect(twoLines.subtracting(oneLines) == [
+            "  rel cats->Cat inverse=completions rule=nullify toOne=false",
+            "  rel completions->CareTaskCompletion inverse=cats rule=nullify toOne=false"
+        ])
+    }
+
+    @Test("The app builds its container from the current (V2) schema")
     func appContainerCarriesVersionOneEntities() throws {
         let configuration = AppLaunchConfiguration(
             arguments: [],
@@ -176,7 +192,7 @@ struct SchemaBaselineTests {
         )
     }
 
-    @Test("The test factory builds its container from the V1 schema")
+    @Test("The test factory builds its container from the current (V2) schema")
     @MainActor func testFactoryCarriesVersionOneEntities() throws {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
 
@@ -271,6 +287,75 @@ struct SchemaBaselineTests {
       attr updatedAt:Date options=[]
       attr weight:Optional<Double> options=[]
       attr weightUnit:WeightUnit options=[]
+      rel tasks->CareTask inverse=assignedCats rule=cascade toOne=false
+    """
+
+    /// V2 gives `CareTaskCompletion.cats` the inverse `Cat.completions`. Recorded the same way
+    /// as `versionOneFingerprint`; `versionTwoDiffersFromVersionOneByTheInverse` pins the exact
+    /// difference. A diff here needs a V3, not an edit to this literal.
+    static let versionTwoFingerprint = """
+    CareTask
+      attr category:CareTaskCategory options=[]
+      attr createdAt:Date options=[]
+      attr iconName:String options=[]
+      attr id:UUID options=[]
+      attr isTemplate:Bool options=[]
+      attr priority:CareTaskPriority options=[]
+      attr status:CareTaskStatus options=[]
+      attr taskDescription:Optional<String> options=[]
+      attr title:String options=[]
+      attr updatedAt:Date options=[]
+      rel assignedCaregiver->Caregiver inverse=- rule=nullify toOne=true
+      rel assignedCats->Cat inverse=tasks rule=nullify toOne=false
+      rel completions->CareTaskCompletion inverse=task rule=cascade toOne=false
+      rel schedules->CareTaskSchedule inverse=task rule=cascade toOne=false
+    CareTaskCompletion
+      attr completedAt:Date options=[]
+      attr completedForDate:Date options=[]
+      attr completionDuration:Optional<Double> options=[]
+      attr id:UUID options=[]
+      attr notes:Optional<String> options=[]
+      attr photoURLs:Array<String> options=[]
+      attr wasOnTime:Bool options=[]
+      rel caregiver->Caregiver inverse=completions rule=nullify toOne=true
+      rel cats->Cat inverse=completions rule=nullify toOne=false
+      rel task->CareTask inverse=completions rule=nullify toOne=true
+      index binary+completedAt
+      index binary+completedForDate
+    CareTaskSchedule
+      attr createdAt:Date options=[]
+      attr customDays:Optional<Array<Int>> options=[]
+      attr endDate:Optional<Date> options=[]
+      attr frequency:CareTaskFrequency options=[]
+      attr frequencyInterval:Int options=[]
+      attr id:UUID options=[]
+      attr isActive:Bool options=[]
+      attr reminderMinutes:Optional<Int> options=[]
+      attr scheduledDate:Date options=[]
+      attr scheduledTime:Optional<Date> options=[]
+      rel task->CareTask inverse=schedules rule=nullify toOne=true
+    Caregiver
+      attr avatarURL:Optional<String> options=[]
+      attr createdAt:Date options=[]
+      attr id:UUID options=[]
+      attr localizationKey:Optional<String> options=[]
+      attr name:String options=[]
+      attr role:CaregiverRole options=[]
+      rel completions->CareTaskCompletion inverse=caregiver rule=nullify toOne=false
+    Cat
+      attr age:Optional<Int> options=[]
+      attr breed:Optional<String> options=[]
+      attr createdAt:Date options=[]
+      attr gender:Gender options=[]
+      attr id:UUID options=[]
+      attr medicalConditions:Array<String> options=[]
+      attr medicalNotes:Optional<String> options=[]
+      attr name:String options=[]
+      attr photoURLs:Array<String> options=[]
+      attr updatedAt:Date options=[]
+      attr weight:Optional<Double> options=[]
+      attr weightUnit:WeightUnit options=[]
+      rel completions->CareTaskCompletion inverse=cats rule=nullify toOne=false
       rel tasks->CareTask inverse=assignedCats rule=cascade toOne=false
     """
 }

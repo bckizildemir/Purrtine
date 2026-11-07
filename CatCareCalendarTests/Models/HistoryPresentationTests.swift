@@ -103,4 +103,35 @@ struct HistoryPresentationTests {
 
         #expect(filtered == [first, second])
     }
+
+    @Test
+    func completionWithoutCatsFallsBackToTheTasksAssignedCats() {
+        let miso = Cat(name: "Miso")
+        let task = CareTask(title: "Daily Feeding")
+        task.assignedCats = [miso]
+        let orphaned = CareTaskCompletion()
+        orphaned.task = task
+
+        #expect(HistoryPresentation.displayCats(for: orphaned) == [miso])
+        #expect(HistoryPresentation.filteredCompletions(from: [orphaned], query: "Miso") == [orphaned])
+    }
+
+    @Test
+    func completionKeepsItsOwnCatsInsteadOfTheTasksAssignedCats() {
+        let own = Cat(name: "Own")
+        let assigned = Cat(name: "Assigned")
+        let task = CareTask(title: "Daily Feeding")
+        task.assignedCats = [assigned]
+        let completion = CareTaskCompletion()
+        completion.task = task
+        completion.cats = [own]
+
+        #expect(HistoryPresentation.displayCats(for: completion) == [own])
+        #expect(HistoryPresentation.filteredCompletions(from: [completion], query: "Assigned").isEmpty)
+    }
+
+    @Test
+    func completionWithoutCatsAndWithoutTaskShowsNoCats() {
+        #expect(HistoryPresentation.displayCats(for: CareTaskCompletion()).isEmpty)
+    }
 }
