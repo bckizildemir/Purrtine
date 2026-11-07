@@ -31,7 +31,7 @@ enum SettingsSupportConfiguration {
         components.scheme = "mailto"
         components.path = email
         components.queryItems = [
-            URLQueryItem(name: "subject", value: "CatCareCalendar Support")
+            URLQueryItem(name: "subject", value: "Purrtine Support")
         ]
         return components.url
     }
