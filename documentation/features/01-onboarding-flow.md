@@ -1,5 +1,5 @@
 # Onboarding Flow Documentation
-**CatCareCalendar - First-run setup**
+**Purrtine - First-run setup**
 
 ---
 

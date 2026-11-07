@@ -1,4 +1,4 @@
-# Architecture review — CatCareCalendar
+# Architecture review — Purrtine
 
 **31 July 2026** · branch `main` @ `5c6527e` · SwiftUI + SwiftData, iOS 18.4+, one third-party Swift package (`firebase-ios-sdk`)
 

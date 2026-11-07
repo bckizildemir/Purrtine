@@ -1,6 +1,6 @@
 ---
 name: verify-purrtine
-description: Drive the real CatCareCalendar (Purrtine) iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14 on iOS 26.5 and 2026-10-15 on iOS 27.0), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
+description: Drive the real Purrtine iOS app on a fresh, private simulator and capture proof of what a user sees — screenshots and accessibility trees of the real onboarding, add-cat, add-task and complete-task paths (all proved 2026-10-14 on iOS 26.5 and 2026-10-15 on iOS 27.0), in English or Turkish. Use when a PR needs a verify-purrtine proof, when asked to check a change in the running app, or when CLAUDE.md's "Verify trial" asks for a simulator check.
 ---
 
 # verify-purrtine
@@ -212,7 +212,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   folder, which can be `CatCareCalendarUITests-Runner.app`. `$V build` takes `CatCareCalendar.app`
   from the same folder by name.
 - **Shared DerivedData.** Every worktree builds into one DerivedData. `$V build` copies the app into
-  the run's lock folder at once and fails when a newer CatCareCalendar build log exists; run it again.
+  the run's lock folder at once and fails when a newer Purrtine build log exists; run it again.
 - **A fresh device copies the Mac's languages** (`en-TR`, `tr-TR` on 2026-10-14). `$V start` always
   writes the device language (`en-US` or `tr-TR`) and reboots, so the language you asked for is the
   one the app sees. `$V doctor` prints it.

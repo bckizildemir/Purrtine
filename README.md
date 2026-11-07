@@ -1,6 +1,6 @@
-# CatCareCalendar
+# Purrtine
 
-CatCareCalendar is a local-first iOS app for cat owners. It keeps care routines, recurring tasks, reminders, and care history for several cats in one place. Everything lives on the device in SwiftData, so the app works fully offline. An optional task assistant turns a typed or spoken request ("feed Mia at 8 every morning") into a task; its fallback interpreter is the only feature that reaches a server.
+Purrtine is a local-first iOS app for cat owners. It keeps care routines, recurring tasks, reminders, and care history for several cats in one place. Everything lives on the device in SwiftData, so the app works fully offline. An optional task assistant turns a typed or spoken request ("feed Mia at 8 every morning") into a task; its fallback interpreter is the only feature that reaches a server.
 
 Built with SwiftUI, SwiftData, and UserNotifications. The optional cloud tier uses Firebase (Auth, App Check, Cloud Functions).
 

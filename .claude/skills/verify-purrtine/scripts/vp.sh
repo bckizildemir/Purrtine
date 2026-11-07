@@ -250,7 +250,7 @@ cmd_build() {
   # DerivedData is shared by every worktree. A build that started after ours could have
   # replaced the .app before the copy; its log would be newer than ours.
   if [[ -n "$(find "$(dirname "$log")" -name '*.log' -newer "$log" 2>/dev/null)" ]]; then
-    fail "another CatCareCalendar build ran after ours; run vp.sh build again"
+    fail "another Purrtine build ran after ours; run vp.sh build again"
   fi
   touch "$LOCK_DIR/heartbeat"
   say "app copied to $LOCK_DIR/app/$(basename "$app")"
@@ -280,7 +280,7 @@ cmd_hold() {
   ' vp-hold "$LOCK_DIR" "$XCB_LOCK_DIR" "$HOLD_MAX" >/dev/null 2>&1 &
   local watcher=$!
   echo "$watcher" > "$XCB_LOCK_DIR/pid"
-  printf 'CatCareCalendar verify-purrtine drive, run %s (PID %s, since %s, max %ss)\n' \
+  printf 'Purrtine verify-purrtine drive, run %s (PID %s, since %s, max %ss)\n' \
     "$(state run_id)" "$watcher" "$(date '+%H:%M:%S')" "$HOLD_MAX" > "$XCB_LOCK_DIR/owner"
   echo "$watcher" > "$LOCK_DIR/hold_pid"
   say "holding the xcb lock (watcher PID $watcher, max ${HOLD_MAX}s)"
