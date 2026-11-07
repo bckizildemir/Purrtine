@@ -457,10 +457,10 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForExistence(timeout: 10))
     }
 
-    func testAssistantClarificationCardScrollsIntoViewWhenAmbiguous() {
+    func testAssistantDisambiguationCardScrollsIntoViewWhenAmbiguous() {
         // `long_task_list` seeds one cat + 18 identically-titled ".general" tasks, so the
-        // ambiguous "complete long task" ties every candidate and forces a clarification card
-        // (header + suggestion rows + Cancel) taller than the viewport with the keyboard up —
+        // ambiguous "complete long task" ties every candidate and forces a disambiguation card
+        // (header + three task rows + Cancel) taller than the viewport with the keyboard up —
         // the exact shipped repro where the chat failed to scroll the new card into view.
         let app = makeApp(
             additionalArguments: [
@@ -479,7 +479,7 @@ final class CriticalFlowsUITests: XCTestCase {
         app.buttons["taskAssistant.startChatButton"].tap()
 
         // First launch presents the cloud-consent sheet over the assistant. The heuristic
-        // clarification path never uses the cloud, so decline it if it appears. Match the
+        // disambiguation path never uses the cloud, so decline it if it appears. Match the
         // button by label — the sheet container's accessibility id isn't a queryable element.
         dismissAssistantCloudConsentIfNeeded(in: app)
 
@@ -493,15 +493,26 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(sendButton.waitForExistence(timeout: 5))
         sendButton.tap()
 
-        // The clarification card's trailing "Cancel" button is its last element and exists in
-        // the hierarchy even when off-screen. With the shipped bug the chat did not auto-scroll
-        // to reveal the card (keyboard up), so it was not hittable. The fix must scroll it in.
-        let cancelClarification = app.buttons["Cancel"]
-        XCTAssertTrue(cancelClarification.waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            cancelClarification.isHittable,
-            "Clarification card's trailing Cancel button must be on-screen — the chat should auto-scroll the card into view after send."
+        // The card's trailing Cancel button is its last element and exists in the hierarchy even
+        // when off-screen. With the shipped bug the chat did not auto-scroll to reveal the card
+        // (keyboard up), so it was not hittable. The fix must scroll it in.
+        let cancelDisambiguation = app.buttons["taskAssistant.cancelTaskDisambiguationButton"]
+        XCTAssertTrue(cancelDisambiguation.waitForExistence(timeout: 5))
+        // The button exists as soon as the card is inserted; the auto-scroll lands a moment later
+        // (after the card's transition and the keyboard settle), so poll for it instead of
+        // reading `isHittable` once. No manual swipe: only the app's own scroll can pass.
+        let becameHittable = expectation(
+            for: NSPredicate(format: "isHittable == true"),
+            evaluatedWith: cancelDisambiguation
         )
+        let waitResult = XCTWaiter().wait(for: [becameHittable], timeout: 5)
+        XCTAssertTrue(
+            waitResult == .completed,
+            "Disambiguation card's trailing Cancel button must be on-screen — the chat should auto-scroll the card into view after send."
+        )
+        // The bug needs the keyboard up. The composer is disabled while the assistant works, which
+        // can drop it, so prove the precondition still held when the card was on-screen.
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard must still be up for this test to prove the bug.")
     }
 
     func testTaskEditAndDeleteFlow() {
@@ -920,6 +931,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
         let catCard = app.buttons["cats.card.UI Test Cat"]
         XCTAssertTrue(catCard.waitForExistence(timeout: 5))
+        scrollUntilHittable(catCard, in: app)
         let addTaskMenuItem = app.buttons["Add Task"]
         performGesture(on: catCard, revealing: addTaskMenuItem) {
             catCard.press(forDuration: 1.2)
@@ -1092,8 +1104,10 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.tap()
         nameField.typeText("UI Avatar Caregiver")
+        dismissKeyboardIfPresent(in: app)
         let saveButton = app.buttons["addCaregiver.saveButton"]
-        waitUntilHittable(saveButton)
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        scrollUntilHittable(saveButton, in: app)
         saveButton.tap()
 
         let note = app.alerts["Caregiver saved, but the photo did not save."]
@@ -1673,6 +1687,36 @@ final class CriticalFlowsUITests: XCTestCase {
     private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = 5) {
         let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: element)
         wait(for: [hittable], timeout: timeout)
+    }
+
+    /// Swipes the app's main scroll view up until `element` has its centre inside the window, then
+    /// waits for it to be hittable. Bounded, so a missing element still fails in the caller's assertion.
+    ///
+    /// Reads `frame` instead of `isHittable` while scrolling: asking an off-screen or mid-scroll
+    /// element for hittability is what raises "Activation point invalid" on CI.
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 6) {
+        _ = element.waitForExistence(timeout: 5)
+        let window = app.windows.firstMatch
+        for _ in 0..<maxSwipes {
+            let frame = element.frame
+            let isCentreOnScreen = !frame.isEmpty && window.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
+            // Keep clear of the tab bar, which covers the bottom of the window.
+            let isAboveTabBar = !app.tabBars.firstMatch.exists || frame.midY < app.tabBars.firstMatch.frame.minY
+            if isCentreOnScreen, isAboveTabBar { break }
+            app.swipeUp()
+        }
+        waitUntilHittable(element)
+    }
+
+    /// Dismisses the keyboard through its toolbar Done button, when the form has one.
+    private func dismissKeyboardIfPresent(in app: XCUIApplication) {
+        guard app.keyboards.firstMatch.exists else { return }
+
+        let done = app.toolbars.buttons["Done"]
+        if done.waitForExistence(timeout: 2) {
+            done.tap()
+            _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 5)
+        }
     }
 
     /// Performs a gesture on `target` and waits for the element it reveals, with one retry (#71).
