@@ -430,7 +430,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "CatCareCalendar needs camera access to take photos of your cats. These photos are stored only on your device.";
+				INFOPLIST_KEY_CFBundleDisplayName = Purrtine;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Purrtine needs camera access to take photos of your cats. These photos are stored only on your device.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to capture your voice for the task assistant.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to understand voice commands for completing your cat care tasks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -468,7 +469,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "CatCareCalendar needs camera access to take photos of your cats. These photos are stored only on your device.";
+				INFOPLIST_KEY_CFBundleDisplayName = Purrtine;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Purrtine needs camera access to take photos of your cats. These photos are stored only on your device.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to capture your voice for the task assistant.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to understand voice commands for completing your cat care tasks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
