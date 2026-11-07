@@ -15,7 +15,7 @@
 </head>
 <body>
 <h1>CatCareCalendar — Privacy Policy</h1>
-<p class="meta">Last updated: November 7, 2026</p>
+<p class="meta">Last updated: July 27, 2026</p>
 
 <p>CatCareCalendar is a local-first app. Your data belongs to you and stays on your device unless you explicitly use a feature that requires processing elsewhere. This policy explains exactly what that means.</p>
 
@@ -24,16 +24,23 @@
 
 <h2>What leaves your device</h2>
 <ul>
-  <li><strong>Task Assistant (optional, opt-in).</strong> If you enable the cloud tier of the Task Assistant in Settings and give consent, the text you type or dictate — together with the minimal task/cat context needed to interpret it — is sent to our backend (Google Firebase Cloud Functions, hosted in the EU, region <code>europe-west1</code>), which forwards the request to Groq, an AI service, to be interpreted into a task action. Neither we nor Groq use this data for training or for advertising or profiling. Groq does not retain inference requests by default, but may keep them for up to 30 days only to fix errors or stop abuse (<a href="https://console.groq.com/docs/your-data">Groq data policy</a>). The request is authenticated with an anonymous Firebase session and device integrity attestation (Apple App Attest). The anonymous Firebase session starts only when you first use the cloud assistant after giving consent; it is not created when you open the app. If you never grant consent, nothing is sent and no session is created.</li>
+  <li><strong>Task Assistant (optional, opt-in).</strong> If you give consent and the on-device interpreter cannot understand a request, the request text, task titles, task status/category information, cat names, and random record identifiers needed to interpret it are sent to Google Firebase Cloud Functions in the EU (<code>europe-west1</code>). Firebase Authentication creates an anonymous user identifier only when this opted-in cloud feature is first used, and Apple App Attest helps verify that requests come from the genuine app. Our function forwards the interpretation prompt to Groq, whose processing infrastructure is in the United States. Groq does not use inputs or outputs to train models. It does not retain inference content by default, but may retain it for up to 30 days when needed to investigate abuse or service-reliability problems. Groq also retains non-content service usage metadata. We do not use this information for advertising, profiling, or tracking.</li>
   <li><strong>Dictation.</strong> Voice input uses Apple's Speech Recognition. Audio may be processed by Apple per Apple's own privacy terms; the app only receives the transcribed text.</li>
+</ul>
+
+<h2>Service providers</h2>
+<ul>
+  <li><strong>Google Firebase:</strong> anonymous authentication, app integrity verification, and the EU-hosted server function used by the optional Task Assistant. Firebase Authentication stores an anonymous user identifier and may retain authentication IP logs for a limited period under Google's retention practices.</li>
+  <li><strong>Groq:</strong> AI inference for unresolved Task Assistant requests. Groq processes the prompt in the United States and may use subprocessors described in its published service documentation.</li>
+  <li><strong>Apple:</strong> speech recognition when you actively use dictation, plus App Attest for app-integrity verification.</li>
 </ul>
 
 <h2>What we do not do</h2>
 <ul>
   <li>No advertising, no ad SDKs.</li>
-  <li>No analytics or tracking SDKs (Firebase Analytics is disabled).</li>
+  <li>No behavioral analytics or tracking SDKs. Firebase Analytics is disabled; Firebase services may collect limited diagnostic and service metadata as described above.</li>
   <li>No sale or sharing of personal data with third parties.</li>
-  <li>No user accounts — Firebase sign-in is anonymous, starts only on your first cloud assistant request after consent, and exists only to authenticate those requests.</li>
+  <li>No named user accounts — Firebase sign-in is anonymous and exists only to authenticate opted-in assistant requests.</li>
 </ul>
 
 <h2>Notifications</h2>
@@ -43,7 +50,7 @@
 <p>Cat photos you pick or capture are stored only on your device. Camera, photo picker, microphone, and speech recognition are used only when you actively invoke those features, and each requires your permission through iOS.</p>
 
 <h2>Data deletion</h2>
-<p>Deleting a cat or task removes its data (including photos) from your device. Deleting the app removes all app data. Because we hold no copy of your care data, there is nothing further for us to delete on our side; assistant requests are anonymous and are not kept by us as user-identifiable records, and Groq may keep them for up to 30 days only to fix errors or stop abuse.</p>
+<p>Deleting a cat or task removes its data (including photos) from your device. Deleting the app removes its on-device data. You can revoke future cloud processing at any time under Settings → Task Assistant. Cloud inference content is not stored by us as a user history and is not used for model training; Groq's limited temporary retention is described above. To request deletion of an anonymous Firebase identifier or ask a privacy question, email the address below. We will verify and process applicable requests with our service providers.</p>
 
 <h2>Children</h2>
 <p>CatCareCalendar is not directed at children under 13 and collects no personal information from anyone.</p>
@@ -57,6 +64,6 @@
 <hr>
 
 <h1 lang="tr">Gizlilik Politikası (Türkçe özet)</h1>
-<p lang="tr">CatCareCalendar yerel öncelikli bir uygulamadır. Eklediğiniz tüm kediler, görevler, geçmiş ve fotoğraflar yalnızca cihazınızda saklanır; hesap sistemi yoktur ve bu verilere erişemeyiz. Tek istisna, isteğe bağlı <strong>Görev Asistanı bulut yorumlama</strong> özelliğidir: Ayarlar'dan açık rıza verirseniz, yazdığınız/söylediğiniz metin, yorumlanması için AB'de barındırılan (europe-west1) Firebase Cloud Functions'a gönderilir; bu sunucu isteği, yorumlanması için bir yapay zeka servisi olan Groq'a iletir. Bu veriler eğitim için kullanılmaz; Groq bunları yalnızca hataları gidermek veya kötüye kullanımı önlemek için en fazla 30 gün saklayabilir. Anonim Firebase oturumu, rıza verdikten sonra bulut asistanını ilk kullandığınızda başlar; uygulamayı açmak oturum oluşturmaz. Reklam, analitik ve veri satışı yoktur. Sesli giriş Apple Konuşma Tanıma ile çalışır. Hatırlatıcılar tamamen cihaz üzerinde yerel bildirimlerdir. Uygulamayı silmek tüm verileri siler. Sorularınız için: <a href="mailto:bcankizildemir@gmail.com">bcankizildemir@gmail.com</a></p>
+<p lang="tr">CatCareCalendar yerel öncelikli bir uygulamadır. Eklediğiniz kediler, görevler, geçmiş ve fotoğraflar cihazınızda saklanır. İsteğe bağlı <strong>Görev Asistanı bulut yorumlama</strong> özelliğine izin verirseniz ve cihazdaki yorumlayıcı isteği anlayamazsa; istek metni, görev başlıkları/durumları, kedi adları ve gerekli rastgele kayıt kimlikleri AB'deki Firebase Cloud Functions'a (<code>europe-west1</code>) gönderilir. Firebase yalnızca bu özellik ilk kez kullanıldığında anonim bir kullanıcı kimliği oluşturur. Sunucu işlevimiz istemi ABD'de işleyen Groq'a iletir. Groq girdileri model eğitimi için kullanmaz; ancak kötüye kullanım veya hizmet güvenilirliği incelemeleri için içeriği 30 güne kadar saklayabilir ve içerik dışı kullanım verilerini tutar. Reklam, profilleme, izleme veya veri satışı yoktur. Sesli giriş Apple Konuşma Tanıma'yı, bütünlük denetimi Apple App Attest'i kullanır. Bulut kullanım iznini Ayarlar → Görev Asistanı'ndan geri çekebilirsiniz. Firebase kimliğinin silinmesini istemek veya soru sormak için: <a href="mailto:bcankizildemir@gmail.com">bcankizildemir@gmail.com</a></p>
 </body>
 </html>
