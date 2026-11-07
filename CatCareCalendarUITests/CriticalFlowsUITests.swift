@@ -1208,7 +1208,7 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(supportRow.waitForExistence(timeout: 5))
         supportRow.tap()
 
-        XCTAssertTrue(app.staticTexts["CatCareCalendar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Purrtine"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Version'")).firstMatch.waitForExistence(timeout: 5))
         // settings.rateApp is only rendered when APP_STORE_ID is configured, which this build doesn't set.
         XCTAssertTrue(app.descendants(matching: .any)["settings.giveFeedback"].waitForExistence(timeout: 5))

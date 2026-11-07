@@ -24,13 +24,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         }
       }
@@ -75,13 +75,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar is a comprehensive app that helps cat owners manage their pet care routines. With task scheduling, reminders, and detailed tracking features, it ensures your cats' health and happiness."
+            "value" : "Purrtine is a comprehensive app that helps cat owners manage their pet care routines. With task scheduling, reminders, and detailed tracking features, it ensures your cats' health and happiness."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar, kedi sahiplerinin pet bakım rutinlerini yönetmelerine yardımcı olan kapsamlı bir uygulamadır. Görev zamanlaması, hatırlatmalar ve detaylı takip özellikleri ile kedilerinizin sağlığını ve mutluluğunu garanti altına alır."
+            "value" : "Purrtine, kedi sahiplerinin pet bakım rutinlerini yönetmelerine yardımcı olan kapsamlı bir uygulamadır. Görev zamanlaması, hatırlatmalar ve detaylı takip özellikleri ile kedilerinizin sağlığını ve mutluluğunu garanti altına alır."
           }
         }
       }
@@ -109,13 +109,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar is developed by cat lovers for cat lovers. Your feedback and suggestions are very valuable to us."
+            "value" : "Purrtine is developed by cat lovers for cat lovers. Your feedback and suggestions are very valuable to us."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar, kedi severler tarafından kedi severler için geliştirilmiştir. Geri bildirimleriniz ve önerileriniz bizim için çok değerli."
+            "value" : "Purrtine, kedi severler tarafından kedi severler için geliştirilmiştir. Geri bildirimleriniz ve önerileriniz bizim için çok değerli."
           }
         }
       }

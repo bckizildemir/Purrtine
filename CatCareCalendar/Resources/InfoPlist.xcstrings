@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name (home screen)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purrtine"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purrtine"
+          }
+        }
+      }
+    },
     "CFBundleName" : {
       "comment" : "Bundle name",
       "extractionState" : "manual",
@@ -8,13 +26,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar"
+            "value" : "Purrtine"
           }
         }
       }
@@ -26,13 +44,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar needs camera access to take photos of your cats. These photos are stored only on your device."
+            "value" : "Purrtine needs camera access to take photos of your cats. These photos are stored only on your device."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CatCareCalendar, kedilerinizin fotoğraflarını çekmek için kamera erişimine ihtiyaç duyar. Bu fotoğraflar yalnızca cihazınızda saklanır."
+            "value" : "Purrtine, kedilerinizin fotoğraflarını çekmek için kamera erişimine ihtiyaç duyar. Bu fotoğraflar yalnızca cihazınızda saklanır."
           }
         }
       }
