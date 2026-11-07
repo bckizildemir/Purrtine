@@ -1,4 +1,3 @@
-import FirebaseCore
 import FirebaseFunctions
 import Foundation
 
@@ -21,7 +20,6 @@ protocol TaskAssistantCloudInterpreting: Sendable {
 /// selects among the task/cat ids this client sends — never trust it beyond that.
 struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
     enum CloudInterpreterError: Error {
-        case firebaseNotConfigured
         case invalidResponse
         case unknownTask
         case noMatch
@@ -29,11 +27,21 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
 
     private let region: String
     private let functionName = "interpretTaskAssistantRequest"
+    private let signIn: @MainActor () async throws -> Void
 
     /// `nonisolated` so callers can build one in a default argument, which Swift evaluates
     /// outside the main actor. The stored properties are immutable, so this is safe.
-    nonisolated init(region: String = "europe-west1") {
+    /// `signIn` runs before every call (it returns at once once a session exists), so the
+    /// anonymous Firebase account is created on the first consented cloud request, never
+    /// at launch. Tests inject a spy.
+    nonisolated init(
+        region: String = "europe-west1",
+        signIn: @escaping @MainActor () async throws -> Void = {
+            try await FirebaseBootstrapper.ensureSignedInAnonymously()
+        }
+    ) {
         self.region = region
+        self.signIn = signIn
     }
 
     func interpret(
@@ -41,9 +49,8 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
         tasks: [CareTask],
         referenceDate: Date
     ) async throws -> TaskAssistantInterpreter.Interpretation {
-        guard FirebaseApp.app() != nil else {
-            throw CloudInterpreterError.firebaseNotConfigured
-        }
+        // Signing in also configures Firebase, so `Functions` below is safe to use afterwards.
+        try await signIn()
 
         let payload = requestPayload(text: text, tasks: tasks, referenceDate: referenceDate)
         let result = try await Functions.functions(region: region)

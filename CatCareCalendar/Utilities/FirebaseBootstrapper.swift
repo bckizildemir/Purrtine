@@ -25,7 +25,7 @@ enum FirebaseBootstrapper {
         // hard-aborts the whole app at launch when the plist is missing — which would
         // crash every launch (and every UI test) in those environments. Load the options
         // ourselves so a missing config degrades the cloud assistant gracefully (see the
-        // matching `FirebaseApp.app() != nil` guard in TaskAssistantCloudInterpreter)
+        // matching `FirebaseApp.app() != nil` guard in ensureSignedInAnonymously)
         // instead of taking the app down.
         guard let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
               let options = FirebaseOptions(contentsOfFile: plistPath) else {
@@ -43,13 +43,30 @@ enum FirebaseBootstrapper {
         FirebaseApp.configure(options: options)
     }
 
+    enum SignInError: Error {
+        case cloudServicesDisabled
+        case firebaseNotConfigured
+        case signInFailed
+    }
+
     /// The task assistant's cloud tier is gated on Firebase Auth (anonymous is enough —
-    /// this app has no accounts), so every device needs a signed-in session before it
-    /// can call the interpretation function.
-    static func ensureSignedInAnonymously() async {
+    /// this app has no accounts), so the device needs a signed-in session before it
+    /// can call the interpretation function. Call this only when a cloud request is about
+    /// to run with the user's consent (#12). This is also the only place the SDK is
+    /// configured: configuring starts App Check, which contacts Apple and Google at once,
+    /// so nothing of Firebase runs before the first consented request.
+    /// Throws when no session exists afterwards, so the caller fails like any cloud failure.
+    static func ensureSignedInAnonymously() async throws {
+        // UI tests, unit tests and previews never reach Firebase.
+        guard AppLaunchConfiguration.current.disablesCloudServices == false else {
+            throw SignInError.cloudServicesDisabled
+        }
+
+        configureIfNeeded()
+
         // `Auth.auth()` raises if Firebase was never configured (missing plist — see
-        // configureIfNeeded()), so skip sign-in entirely in that case.
-        guard FirebaseApp.app() != nil else { return }
+        // configureIfNeeded()), so stop here in that case.
+        guard FirebaseApp.app() != nil else { throw SignInError.firebaseNotConfigured }
 
         await signInOperation.run {
             guard Auth.auth().currentUser == nil else { return }
@@ -60,5 +77,7 @@ enum FirebaseBootstrapper {
                 print("[FirebaseBootstrapper] Anonymous sign-in failed: \(error)")
             }
         }
+
+        guard Auth.auth().currentUser != nil else { throw SignInError.signInFailed }
     }
 }

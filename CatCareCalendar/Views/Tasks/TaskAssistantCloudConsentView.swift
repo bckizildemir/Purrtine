@@ -9,21 +9,29 @@ struct TaskAssistantCloudConsentView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 28))
-                .foregroundStyle(Theme.accent)
-                .padding(.top, 24)
+            // The text names the services and the retention window, so it is long. It scrolls at
+            // large Dynamic Type while the title stays in view and the buttons stay pinned below.
+            ScrollView {
+                VStack(spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.top, 24)
+                        .accessibilityHidden(true)
 
-            Text(.taskAssistantCloudConsentTitle)
-                .font(.headline)
-                .multilineTextAlignment(.center)
+                    Text(.taskAssistantCloudConsentTitle)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
 
-            Text(.taskAssistantCloudConsentMessage)
-                .font(.subheadline)
-                .foregroundStyle(Theme.labelSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 24)
+                    Text(.taskAssistantCloudConsentMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.labelSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 24)
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
 
             // Side-by-side, primary action trailing — matches HIG's two-choice
             // system alerts rather than two stacked, equally weighted buttons.
@@ -41,7 +49,7 @@ struct TaskAssistantCloudConsentView: View {
             .padding(.top, 4)
             .padding(.bottom, 24)
         }
-        .presentationDetents([.height(300)])
+        .presentationDetents([.medium, .large])
         .interactiveDismissDisabled()
         .accessibilityIdentifier("taskAssistant.cloudConsent")
     }

@@ -78,16 +78,6 @@ struct CatCareCalendarApp: App {
                 .preferredColorScheme(
                     SettingsPreferences.resolvedAppearanceMode(from: appearanceModeRawValue).preferredColorScheme
                 )
-                .task {
-                    let configuration = AppLaunchConfiguration.current
-                    guard configuration.disablesCloudServices == false else { return }
-                    // Bring Firebase up after the first frame rather than in App.init, keeping the
-                    // SDK's setup off the launch critical path. The task-assistant cloud tier is the
-                    // only consumer and it fails gracefully to the on-device heuristic if it somehow
-                    // runs before this completes.
-                    FirebaseBootstrapper.configureIfNeeded()
-                    await FirebaseBootstrapper.ensureSignedInAnonymously()
-                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // The unit-test host skips this, as it skips the launch-time permission check,
                     // so a test run never schedules real reminders from the host app's store.
