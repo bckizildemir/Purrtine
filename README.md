@@ -15,16 +15,16 @@ Built with SwiftUI, SwiftData, and UserNotifications. The optional cloud tier us
 ```bash
 git clone https://github.com/bckizildemir/Purrtine.git
 cd Purrtine
-open CatCareCalendar.xcodeproj
+open Purrtine.xcodeproj
 ```
 
-Pick the `CatCareCalendar` scheme and an iOS simulator, then run.
+Pick the `Purrtine` scheme and an iOS simulator, then run.
 
 No secrets file is needed. Without `GoogleService-Info.plist` the app launches normally with the cloud tier off; the task assistant then uses only its on-device interpreter.
 
 ### Use your own Firebase project
 
-`GoogleService-Info.plist` is not in the repo. To turn on the cloud tier in a fork, create your own Firebase project with an iOS app, put its plist at `CatCareCalendar/GoogleService-Info.plist`, and deploy the function:
+`GoogleService-Info.plist` is not in the repo. To turn on the cloud tier in a fork, create your own Firebase project with an iOS app, put its plist at `Purrtine/GoogleService-Info.plist`, and deploy the function:
 
 ```bash
 firebase use --add
@@ -38,7 +38,7 @@ AI provider keys never ship in the app: they live in Firebase Functions secrets.
 
 ```bash
 Scripts/xcb.sh test                                                   # whole suite
-Scripts/xcb.sh test --only CatCareCalendarTests/TaskActionServiceTests
+Scripts/xcb.sh test --only PurrtineTests/TaskActionServiceTests
 cd functions && npm test                                              # Cloud Function
 ```
 
@@ -48,8 +48,8 @@ Agents and the local loop run only the changed suites with `--only`; CI runs the
 
 | Path | Contents |
 | --- | --- |
-| `CatCareCalendar/` | The iOS app: `Models/`, `Views/`, `Utilities/`, `Style/`, `Resources/` |
-| `CatCareCalendarTests/`, `CatCareCalendarUITests/` | Unit and UI tests |
+| `Purrtine/` | The iOS app: `Models/`, `Views/`, `Utilities/`, `Style/`, `Resources/` |
+| `PurrtineTests/`, `PurrtineUITests/` | Unit and UI tests |
 | `functions/` | Firebase Cloud Function for the task assistant's fallback interpreter |
 | `Scripts/` | Build lock wrapper, coverage check |
 | `documentation/` | Product requirements (`PRD.md`), feature specs, changelogs |

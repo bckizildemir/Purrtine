@@ -21,14 +21,14 @@
 
 
 // ---------------------------------------------------------------------------
-// Stage 1 - UI test target (CatCareCalendarUITests)
+// Stage 1 - UI test target (PurrtineUITests)
 // ---------------------------------------------------------------------------
 // Verified: ** TEST BUILD SUCCEEDED **, 1145 warnings -> 6.
 // 1144 of those 1145 warnings came from one file,
-// CatCareCalendarUITests/CriticalFlowsUITests.swift, because XCUIApplication is
+// PurrtineUITests/CriticalFlowsUITests.swift, because XCUIApplication is
 // main-actor-isolated while XCTest methods are nonisolated.
 //
-// Apply to the UI test target ONLY. Do not apply to CatCareCalendarTests: that
+// Apply to the UI test target ONLY. Do not apply to PurrtineTests: that
 // Swift Testing suite already produces zero warnings under `complete`, and
 // forcing main-actor isolation on it would serialise a suite that currently
 // runs in parallel, for no diagnostic benefit.

@@ -179,7 +179,7 @@ again on 2026-08-17 after `swiftdata-pro` became additive:
 | `Models/CareTask.swift` | `swiftdata-pro` |
 | `Models/TaskAssistantViewModel.swift` | `swiftdata-pro, swift-concurrency-pro` |
 | `Utilities/NotificationManager.swift` | `swift-concurrency-pro` |
-| `CatCareCalendarUITests/CriticalFlowsUITests.swift` | `swift-testing-pro` |
+| `PurrtineUITests/CriticalFlowsUITests.swift` | `swift-testing-pro` |
 | `Style/Theme.swift` | *(silent, rc=0)* |
 | `CLAUDE.md` | *(silent, rc=0)* |
 
@@ -258,7 +258,7 @@ in `~/.claude.json` rather than in a tracked `.mcp.json`.
 
 A fourth difference was closed on 2026-08-16: TTB grepped file contents for `XCTestCase` and this
 repo did not. Both do now. Swift Testing is the default here (38 files) and XCTest is reserved for
-`CatCareCalendarUITests`, where one file uses it — the path arm already caught that file, so the
+`PurrtineUITests`, where one file uses it — the path arm already caught that file, so the
 grep is defensive rather than load-bearing, and it keeps the two scripts closer.
 
 Deployment targets differ too (18.4 here, 18.2 in TTB), which is why each repo carries its own

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gizlilik Politikası — Purrtine</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; line-height: 1.6; }
+  h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; margin-top: 2rem; }
+  .meta { color: gray; font-size: 0.9rem; }
+  hr { margin: 3rem 0 2rem; border: none; border-top: 1px solid rgba(128,128,128,0.4); }
+</style>
+</head>
+<body>
+<p class="meta"><a href="../privacy/" hreflang="en" lang="en">English</a> · Türkçe</p>
+<h1>Purrtine — Gizlilik Politikası</h1>
+<p class="meta">Son güncelleme: 27 Temmuz 2026</p>
+
+<p>Purrtine yerel öncelikli bir uygulamadır. Verilerin sana aittir ve başka bir yerde işlenmesi gereken bir özelliği açıkça kullanmadığın sürece cihazında kalır. Bu politika bunun tam olarak ne anlama geldiğini açıklar.</p>
+
+<h2>Cihazında saklanan veriler</h2>
+<p>Eklediğin tüm kediler, bakım görevleri, programlar, tamamlanma geçmişi, bakıcı adları ve fotoğraflar iPhone'unda, Apple'ın cihaz üzerindeki veritabanı (SwiftData) ve uygulamanın özel depolama alanı kullanılarak yerel olarak saklanır. Kullanıcı hesabı işletmiyoruz ve bu verileri göremeyiz.</p>
+
+<h2>Cihazından çıkan veriler</h2>
+<ul>
+  <li><strong>Görev Asistanı (isteğe bağlı, onaya bağlı).</strong> İzin verirsen ve cihazdaki yorumlayıcı bir isteği anlayamazsa, isteği yorumlamak için gereken istek metni, görev başlıkları, görev durumu/kategori bilgileri, kedi adları ve rastgele kayıt kimlikleri AB'deki (<code>europe-west1</code>) Google Firebase Cloud Functions'a gönderilir. Firebase Authentication, anonim bir kullanıcı kimliğini yalnızca bu onaylı bulut özelliği ilk kez kullanıldığında oluşturur; Apple App Attest ise isteklerin gerçek uygulamadan geldiğini doğrulamaya yardımcı olur. İşlevimiz, yorumlama istemini altyapısı Amerika Birleşik Devletleri'nde bulunan Groq'a iletir. Groq, girdileri veya çıktıları model eğitimi için kullanmaz. Çıkarım içeriğini varsayılan olarak saklamaz, ancak kötüye kullanımı veya hizmet güvenilirliği sorunlarını incelemek gerektiğinde bu içeriği 30 güne kadar saklayabilir. Groq ayrıca içerik dışı hizmet kullanım meta verilerini de saklar. Bu bilgileri reklam, profilleme veya izleme amacıyla kullanmıyoruz.</li>
+  <li><strong>Dikte.</strong> Sesli giriş, Apple'ın Konuşma Tanıma özelliğini kullanır. Ses, Apple'ın kendi gizlilik koşullarına göre Apple tarafından işlenebilir; uygulama yalnızca metne dönüştürülmüş yazıyı alır.</li>
+</ul>
+
+<h2>Hizmet sağlayıcılar</h2>
+<ul>
+  <li><strong>Google Firebase:</strong> isteğe bağlı Görev Asistanı'nın kullandığı anonim kimlik doğrulama, uygulama bütünlüğü doğrulaması ve AB'de barındırılan sunucu işlevi. Firebase Authentication anonim bir kullanıcı kimliği saklar ve Google'ın saklama uygulamaları kapsamında kimlik doğrulama IP kayıtlarını sınırlı bir süre boyunca tutabilir.</li>
+  <li><strong>Groq:</strong> Görev Asistanı'nın cihazda çözülemeyen istekleri için yapay zekâ çıkarımı. Groq istemi Amerika Birleşik Devletleri'nde işler ve yayımlanmış hizmet belgelerinde açıklanan alt işleyenleri kullanabilir.</li>
+  <li><strong>Apple:</strong> dikteyi etkin olarak kullandığında konuşma tanıma ve uygulama bütünlüğü doğrulaması için App Attest.</li>
+</ul>
+
+<h2>Yapmadıklarımız</h2>
+<ul>
+  <li>Reklam yok, reklam SDK'sı yok.</li>
+  <li>Davranışsal analiz veya izleme SDK'sı yok. Firebase Analytics devre dışıdır; Firebase hizmetleri yukarıda açıklandığı gibi sınırlı tanılama ve hizmet meta verileri toplayabilir.</li>
+  <li>Kişisel verilerin üçüncü taraflara satışı veya paylaşımı yok.</li>
+  <li>İsimli kullanıcı hesabı yok — Firebase girişi anonimdir ve yalnızca onay verilmiş asistan isteklerini doğrulamak için vardır.</li>
+</ul>
+
+<h2>Bildirimler</h2>
+<p>Görev hatırlatıcıları tamamen cihazında zamanlanan yerel bildirimlerdir. Hiçbir anlık bildirim (push) sunucusu kullanılmaz.</p>
+
+<h2>Fotoğraflar, kamera ve mikrofon</h2>
+<p>Seçtiğin veya çektiğin kedi fotoğrafları yalnızca cihazında saklanır. Kamera, fotoğraf seçici, mikrofon ve konuşma tanıma yalnızca bu özellikleri sen etkin olarak başlattığında kullanılır ve her biri için iOS üzerinden izin vermen gerekir.</p>
+
+<h2>Verilerin silinmesi</h2>
+<p>Bir kediyi veya görevi silmek, ona ait verileri (fotoğraflar dahil) cihazından kaldırır. Uygulamayı silmek, uygulamanın cihazdaki verilerini kaldırır. Bulutta işlemeye ilişkin onayını istediğin zaman Ayarlar → Görev Asistanı bölümünden geri çekebilirsin. Bulut çıkarım içeriği tarafımızdan kullanıcı geçmişi olarak saklanmaz ve model eğitimi için kullanılmaz; Groq'un sınırlı geçici saklaması yukarıda açıklanmıştır. Anonim bir Firebase kimliğinin silinmesini talep etmek veya gizlilikle ilgili bir soru sormak için aşağıdaki adrese e-posta gönder. Geçerli talepleri doğrulayacak ve hizmet sağlayıcılarımızla birlikte işleme alacağız.</p>
+
+<h2>Çocuklar</h2>
+<p>Purrtine 13 yaşından küçük çocuklara yönelik değildir ve hiç kimseden kişisel bilgi toplamaz.</p>
+
+<h2>Değişiklikler</h2>
+<p>Bu politika değişirse, güncellenmiş sürüm yeni bir "son güncelleme" tarihiyle bu adreste yayımlanır.</p>
+
+<h2>İletişim</h2>
+<p>Sorular veya talepler için: <a href="mailto:bcankizildemir@gmail.com">bcankizildemir@gmail.com</a></p>
+</body>
+</html>

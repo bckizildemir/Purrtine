@@ -1,8 +1,8 @@
 ---
 paths:
-  - "CatCareCalendar/**/*.swift"
-  - "CatCareCalendarTests/**/*.swift"
-  - "CatCareCalendarUITests/**/*.swift"
+  - "Purrtine/**/*.swift"
+  - "PurrtineTests/**/*.swift"
+  - "PurrtineUITests/**/*.swift"
 ---
 
 # Swift work requires a Swift skill
@@ -57,8 +57,8 @@ A count below that carries its own date was measured on that date; the others we
   `FirebaseAuth` target when tried, and no config in `project.pbxproj` sets it now (verified
   2026-09-24).
 - Swift Testing is the default for unit and integration suites. XCTest is reserved for
-  `CatCareCalendarUITests`, where one file uses it. Match the file you are editing.
-- `CatCareCalendarTests/TestSupport/` provides `TestModelContainerFactory`,
+  `PurrtineUITests`, where one file uses it. Match the file you are editing.
+- `PurrtineTests/TestSupport/` provides `TestModelContainerFactory`,
   `FakeUserNotificationCenterClient`, `NotificationSchedulerSpy`, `FakeTaskAssistantCloudInterpreter`
   and `SchemaBaselineHarness`. Use these instead of real persistence, notification or network state.
 - The store layout is versioned in `Models/CatCareSchemaV1.swift`. Adding or changing a `@Model`
@@ -70,7 +70,7 @@ A count below that carries its own date was measured on that date; the others we
   Read the source before you assume otherwise.
 - Route all local notification scheduling through `NotificationManager`. Treat any direct
   `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified
-  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which
+  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- Purrtine`, which
   prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes
   `.current()` as a default argument). The DEBUG Notification History screen reads through
   `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and

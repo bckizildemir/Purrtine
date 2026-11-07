@@ -27,7 +27,7 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
   other flag. Animations stay on; notifications are real.
 - Data only through user screens: the onboarding, then Add Cat and Add Task. Never More →
   Developer Tools (Create Sample Data and the rest): the owner keeps it for manual catch-up.
-- Not a harness: the XCUITest suite `CatCareCalendarUITests` and the `-ui-testing` mode.
+- Not a harness: the XCUITest suite `PurrtineUITests` and the `-ui-testing` mode.
 - Drive with `axe` (or xcodebuildmcp `snapshot_ui`/`tap`/`type_text`/`screenshot` with this run's
   `simulatorId`) and `xcrun simctl`. Never osascript, never scripted mouse clicks: the owner works on
   the same Mac.
@@ -44,7 +44,7 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
 
 ```bash
 $V start                       # verify lock, fresh device, English; add --lang tr for Turkish
-$V build                       # Scripts/xcb.sh build against this device; copies CatCareCalendar.app
+$V build                       # Scripts/xcb.sh build against this device; copies Purrtine.app
 $V install
 $V launch                      # prints "com.berkecankizildemir.CatCareCalendar: <pid>"
 $V doctor                      # must exit 0
@@ -227,7 +227,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   screen you proved. Onboarding saves nothing until "Start Tracking", so an onboarding cut short starts
   again at the welcome screen.
 - **`xcb.sh` prints the wrong .app.** Its `xcb: app` line names the first `.app` in the products
-  folder, which can be `CatCareCalendarUITests-Runner.app`. `$V build` takes `CatCareCalendar.app`
+  folder, which can be `PurrtineUITests-Runner.app`. `$V build` takes `Purrtine.app`
   from the same folder by name.
 - **Shared DerivedData.** Every worktree builds into one DerivedData. `$V build` copies the app into
   the run's lock folder at once and fails when a newer Purrtine build log exists; run it again.

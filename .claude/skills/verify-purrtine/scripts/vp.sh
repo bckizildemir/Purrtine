@@ -240,11 +240,11 @@ cmd_build() {
   { kill "$beat"; wait "$beat"; } 2>/dev/null || true
   trap - EXIT INT TERM
   [[ "$status" -eq 0 ]] || fail "build failed (see $out)"
-  # xcb prints the first .app it finds, which can be CatCareCalendarUITests-Runner.app;
+  # xcb prints the first .app it finds, which can be PurrtineUITests-Runner.app;
   # take the app itself from the same products folder.
-  app="$(dirname "$(sed -n 's/^xcb: app //p' "$out")")/CatCareCalendar.app"
+  app="$(dirname "$(sed -n 's/^xcb: app //p' "$out")")/Purrtine.app"
   log="$(sed -n 's/^xcb: log //p' "$out")"
-  [[ -d "$app" ]] || fail "no CatCareCalendar.app next to the path xcb printed"
+  [[ -d "$app" ]] || fail "no Purrtine.app next to the path xcb printed"
   rm -rf "$LOCK_DIR/app"; mkdir -p "$LOCK_DIR/app"
   cp -R "$app" "$LOCK_DIR/app/"
   # DerivedData is shared by every worktree. A build that started after ours could have

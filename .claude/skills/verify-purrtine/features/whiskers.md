@@ -40,8 +40,8 @@ Preconditions:
   `task_assistant_cloud_consent_granted`; a missing key means "not asked yet".
 - **Cloud tier: can a verify build reach the cloud?** By default no. From the source:
   1. `GoogleService-Info.plist` is gitignored and `git ls-files` lists none, so a worktree build has none
-     (checked 2026-11-07: `CatCareCalendar/GoogleService-Info.plist` is absent in this worktree; the owner's
-     main checkout `Purrtine/CatCareCalendar/` has it). Without it `FirebaseBootstrapper.configureIfNeeded()`
+     (checked 2026-11-07: `Purrtine/GoogleService-Info.plist` is absent in this worktree; the owner's
+     main checkout `Purrtine/Purrtine/` has it). Without it `FirebaseBootstrapper.configureIfNeeded()`
      returns early, `ensureSignedInAnonymously()` throws `firebaseNotConfigured`, and the view model
      (`try? await cloudInterpreter.interpret…`) silently keeps the heuristic answer: the "No match" bubble.
   2. A no-flag launch is not blocked by `AppLaunchConfiguration.disablesCloudServices`: it is true only
@@ -55,7 +55,7 @@ Preconditions:
      on the first consented cloud call.
   **NEEDS OWNER YES** before the `whiskers-cloud` step, one yes per action, each can cost money or change
   the owner's Firebase project: (a) copy the plist from the main checkout into the worktree's
-  `CatCareCalendar/` before `vp build` (local file, never commit it; `vp doctor` then WARNs "the app
+  `Purrtine/` before `vp build` (local file, never commit it; `vp doctor` then WARNs "the app
   carries GoogleService-Info.plist", expected); (b) the owner registers one fixed App Check debug token in the
   console (App Check → the iOS app → Manage debug tokens) and keeps its value in the env var
   `PURRTINE_APPCHECK_DEBUG_TOKEN` or in a local file outside the repo (the owner's:
