@@ -41,6 +41,17 @@ final class CareTask: Hashable {
         self.createdAt = Date()
         self.updatedAt = Date()
     }
+
+    /// The SF Symbol to draw for this task. A task saved without a chosen icon stores the
+    /// placeholder `"circle"` (the add/edit forms and the model default), which renders as an
+    /// empty ring; those tasks show their category's icon instead.
+    var displayIconName: String {
+        let trimmed = iconName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == "circle" {
+            return category.iconName
+        }
+        return iconName
+    }
 }
 
 // MARK: - CareTask Schedule Model
@@ -165,7 +176,7 @@ nonisolated enum CareTaskCategory: String, CaseIterable, Codable, Hashable {
         case .exercise: return "figure.run"
         case .litter: return "tray.fill"
         case .vet: return "stethoscope.circle.fill"
-        case .general: return "circle.fill"
+        case .general: return "pawprint.fill"
         }
     }
     

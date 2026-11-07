@@ -231,6 +231,11 @@ private extension TaskAssistantChatView {
             }
             AccessibilityNotification.Announcement(last.text).post()
         }
+        .onChange(of: viewModel.pendingTaskDisambiguation?.message) { _, newMessage in
+            // The disambiguation question has no bubble, so announce it here.
+            guard let newMessage else { return }
+            AccessibilityNotification.Announcement(newMessage).post()
+        }
         .overlay(alignment: .bottomTrailing) {
             if !isAtBottom, !viewModel.messages.isEmpty {
                 Button {
@@ -451,7 +456,7 @@ private extension TaskAssistantChatView {
             viewModel.chooseSuggestion(suggestion)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: task.iconName)
+                Image(systemName: task.displayIconName)
                     .foregroundStyle(task.isOverdue ? .red : .blue)
                     .font(.title3)
 
@@ -494,6 +499,7 @@ private extension TaskAssistantChatView {
             Text(disambiguation.message)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
+                .accessibilityAddTraits(.isHeader)
 
             ForEach(disambiguation.choices) { choice in
                 taskChoiceRow(choice)
@@ -518,7 +524,7 @@ private extension TaskAssistantChatView {
             viewModel.chooseTaskChoice(choice)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: task.iconName)
+                Image(systemName: task.displayIconName)
                     .foregroundStyle(task.isOverdue ? .red : .blue)
                     .font(.title3)
 

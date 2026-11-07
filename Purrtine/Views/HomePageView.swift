@@ -307,7 +307,7 @@ struct HomeCurrentTaskRow: View {
   var body: some View {
     Button(action: action) {
       HStack(spacing: 12) {
-        Image(systemName: task.iconName)
+        Image(systemName: task.displayIconName)
           .foregroundColor(task.isOverdue ? .red : .blue)
           .font(.title3)
 

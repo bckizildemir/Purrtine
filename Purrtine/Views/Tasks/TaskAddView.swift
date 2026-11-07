@@ -19,7 +19,7 @@ struct TaskAddView: View {
     @State private var taskDescription: String = ""
     @State private var selectedCategory: CareTaskCategory = .general
     @State private var selectedPriority: CareTaskPriority = .medium
-    @State private var iconName: String = "circle"
+    @State private var iconName: String = CareTaskCategory.general.iconName
 
     // Cat Assignment
     @State private var selectedCats: Set<Cat> = []

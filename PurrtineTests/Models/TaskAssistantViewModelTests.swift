@@ -604,11 +604,13 @@ struct TaskAssistantViewModelTests {
     }
 
     @Test
-    func cancellingTaskDisambiguationRemovesTheQuestionItAnswered() throws {
+    func cancellingTaskDisambiguationKeepsEarlierMessages() throws {
         let fixture = try makeFixture()
         let sut = TaskAssistantViewModel()
         let choice = TaskAssistantTaskChoice(task: fixture.task, selectedCats: [])
-        sut.messages = [TaskAssistantMessage(role: .assistant, text: "Found a few matching tasks — which one?")]
+        // The card carries its own heading, so no assistant bubble backs it: the trailing
+        // assistant message belongs to an earlier turn and must survive a cancel.
+        sut.messages = [TaskAssistantMessage(role: .assistant, text: "Earlier answer")]
         sut.pendingTaskDisambiguation = TaskAssistantTaskDisambiguation(
             message: "Found a few matching tasks — which one?",
             choices: [choice],
@@ -619,7 +621,26 @@ struct TaskAssistantViewModelTests {
         sut.cancelPendingAction()
 
         #expect(sut.pendingTaskDisambiguation == nil)
-        #expect(sut.messages.isEmpty)
+        #expect(sut.messages.map(\.text) == ["Earlier answer"])
+    }
+
+    @Test
+    func ambiguousCompleteShowsTheQuestionOnlyOnTheCard() async throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let first = CareTask(title: "Water Refresh", category: .water)
+        let second = CareTask(title: "Water Refresh", category: .water)
+        container.mainContext.insert(first)
+        container.mainContext.insert(second)
+        try container.mainContext.save()
+
+        let sut = TaskAssistantViewModel()
+        sut.draftText = "complete Water Refresh"
+
+        await sut.sendCurrentDraft(tasks: [first, second])
+
+        let disambiguation = try #require(sut.pendingTaskDisambiguation)
+        #expect(sut.messages.map(\.role) == [.user])
+        #expect(sut.messages.contains { $0.text == disambiguation.message } == false)
     }
 
     @Test

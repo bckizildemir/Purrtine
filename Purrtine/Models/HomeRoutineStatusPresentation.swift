@@ -75,7 +75,7 @@ struct HomeRoutineStatusPresentation {
                         referenceDate: referenceDate,
                         calendar: calendar
                     ),
-                    iconName: task.iconName
+                    iconName: task.displayIconName
                 )
             }
     }
