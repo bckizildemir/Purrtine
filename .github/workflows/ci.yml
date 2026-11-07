@@ -11,8 +11,8 @@ name: CI
 # iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
 # pass in CI). It runs in parallel with `app` on every push to main and manual run. On a PR it runs
 # only when the PR changes CatCareCalendar/**, CatCareCalendarUITests/**, *.xcodeproj/** or
-# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. A UI test that
-# passes only on retry is listed in the job log.
+# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. The run step prints
+# a retry summary: which tests passed only on retry, and which failed without recovering (#97).
 on:
   push:
     branches: [main]
@@ -150,6 +150,9 @@ jobs:
           path: ~/Library/Caches/ci-spm
           key: spm-${{ hashFiles('CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
+      - name: Self-test the retry summary
+        run: Scripts/ui_test_retry_summary.sh --self-test
+
       - name: List simulator runtimes
         run: |
           xcrun simctl list runtimes
@@ -157,7 +160,7 @@ jobs:
 
       # The simulator is the first iPhone on the runtime that matches the simulator SDK of the
       # selected Xcode. If no runtime matches, the newest runtime by version number is used.
-      # A failed test runs once more. A test that passes only on retry stays in the log.
+      # A failed test runs once more; the retry summary below says which tests recovered.
       - name: Run UI tests
         run: |
           export SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
@@ -178,6 +181,7 @@ jobs:
           echo "Simulator: $UDID"
           xcrun simctl list devices available | grep "$UDID"
           mkdir -p TestResults
+          status=0
           xcodebuild test \
             -project CatCareCalendar.xcodeproj \
             -scheme CatCareCalendar \
@@ -192,10 +196,17 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
-            > ui-test.log 2>&1 || { grep -E 'error:|failed|Failing tests' ui-test.log | head -80; exit 1; }
-          echo "UI tests that failed at least once (passed on retry if the run is green):"
-          grep -iE "Test case .* failed" ui-test.log | sort -u || true
-          grep -E 'Executed|TEST SUCCEEDED' ui-test.log | tail -n 5
+            > ui-test.log 2>&1 || status=$?
+          if [[ "$status" -ne 0 ]]; then
+            echo "xcodebuild exited with $status."
+          fi
+          Scripts/ui_test_retry_summary.sh ui-test.log
+          if [[ "$status" -ne 0 ]]; then
+            echo "First errors and failures:"
+            grep -E 'error:|failed|Failing tests' ui-test.log | head -80 || true
+          fi
+          grep -E 'Executed|TEST SUCCEEDED' ui-test.log | tail -n 5 || true
+          exit "$status"
 
       - name: Upload UI test results and log
         if: always()
