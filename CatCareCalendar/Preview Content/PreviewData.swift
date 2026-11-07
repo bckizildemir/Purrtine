@@ -42,9 +42,9 @@ enum PreviewData {
         for scenario: PreviewScenario,
         referenceDate: Date = .now
     ) throws -> ModelContainer {
-        // The model list lives in `CatCareSchemaV1` so previews can never drift from
-        // the app's real store layout. See `AppLaunchBootstrapper.makeModelContainer`.
-        let schema = CatCareSchemaV1.schema
+        // The model list lives in `CatCareSchemaV2` (the current version) so previews can never
+        // drift from the app's real store layout. See `AppLaunchBootstrapper.makeModelContainer`.
+        let schema = CatCareSchemaV2.schema
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(
             for: schema,
