@@ -113,8 +113,9 @@ final class TaskAssistantViewModel {
             messages.append(TaskAssistantMessage(role: .assistant, text: clarification.message))
 
         case .taskDisambiguation(let disambiguation):
+            // No assistant bubble: the card carries the question as its heading. A bubble too
+            // repeated the text and pushed the user's own message out of view.
             pendingTaskDisambiguation = disambiguation
-            messages.append(TaskAssistantMessage(role: .assistant, text: disambiguation.message))
 
         case .intentSelection(let selection):
             pendingIntentSelection = selection
@@ -424,9 +425,9 @@ final class TaskAssistantViewModel {
         // The confirmation/clarification question was appended as the trailing assistant
         // message right when it was created — cancelling means it never gets a follow-up,
         // so drop it rather than leaving a stale question bubble in the chat.
+        // A task disambiguation has no bubble of its own, so it is not part of this check.
         let hadPendingAction = pendingConfirmation != nil
             || pendingClarification != nil
-            || pendingTaskDisambiguation != nil
             || pendingIntentSelection != nil
         if hadPendingAction, messages.last?.role == .assistant {
             messages.removeLast()

@@ -205,7 +205,7 @@ struct CompletionHistoryRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      Image(systemName: completion.task?.category.iconName ?? "circle.fill")
+      Image(systemName: completion.task?.displayIconName ?? CareTaskCategory.general.iconName)
         .foregroundColor(statusColor)
         .font(.title3)
         .frame(width: 32)
