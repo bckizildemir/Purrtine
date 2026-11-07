@@ -31,11 +31,11 @@ struct HomePageView: View {
         Theme.background.ignoresSafeArea()
         ScrollView {
           VStack(spacing: 20) {
-            currentTasksSection
             HomeRoutineStatusSectionView(
               rows: routineStatusRows,
               onTaskSelected: openRoutineHistory
             )
+            currentTasksSection
             quickActionsSection
           }
           .padding()
