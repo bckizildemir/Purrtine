@@ -48,12 +48,12 @@ asc builds list --app 6761329008 --limit 5
 asc versions list --app 6761329008 --platform IOS
 ```
 
-Compare that against the local `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `CatCareCalendar.xcodeproj/project.pbxproj`. If they disagree, tell the user the discrepancy and ask what version/build number they actually want rather than guessing — don't just increment the local number blindly.
+Compare that against the local `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `Purrtine.xcodeproj/project.pbxproj`. If they disagree, tell the user the discrepancy and ask what version/build number they actually want rather than guessing — don't just increment the local number blindly.
 
 Bump `CURRENT_PROJECT_VERSION` (all six occurrences in the pbxproj — one per build config per target) with something like:
 
 ```bash
-sed -i '' 's/CURRENT_PROJECT_VERSION = <old>;/CURRENT_PROJECT_VERSION = <new>;/g' CatCareCalendar.xcodeproj/project.pbxproj
+sed -i '' 's/CURRENT_PROJECT_VERSION = <old>;/CURRENT_PROJECT_VERSION = <new>;/g' Purrtine.xcodeproj/project.pbxproj
 ```
 
 Commit this alongside any other pending changes, merge to main per the user's answer in Step 1, then **ask before pushing** — pushing to `main` is shared state.
@@ -65,7 +65,7 @@ Release configuration compiles differently from Debug: anything gated `#if DEBUG
 Before archiving, check for this class of problem:
 
 ```bash
-grep -rl "PreviewHost(" CatCareCalendar --include="*.swift"
+grep -rl "PreviewHost(" Purrtine --include="*.swift"
 ```
 
 For each hit, confirm the `#Preview { ... }` block containing the call is wrapped in `#if DEBUG` / `#endif`. If a new one isn't, wrap it — the block is reliably the last thing in the file, ending at a lone `}` on its own line, so:
@@ -80,9 +80,9 @@ More generally: if the archive step fails with "cannot find X in scope" for a Re
 ## Step 5 — Archive and export
 
 ```bash
-xcodebuild -scheme CatCareCalendar -configuration Release \
+xcodebuild -scheme Purrtine -configuration Release \
   -destination 'generic/platform=iOS' \
-  -archivePath <scratch>/CatCareCalendar.xcarchive archive
+  -archivePath <scratch>/Purrtine.xcarchive archive
 ```
 
 Signing is Automatic (`CODE_SIGN_STYLE = Automatic`, team `A355549DDD`) so this should Just Work as long as the user is logged into Xcode with the right Apple ID. If it fails on signing, that's a "tell the user" moment, not something to route around.
@@ -98,14 +98,14 @@ Then export for App Store distribution:
 ```
 
 ```bash
-xcodebuild -exportArchive -archivePath <scratch>/CatCareCalendar.xcarchive \
+xcodebuild -exportArchive -archivePath <scratch>/Purrtine.xcarchive \
   -exportPath <scratch>/export -exportOptionsPlist <scratch>/ExportOptions.plist
 ```
 
 ## Step 6 — Upload (ask first — this is a real upload to Apple)
 
 ```bash
-asc builds upload --app 6761329008 --ipa <scratch>/export/CatCareCalendar.ipa --wait
+asc builds upload --app 6761329008 --ipa <scratch>/export/Purrtine.ipa --wait
 ```
 
 This can take several minutes server-side (upload + Apple's processing). It's fine to run this via a backgrounded Bash call and wait for the completion notification rather than polling — don't sleep-loop checking on it.
@@ -126,7 +126,7 @@ New builds need an encryption/export-compliance answer before they can be assign
 INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 ```
 
-Add it right after `GENERATE_INFOPLIST_FILE = YES;` in **both** the Debug and Release configs of the `CatCareCalendar` app target only (not the test targets — they don't ship). Commit and push this alongside the version bump.
+Add it right after `GENERATE_INFOPLIST_FILE = YES;` in **both** the Debug and Release configs of the `Purrtine` app target only (not the test targets — they don't ship). Commit and push this alongside the version bump.
 
 For a build that was already archived *before* this fix landed, you still need to set compliance for that specific build. Try the API first:
 

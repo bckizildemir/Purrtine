@@ -1,6 +1,6 @@
 # App Store Connect: App Privacy answers
 
-These answers match `CatCareCalendar/PrivacyInfo.xcprivacy`. Keep both in sync.
+These answers match `Purrtine/PrivacyInfo.xcprivacy`. Keep both in sync.
 
 ## Tracking
 

@@ -9,10 +9,10 @@ xcuserdata/
 # ones (see CLAUDE.md ### Dependencies). Git cannot re-include a file inside
 # an excluded directory with a single "!" line, so each parent directory on
 # the path has to be un-excluded too.
-!CatCareCalendar.xcodeproj/project.xcworkspace/
-!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/
-!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
-!CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+!Purrtine.xcodeproj/project.xcworkspace/
+!Purrtine.xcodeproj/project.xcworkspace/xcshareddata/
+!Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+!Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # SwiftPM
 .build/

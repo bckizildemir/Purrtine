@@ -38,7 +38,7 @@ Preconditions:
   and `onboarding.notification.skipButton`.
 - **Permission.** `vp shot onboarding-notifications`, then
   `vp tap --id onboarding.notification.enableButton`. The tree now holds the SpringBoard alert: a
-  `Sheet` labelled `“CatCareCalendar” Would Like to Send You Notifications` with buttons `Allow` and
+  `Sheet` labelled `“Purrtine” Would Like to Send You Notifications` with buttons `Allow` and
   `Don’t Allow` (curly apostrophe). `vp shot notification-alert`, then
   `vp tap --label Allow --element-type Button` (Turkish: `İzin Ver`). The step `Your First Cat` at `75%` shows.
 - **First cat.** `vp shot first-cat-empty`; `onboarding.firstCat.continueButton` is `[disabled]`.

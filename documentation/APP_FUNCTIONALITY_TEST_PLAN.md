@@ -6,7 +6,7 @@ Every agent must read this file before implementation and update it before endin
 
 ## Current Audit
 
-- App targets exist for `CatCareCalendar`, `CatCareCalendarTests`, and `CatCareCalendarUITests`.
+- App targets exist for `Purrtine`, `PurrtineTests`, and `PurrtineUITests`.
 - Simulator checks: see the Verify trial line in `CLAUDE.md` and the `verify-purrtine` skill.
 - Existing coverage is meaningful: Swift Testing unit/integration tests cover task derivation, task actions, notification actions, launch seeding, routing, settings presentation, history presentation, search, and home routine presentation.
 - Existing UI coverage uses XCTest, which is correct because Swift Testing does not support UI tests.
@@ -16,7 +16,7 @@ Every agent must read this file before implementation and update it before endin
 ## Swift Testing Rules
 
 - Unit and integration tests must use Swift Testing: `import Testing`, structs for suites, `@Test`, `#expect`, and `#require`.
-- UI tests must remain XCTest-based in `CatCareCalendarUITests`.
+- UI tests must remain XCTest-based in `PurrtineUITests`.
 - Do not use `XCTestCase`, `XCTAssert`, `setUp()`, or `tearDown()` in unit/integration tests.
 - Tests must be isolated, repeatable, and safe under Swift Testing's parallel execution model.
 - Prefer parameterized tests for repeated input/output cases.
@@ -52,7 +52,7 @@ Locally, run only the tests you added or changed plus the suites of the files yo
 (owner rule, 2026-10-11; see "Local tests: only what changed" in `CLAUDE.md`):
 
 ```sh
-Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/<Suite>
+Scripts/xcb.sh test --scheme PurrtineTests --only PurrtineTests/<Suite>
 ```
 
 CI (`.github/workflows/ci.yml`) runs the full unit suite on each PR, and its result is the gate. CI skips the UI

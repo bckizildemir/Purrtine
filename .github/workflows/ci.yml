@@ -5,12 +5,12 @@ name: CI
 # A run whose jobs all skip still shows as "success": check the job conclusions,
 # not the run's. The repo is public, so the jobs run and their result is the gate.
 # If the repo is private again, CI proves nothing. Then test locally with only what
-# changed: `Scripts/xcb.sh test --scheme CatCareCalendarTests --only <Suite>` for the
+# changed: `Scripts/xcb.sh test --scheme PurrtineTests --only <Suite>` for the
 # changed tests and the suites of the changed files, and `cd functions && npm test`.
 # The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests, on the
 # iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
 # pass in CI). It runs in parallel with `app` on every push to main and manual run. On a PR it runs
-# only when the PR changes CatCareCalendar/**, CatCareCalendarUITests/**, *.xcodeproj/** or
+# only when the PR changes Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or
 # .github/workflows/** (the `changes` job decides); a docs-only PR skips it. A UI test that
 # passes only on retry is listed in the job log.
 on:
@@ -50,7 +50,7 @@ jobs:
             exit 0
           fi
           git diff --name-only "$BASE_SHA"...HEAD | tee changed.txt
-          if grep -qE '^(CatCareCalendar/|CatCareCalendarUITests/|[^/]+\.xcodeproj/|\.github/workflows/)' changed.txt; then
+          if grep -qE '^(Purrtine/|PurrtineUITests/|[^/]+\.xcodeproj/|\.github/workflows/)' changed.txt; then
             echo "ui=true" >> "$GITHUB_OUTPUT"
           else
             echo "ui=false" >> "$GITHUB_OUTPUT"
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/ci-spm
-          key: spm-${{ hashFiles('CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ hashFiles('Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       # No GoogleService-Info.plist in the repo: the app builds and runs with the cloud tier off.
       - name: Run unit tests with coverage
@@ -84,12 +84,12 @@ jobs:
           echo "Simulator: $UDID"
           mkdir -p TestResults
           xcodebuild test \
-            -project CatCareCalendar.xcodeproj \
-            -scheme CatCareCalendar \
-            -testPlan CatCareCalendar \
+            -project Purrtine.xcodeproj \
+            -scheme Purrtine \
+            -testPlan Purrtine \
             -destination "id=$UDID" \
-            -skip-testing:CatCareCalendarUITests \
-            -resultBundlePath TestResults/CatCareCalendar.xcresult \
+            -skip-testing:PurrtineUITests \
+            -resultBundlePath TestResults/Purrtine.xcresult \
             -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
             -skipPackagePluginValidation \
             -skipMacroValidation \
@@ -100,7 +100,7 @@ jobs:
       - name: Enforce app coverage floor
         run: |
           bash Scripts/check_coverage.sh \
-            TestResults/CatCareCalendar.xcresult \
+            TestResults/Purrtine.xcresult \
             "${MINIMUM_LINE_COVERAGE}"
 
       # The archive for TestFlight builds Release for a device. Debug-only code (#if DEBUG) that
@@ -108,8 +108,8 @@ jobs:
       - name: Build Release for device
         run: |
           xcodebuild build \
-            -project CatCareCalendar.xcodeproj \
-            -scheme CatCareCalendar \
+            -project Purrtine.xcodeproj \
+            -scheme Purrtine \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
@@ -125,7 +125,7 @@ jobs:
         with:
           name: ci-results
           path: |
-            TestResults/CatCareCalendar.xcresult
+            TestResults/Purrtine.xcresult
             test.log
             release.log
           if-no-files-found: ignore
@@ -148,7 +148,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/ci-spm
-          key: spm-${{ hashFiles('CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ hashFiles('Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: List simulator runtimes
         run: |
@@ -179,15 +179,15 @@ jobs:
           xcrun simctl list devices available | grep "$UDID"
           mkdir -p TestResults
           xcodebuild test \
-            -project CatCareCalendar.xcodeproj \
-            -scheme CatCareCalendar \
-            -testPlan CatCareCalendar \
+            -project Purrtine.xcodeproj \
+            -scheme Purrtine \
+            -testPlan Purrtine \
             -destination "id=$UDID" \
-            -only-testing:CatCareCalendarUITests \
+            -only-testing:PurrtineUITests \
             -retry-tests-on-failure \
             -test-iterations 2 \
             -enableCodeCoverage NO \
-            -resultBundlePath TestResults/CatCareCalendarUITests.xcresult \
+            -resultBundlePath TestResults/PurrtineUITests.xcresult \
             -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
             -skipPackagePluginValidation \
             -skipMacroValidation \
@@ -203,7 +203,7 @@ jobs:
         with:
           name: ui-test-results
           path: |
-            TestResults/CatCareCalendarUITests.xcresult
+            TestResults/PurrtineUITests.xcresult
             ui-test.log
           retention-days: 14
           if-no-files-found: ignore
