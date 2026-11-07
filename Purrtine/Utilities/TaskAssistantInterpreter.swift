@@ -378,15 +378,24 @@ struct TaskAssistantInterpreter {
 
     /// Whether the text contains a completion verb ("fed", "done", "cleaned", …) tied to any
     /// candidate task's category — evidence the user meant `.complete` even without an
-    /// explicit open/postpone keyword.
+    /// explicit open/postpone keyword. The generic verbs ("complete", "done", "tamamla", …) count
+    /// for every category: they only pick `.complete` as the command, and ranking still needs the
+    /// text to name a task before anything matches.
     private func hasCompletionVerbEvidence(in analysis: QueryAnalysis, tasks: [CareTask]) -> Bool {
         let categories = Set(tasks.map(\.category)).subtracting([.general])
 
-        return categories.contains { category in
+        let hasCategoryVerb = categories.contains { category in
             let verbTokens = taskVerbAliases(for: category).flatMap(tokenize)
             let expandedVerbTokens = expand(tokens: verbTokens, language: analysis.dominantLanguage)
             return analysis.expandedTokens.isDisjoint(with: expandedVerbTokens) == false
         }
+        if hasCategoryVerb { return true }
+
+        // "done" is a helper word, so it never reaches `significantTokens`; read the raw tokens.
+        let genericVerbTokens = taskVerbAliases(for: .general).flatMap(tokenize)
+        let expandedGenericTokens = expand(tokens: genericVerbTokens, language: analysis.dominantLanguage)
+        let queryTokens = expand(tokens: tokenize(analysis.normalizedText), language: analysis.dominantLanguage)
+        return queryTokens.isDisjoint(with: expandedGenericTokens) == false
     }
 
     private func detectDuration(in normalizedText: String) -> Int? {

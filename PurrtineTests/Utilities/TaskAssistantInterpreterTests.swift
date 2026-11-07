@@ -204,6 +204,67 @@ struct TaskAssistantInterpreterTests {
         assertNoMatch(fixture.interpreter.interpret(text: "complete it", tasks: fixture.tasks))
     }
 
+    @Test(arguments: ["Complete Brush coat", "Brush coat done", "Complete Coat grooming", "Coat grooming done"])
+    func genericCompletionWordCompletesNamedGroomingTask(text: String) throws {
+        let fixture = try makeFixture()
+        let brush = try insertTask(title: "Brush coat", category: .grooming, into: fixture.container)
+        let groom = try insertTask(title: "Coat grooming", category: .grooming, into: fixture.container)
+        let grooming = text.contains("Brush") ? brush : groom
+
+        let result = fixture.interpreter.interpret(text: text, tasks: fixture.tasks + [grooming])
+
+        assertConfirmation(result, expectedTitle: grooming.title) { action in
+            guard case .complete(let task, _, _, _) = action else {
+                Issue.record("Expected a completion action.")
+                return
+            }
+
+            #expect(task.title == grooming.title)
+        }
+    }
+
+    @Test
+    func turkishGenericCompletionWordCompletesNamedNonGeneralTask() throws {
+        let fixture = try makeFixture()
+        let grooming = try insertTask(title: "Fırçalama", category: .grooming, into: fixture.container)
+
+        let result = fixture.interpreter.interpret(text: "Fırçalama tamamla", tasks: fixture.tasks + [grooming])
+
+        assertConfirmation(result, expectedTitle: "Fırçalama") { action in
+            guard case .complete(let task, _, _, _) = action else {
+                Issue.record("Expected a completion action.")
+                return
+            }
+
+            #expect(task.title == "Fırçalama")
+        }
+    }
+
+    @Test
+    func turkishVerbAliasStillCompletesGroomingTask() throws {
+        let fixture = try makeFixture()
+        let grooming = try insertTask(title: "Tarak", category: .grooming, into: fixture.container)
+
+        let result = fixture.interpreter.interpret(text: "Tarak tamamla", tasks: fixture.tasks + [grooming])
+
+        assertConfirmation(result, expectedTitle: "Tarak") { action in
+            guard case .complete = action else {
+                Issue.record("Expected a completion action.")
+                return
+            }
+        }
+    }
+
+    @Test
+    func genericCompletionWordAloneDoesNotCompleteAnyTask() throws {
+        let fixture = try makeFixture()
+        let grooming = try insertTask(title: "Brush coat", category: .grooming, into: fixture.container)
+        let tasks = fixture.tasks + [grooming]
+
+        assertNoMatch(fixture.interpreter.interpret(text: "done", tasks: tasks))
+        assertNoMatch(fixture.interpreter.interpret(text: "tamamla", tasks: tasks))
+    }
+
     @Test
     func genericPostponeWithoutEvidenceReturnsNoMatch() throws {
         let fixture = try makeFixture()
@@ -319,6 +380,17 @@ struct TaskAssistantInterpreterTests {
             tasks: [overdueFeeding, todayFeeding, litterTask, waterTask],
             interpreter: TaskAssistantInterpreter()
         )
+    }
+
+    private func insertTask(
+        title: String,
+        category: CareTaskCategory,
+        into container: ModelContainer
+    ) throws -> CareTask {
+        let task = CareTask(title: title, category: category)
+        container.mainContext.insert(task)
+        try container.mainContext.save()
+        return task
     }
 
     private func assertConfirmation(
