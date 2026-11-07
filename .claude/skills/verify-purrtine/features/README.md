@@ -11,6 +11,12 @@ is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh
   exits 0. Every command below runs from the repo root; `vp` means
   `.claude/skills/verify-purrtine/scripts/vp.sh`.
 - `UDID` is the run's device: `UDID=$(cat /tmp/verify-purrtine.lock/udid)`.
+- Two runs at once (an English and a Turkish pass): give each its own lock folder and use the same prefix on
+  every `vp` call of that run: `export VP_LOCK_DIR=/tmp/verify-purrtine-en.lock` (and `-tr.lock`). At most
+  `SLIM_SIM_MAX` (2) verify clones exist on the Mac; a third `start` waits for a slot. Without the override,
+  a second `start` waits silently for the first run's lock (up to 3600 s); `vp status` or
+  `$VP_LOCK_DIR/owner` shows who holds it. Replace `/tmp/verify-purrtine.lock` in every path of these recipes
+  with your `$VP_LOCK_DIR`.
 - The app was launched with no arguments. A fresh device has no data, so the app opens on the
   onboarding. Every other feature needs [Onboarding](./onboarding.md) done first, with a cat and
   its starter tasks — data comes only from user screens, never from More → Developer Tools.
@@ -33,6 +39,12 @@ is `scripts/vp.sh` plus `axe` (or xcodebuildmcp UI tools) on the run's own fresh
 - After each action, read `vp ui` and check the expected element before the next action.
 - Type with `axe type 'text' --udid $UDID` after a tap on the field puts the focus there. Type real
   dictionary words: the keyboard's autocorrect can change a made-up word on save (see add-cat.md).
+- `vp tap --id X` fails when two elements share the id (for example `taskAssistant.input`, the consent
+  buttons): add `--element-type`, or use the label.
+- `vp tap` can report "screen changed" for a tap that did nothing (keyboard, checkboxes, Routine Status
+  rows). Read the value or the screen yourself after every such tap.
+- `axe type` goes through the device keyboard, so typed text is auto-capitalised and, on a Turkish device,
+  `i` becomes `ı` ("Milo" saved as "Mılo"). Avoid `i` in typed text in a Turkish pass ("Luna" is fine).
 - A tab keeps its navigation stack. Before you tap a shortcut on a tab you used earlier, check `vp ui`
   and tap `BackButton` until the tab's root shows.
 
@@ -85,6 +97,9 @@ behavior, then exactly four H2 sections in this order: `Sub-features`, `How to g
 - [Cat photo](./cat-photo.md) — add, change and remove a cat's photo with the real system photo picker.
   Not yet proved (written from source 2026-11-07).
 
+Home order (PR #105): Routine Status comes first, then Today & Overdue, then Quick Actions. Recipes that
+look for a task under "Today & Overdue" or Routine Status must not assume the old order.
+
 A maintenance pass drives all of them on one device, onboarding first, then in this order: add-cat,
 add-task, complete-task, history, whiskers, reminder-nudge, notification-tap, settings, cat-photo. The
 Whiskers cloud step needs the owner's yes (see `whiskers.md`) and at most 10 cloud requests per pass.
@@ -106,7 +121,12 @@ the least:
 - [Settings](./settings.md): every label, the Support footer, the About card.
 - [Reminder nudge](./reminder-nudge.md): the notification texts "Hatırlatmalar azalıyor" and the body.
 - [Notification tap](./notification-tap.md): the banner text in Turkish.
-- [History](./history.md): the search field label `Ara` and the scoped header text.
+- [History](./history.md): the search field (placeholder "Search history | Geçmişte ara") and the scoped header text.
+
+Turkish text is now the informal "sen" form everywhere (PR #107): "Kedini tanıyalım", "İlk Kedin",
+"Hoş Geldin", "Bakıcıları yönet". Old "siz" strings ("Kedinizi", "istediğiniz") in a screenshot mean the
+build is older than #107. Typed Turkish text: see the `i` note under Driving conventions. A Turkish pass found
+no cut-off text, no raw keys and Turkish date formats ("7 Kas 2026") on 2026-11-07.
 
 The other recipes follow when time allows; a Turkish pass of add-cat, add-task and complete-task already
 passed in part on 2026-10-14 (welcome screen only). Cloud requests of a Turkish pass count against the

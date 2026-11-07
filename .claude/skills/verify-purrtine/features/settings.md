@@ -13,7 +13,7 @@ the app. Not yet proved (written from source 2026-11-07).
   Theme (System, Light, Dark; `settings.appearance.picker`), "Show Completed Tasks".
 - `settings-whiskers` Settings → "Whiskers" row (`settings.taskAssistant.row`): the switch
   "AI-Assisted Understanding | Yapay Zeka Destekli Anlama" (consent for the cloud; see `whiskers.md`).
-- `settings-caregivers` Settings → "Caregivers | Bakıcılar" (`settings.caregivers.row`).
+- `settings-caregivers` Settings → the row "Manage caregivers | Bakıcıları yönet" (`settings.caregivers.row`; since #107 the old "Manage family members and caregivers" is shortened, with no sharing claim).
 - `settings-haptics` More → "Haptic Feedback | Dokunsal Geri Bildirim" switch.
 - `support-links` More → "Support | Destek" → Rate App, Give Feedback, Privacy Policy, Terms of Service.
 - `support-about` the About card: app name, "App Version 1.0 (1)"-style line, description.
@@ -45,14 +45,15 @@ Steps:
   (segments System, Light, Dark; Turkish Sistem, Açık, Koyu). Tap `Dark`: the app turns dark at once
   (shot). Tap `System` again to restore. Switch "Show Completed Tasks" is a save-like toggle: use
   `vp tap --once`. Second view: Tasks tab filter chip `Completed` still shows; assert per `complete-task.md`.
-- **Whiskers toggle.** `vp tap --id settings.taskAssistant.row`; the Switch "AI-Assisted Understanding".
+- **Whiskers toggle.** `vp tap --id settings.taskAssistant.row`; the CheckBox "AI-Assisted Understanding".
   Read its value (0/1) in `vp ui`; toggle once with `vp tap --once --label "AI-Assisted Understanding"
-  --element-type Switch`; the value flips. Footer text: "When Whiskers can't understand a request using
-  what's already on your device, it can ask an AI service for help. Requests are never stored or used to
-  train AI models." Second view: reopen the Whiskers tab chat (see `whiskers.md`): the consent sheet shows
+  --element-type CheckBox`; the value flips (it is a CheckBox, not a Switch; see the toggle gotcha below). Footer text: "When Whiskers can't understand a request using
+  what's already on your device, it can ask an AI service for help. Purrtine keeps no copy of the request.
+  The service, Groq, may keep a request for up to 30 days to fix errors or stop abuse, and does not use it to
+  train AI models." (PR #107 replaced "never stored") Second view: reopen the Whiskers tab chat (see `whiskers.md`): the consent sheet shows
   only while no answer exists; a toggled answer counts as answered.
 - **Support screen.** Back out, `vp tap --id settings.support.row`. The tree holds the About card
-  ("CatCareCalendar", "App Version <v> (<build>)", the description) and four link rows with ids:
+  ("Purrtine", "App Version <v> (<build>)", the description) and four link rows with ids:
   `settings.rateApp` ("Rate App | Uygulamayı Değerlendir"), `settings.giveFeedback` ("Give Feedback | Geri
   Bildirim Ver"), `settings.privacyPolicy` ("Privacy Policy | Gizlilik Politikası"),
   `settings.termsOfService` ("Terms of Service | Kullanım Koşulları"). Assert Rate App is present (PR #101:
@@ -61,7 +62,7 @@ Steps:
   - Privacy: `https://bckizildemir.github.io/catcarecalendar-legal/privacy/`
   - Terms: `https://bckizildemir.github.io/catcarecalendar-legal/terms/`
   - Rate App: `https://apps.apple.com/app/id6761329008?action=write-review`
-  - Feedback: `mailto:bcankizildemir@gmail.com?subject=CatCareCalendar%20Support` (unless the Info.plist
+  - Feedback: `mailto:bcankizildemir@gmail.com?subject=Purrtine%20Support` (unless the Info.plist
     sets `SUPPORT_EMAIL`).
   Prove the target from the destination app, not from the app's source: tap a link with
   `vp tap --once --id settings.privacyPolicy`. The app goes to the background and Safari comes up. `vp tree
@@ -77,7 +78,7 @@ Steps:
 - **Notifications row.** Back to Settings, `vp tap --id settings.notifications.row` (`notificationSettings.view`),
   the permission card `notificationSettings.permissionCard` shows only while permission is not authorized;
   see `reminder-nudge.md` for the Enable switch.
-- **Haptic switch.** Back on More, `vp tap --once --label "Haptic Feedback" --element-type Switch`. Haptics are
+- **Haptic switch.** Back on More, `vp tap --once --label "Haptic Feedback" --element-type CheckBox`. Haptics are
   not observable; assert the value flips and restore it.
 - **Record.** `echo "feature=settings entry=more-settings result=pass" >> <evidence>/run.txt`, and one
   line per link tested.
@@ -94,5 +95,19 @@ Steps:
 - Settings sub-rows without ids (Task & Display, the switches) are matched by label with
   `--element-type`; labels in Turkish are listed above.
 - The Support screen title is "Support | Destek"; the Support row footer reads "Send questions or feedback
-  anytime. | Sorularınızı ve geri bildirimlerinizi her zaman iletebilirsiniz."
+  anytime. | Sorularını ve geri bildirimlerini her zaman iletebilirsin." ("sen" form since #107)
 - Run this recipe again in Turkish (`vp start --lang tr`); the About card and the footers are localized.
+- Measured 2026-11-07: Haptic Feedback, Show Completed Tasks, AI-Assisted Understanding and Enable Notifications
+  are `CheckBox` elements, not Switch. `vp tap` on them often did nothing (and still said "screen changed").
+  What worked about every second try: `axe tap --label "<name>" --element-type CheckBox --pre-delay 0.8
+  --post-delay 2`, or `axe tap -x 328 -y <row y>`. Read the value after every tap and retry; see
+  `reminder-nudge.md` for the fallback of writing the defaults.
+- The Task & Display row label is "Task & Display, List". Theme is three `RadioButton` elements (System, Light,
+  Dark) inside a TabGroup with id `settings.appearance.picker`, not a segmented control.
+- The Support links are `Link` elements, not Buttons. The version line reads "App Version | Uygulama Sürümü 1.0 (13)".
+- Rate App opened Safari with a blank address on the slim device; Give Feedback left the app on screen and opened
+  no Mail; Safari's address field shows only the host. Report these as "link tapped", not as verified targets.
+- Turkish strings changed by #107: the Settings footers now read "Uygulamanın görünümünü seç…", "Tamamlanan görevleri
+  … dilediğin zaman gizleyebilirsin", and the About description ends "…kedilerinin bakım rutinini düzenli tutmana
+  yardımcı olur" (it no longer promises health and happiness; the English one ends "helps you keep your cats' care
+  routine on track").

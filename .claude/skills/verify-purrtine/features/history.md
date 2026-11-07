@@ -35,7 +35,8 @@ Preconditions:
 Steps:
 
 - **Empty state first.** Before any completion: More → `settings.shortcut.history`. The tree holds
-  `history.view` and `history.state.noCompletions`; the card value on More reads 0. `vp shot history-empty`.
+  `history.view` and the text "No statistics yet" (`history.state.noCompletions` and the other state ids do
+  not exist on the device); the card value on More reads 0. `vp shot history-empty`.
   (A device with no task at all shows `history.state.noTasks`; a fresh run cannot be in that state after
   onboarding with starter tasks.)
 - **Complete.** Per `complete-task.md`: Tasks tab, `vp tap --once --id 'taskRow.complete.Daily Feeding'`,
@@ -44,12 +45,15 @@ Steps:
   holds `history.row.Daily Feeding` and `history.row.Refresh Water`; the one completed last is first
   (compare their frames' y). Each row reads title, today's date, the time and `Miso`. The More card now
   reads 2. `vp shot history-list`, `vp tree history-list`.
-- **Search.** The search field is in the navigation bar (no id; element type `SearchField`, label
-  `Search`, Turkish `Ara`; read `vp ui`). `vp tap --label Search --element-type SearchField`, then
-  `axe type 'Water' --udid $UDID`: only `history.row.Refresh Water` stays. Type a word that matches
+- **Search.** The search field is hidden until you pull the list down (`axe swipe --start-x 195 --start-y 300
+  --end-x 195 --end-y 600`). It has the placeholder "Search history | Geçmişte ara" (PR #107; before it had
+  none). axe reads it as a TextField with no label whose value is the placeholder, so
+  `--label Search --element-type SearchField` finds nothing: tap it by coordinates (about `axe tap -x 195 -y 123`),
+  then `axe type 'Water' --udid $UDID`: only `history.row.Refresh Water` stays. Type a word that matches
   nothing (`zzz`): `history.state.searchEmpty` shows. Search by cat name (`Miso`): both rows return. Clear
-  the field.
-- **Scope.** Home tab, `vp tap --id 'home.routineStatus.row.Daily Feeding'`. History opens on the More tab
+  with the button "Clear text" (`axe key 42`, backspace, did not delete). Do not tap the keyboard's emoji key.
+- **Scope.** Home tab, `vp tap --id 'home.routineStatus.row.Daily Feeding'` (a tap by id or on the row's centre did
+  nothing; a coordinate tap at the left of the row, x=90 and the row's y from `vp ui`, opened it). History opens on the More tab
   scoped: header text `Daily Feeding`, `1 completions | 1 tamamlanma` (the string has no singular form), the button "Show All". Only `history.row.Daily Feeding` shows.
   `vp tap --label "Show All"`: both rows show. `vp shot history-scoped`, `vp tree history-scoped`.
   A scoped task without completions shows `history.state.taskNoCompletions` ("No completions for this
@@ -67,3 +71,9 @@ Steps:
 - A task completed several times shows several rows with the same identifier `history.row.<title>`; count
   rows by frame, not by id.
 - The scope survives until "Show All" is tapped; opening History from the More card resets it.
+- Measured 2026-11-07: `history.row.<title>` is set on every text of a row, not on one element. The Today list
+  in Tasks orders the newest-created task first (Brush coat above Daily Feeding): read row positions from
+  `vp ui` each time.
+- Since PR #106 (schema V2) a History row keeps its cat even when the cat's task is gone; before it, a row could
+  show no cat. A run on a build older than #106 may show a row with no cat.
+- Turkish: the search placeholder reads "Geçmişte ara"; on 2026-11-07 the Turkish pass saw the older "Arayın".

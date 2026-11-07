@@ -59,8 +59,8 @@ Steps:
   screen's avatar has the label "No photo | Fotoğraf yok" (record it: this is the "before").
   `vp shot cat-before`. Then `vp tap --id catDetail.editButton`. The sheet shows `catForm.photoMenu`
   with label "Add Photo", `catForm.saveButton` is `[disabled]` (edit mode saves only after a change).
-- **Open the picker.** `vp tap --id catForm.photoMenu`. A menu shows. `vp ui` lists the menu button
-  "Photo Library | Fotoğraf Arşivi" (the Camera item is absent). `vp tap --label "Photo Library"` (Turkish
+- **Open the picker.** `vp tap --id catForm.photoMenu`. A menu shows. `vp ui` lists the menu items Camera, Photo Library
+  | Fotoğraf Arşivi and (with a photo) Remove Photo. The Camera item IS present (measured 2026-11-07). `vp tap --label "Photo Library"` (Turkish
   `Fotoğraf Arşivi`). The system picker slides up in a different process.
 - **See the picker.** Wait about 2 s, `vp ui` (it may hold only the app's own elements or a few picker
   elements; if it lists the picture cells with labels, tap those by label and skip the coordinates). Then
@@ -70,10 +70,10 @@ Steps:
   width in points`. The pixel width: `sips -g pixelWidth <png>`; the point width: the width of the first
   (Application) frame in `vp ui` (390 on an iPhone 12, so scale 3 and the PNG is 1170 wide). Then
   `axe tap -x $((px/scale)) -y $((py/scale)) --tap-style physical --udid $UDID` (use real division; the
-  values are integers or decimals, both work). The picker sorts oldest first, so the newest picture is
-  usually the last cell, at the bottom right of the visible grid; do not rely on that, read the shot.
+  values are integers or decimals, both work). Measured 2026-11-07: the picker lists the NEWEST picture first (blue top left, red next; iPhone 12 centres
+  about red (196,362), blue (64,362) points). Read the shot anyway, do not store these.
   Tap each picture only once.
-- **After the tap.** A single-pick picker dismisses itself and the form returns. If the picker is still up
+- **After the tap.** A single-pick picker dismisses itself on one tap and the form returns (measured: no "Add" step). If the picker is still up
   (an "Add" button at the top right, a check on the cell), `vp shot picker-selected`, find "Add" in the shot
   and tap its centre the same way. Then wait: a progress circle shows over the photo for a moment
   (label "Loading photo | Fotoğraf yükleniyor"). Poll `vp ui` until it is gone; Save is `[disabled]` while
@@ -115,3 +115,4 @@ Steps:
   Another (`catForm.photoProblem.tryAgainButton`, `catForm.photoProblem.chooseAnotherButton`); a photo
   that cannot be used shows "This photo can't be used. | Bu fotoğraf kullanılamıyor."
 - Autocorrect applies to the Add-cat name field too; type a real word.
+- Measured 2026-11-07: while the picker is up, `vp ui` shows the edit form's tree behind it, not the picker's cells.

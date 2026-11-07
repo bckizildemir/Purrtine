@@ -37,7 +37,7 @@ Delivering a reminder, two ways:
   `{"aps":{"alert":{"title":"Care task reminder","body":"Refresh Water"},"category":"TASK_REMINDER"},"taskId":"<uuid>"}`
   and run `xcrun simctl push "$UDID" com.berkecankizildemir.CatCareCalendar /tmp/vp-push.json`. A remote
   payload's custom top-level keys arrive in `userInfo`, so `userInfo["taskId"]` is set; this is the only
-  field the tap handler reads. Not proved: that the slim profile lets `simctl push` through.
+  field the tap handler reads. Proved 2026-11-07: `simctl push` with `taskId` works on the slim device.
 - **B: a real local reminder due soon.** Tasks "+" → Custom Task (see `add-task.md`): title `Soon task`,
   pick the cat, Repeat Once, switch Time on and set the time 2 to 3 minutes ahead (wheel picker; the
   Time row's subtitle shows the chosen time, assert it), reminder "On time". Save with `taskAdd.saveButton`
@@ -49,7 +49,7 @@ Steps:
 - **Banner.** Within 5 s of delivery read `vp ui`: a SpringBoard element with the title/body text shows
   (title "Care task reminder | Bakım görevi hatırlatması", with a category emoji for a real local
   reminder; body is the task title and cat names). `vp shot reminder-banner`. If `vp ui` shows no banner,
-  locate it in the screenshot (top of the screen) and tap its centre with
+  the banner is not in the axe tree (measured 2026-11-07): tap its centre, about (140,72) points, within 2 s of the push or it is gone, with
   `axe tap -x X -y Y --tap-style physical --udid $UDID` (points = pixels / scale, see `cat-photo.md`).
 - **Start from a non-Tasks screen** so the jump is visible: stay on Home. `vp tap --label Home --element-type RadioButton`.
 - **Tap.** `vp tap --once --label "<banner label>"` or the coordinate tap. Assert, in `vp ui`: the Tasks
@@ -76,3 +76,8 @@ Steps:
 - Notification actions (long-press the banner, "Complete") hit `NotificationActionCoordinator` and show
   as a History row; the expanded banner may not be readable by axe. Skip unless the change is about it.
 - Never use More → Developer Tools "Send Test Notification" (Debug-only, forbidden by the skill rules).
+- Measured 2026-11-07 (English and Turkish): the pending store has no title-to-id order, so the first task id
+  from the store opened "Günlük Besleme", not the task you wanted. Map the title to its id first (decode the request
+  that holds the title) before you push.
+- `/tmp/vp-dump.py`-style decoding: the request's `TriggerDateComponents` holds `NS.year`, `NS.month`, `NS.day`,
+  `NS.hour`, `NS.minute`.

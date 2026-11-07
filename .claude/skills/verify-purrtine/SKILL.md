@@ -35,7 +35,8 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
   project's pristine SimSlim template `iPhone 12 slim tmpl (Purrtine)` (profile
   `Scripts/simslim-profile.json`: everything off except `photos` and `siri`), so each run starts
   as a brand-new user: no app, no data. Never boot the template, install on it, or touch any other
-  simulator. One run per project at a time (the verify lock `/tmp/verify-purrtine.lock`); a TriQ
+  simulator. One run per lock folder: `/tmp/verify-purrtine.lock` by default. For two runs at once (English and Turkish),
+  set `VP_LOCK_DIR=/tmp/verify-purrtine-<name>.lock` on every `vp` call of each run (see "Parallel runs"). A TriQ
   run can drive at the same time. Machine-wide at most `SLIM_SIM_MAX` verify clones exist
   (default 2, shared with TriQ): `$V start` waits for a free slot.
 
@@ -131,6 +132,23 @@ axe tap -x 195 -y 420 --tap-style physical --udid $UDID   # only when an element
 
 The recipes are in `features/` — read `features/README.md`, then the feature's file. Data comes only
 from the journeys there: [Onboarding](features/onboarding.md) first, then Add Cat and Add Task.
+
+## Parallel runs
+
+Two verify runs of Purrtine can drive at once (for example an English and a Turkish pass; the check of
+PR #105 ran on a second slim simulator beside a Turkish pass on 2026-11-07, and neither blocked the other):
+
+```bash
+export VP_LOCK_DIR=/tmp/verify-purrtine-en.lock   # the other shell: /tmp/verify-purrtine-tr.lock
+$V start && $V build && $V install && $V launch
+```
+
+- Every `$V` call of a run needs the same `VP_LOCK_DIR` (a new shell does not keep it), and every
+  `/tmp/verify-purrtine.lock/...` path in these docs becomes `$VP_LOCK_DIR/...`.
+- At most `SLIM_SIM_MAX` (2) verify clones exist machine-wide, shared with TriQ; an extra `start` waits for a
+  slot. `start` prints nothing while it waits and is moved to the background after 180 s; read
+  `$V status` or `$VP_LOCK_DIR/owner` to see the holder.
+- `build` still shares the one xcb build lock, so the second build waits for the first.
 
 ## Evidence
 
@@ -244,6 +262,14 @@ and the same screen size as the recorded runs. Measure again before you change t
 - **An optional hold blocks every build on the Mac.** Keep a held drive short. The watcher lets go after
   `VP_HOLD_MAX` seconds (default 1800) even if the run crashed; a crashed run's verify lock then goes
   stale after `VP_STALE_MINUTES` (45) more.
+- **A frozen device.** After a SpringBoard lock-screen glitch (it appeared once after about 15 minutes) the
+  device stopped taking touches and `$V revive` did nothing. `xcrun simctl shutdown <UDID>` (that run's UDID),
+  then `$V revive`, fixed it.
+- **Wrong simulator in xcodebuildmcp.** `snapshot_ui` with no `simulatorId` read another simulator on
+  2026-11-07. Pass the run's UDID, or use `$V ui`.
+- **Unknown skill.** A skill added to a worktree after the session started cannot be loaded with the Skill
+  tool ("Unknown skill: verify-purrtine"). Read `SKILL.md` directly. A `sleep N; cat` wait is blocked by the
+  harness: use a background until-loop.
 - **A system-sheet tap can report a change that did not happen.** On 2026-10-27 `$V tap --label Allow`
   on the notification sheet said "screen changed", but the sheet stayed ("Requesting permission…").
   `axe tap -x X -y Y --tap-style physical --udid $UDID` on Allow's frame centre (from `$V ui`)

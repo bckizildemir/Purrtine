@@ -61,10 +61,9 @@ Steps:
   report; do not claim it.
 - **Reminders off removes it.** `vp tap --label More --element-type RadioButton` (back out with
   `BackButton` if the tab shows an old screen), `vp tap --id settings.appSettings.row`,
-  `vp tap --id settings.notifications.row`. Switch off "Enable Notifications" (`vp tap --once --label
-  "Enable Notifications" --element-type Switch`; read `vp ui` for the real type). Then
+  `vp tap --id settings.notifications.row`. Switch off "Enable Notifications" (see "Notification switch" below: the control is a CheckBox, and taps on it often do not land). Then
   `vp reminders app_open_nudge "Daily Feeding"`: assert 0 requests (turning reminders off removes every
-  care-task reminder and the nudge, per `NotificationManager`'s resync). Switch it on again and assert the
+  care-task reminder and the nudge, per `NotificationManager`'s resync). Switch it on again (same method) and assert the
   counts return to 60 / 1.
 - **No nudge when nothing is cut.** Needs a pass with only a series that ends on its own. From user
   screens: Tasks tab, delete the starter tasks (swipe a row left, Delete; confirm in `vp ui`), add one
@@ -87,3 +86,26 @@ Steps:
   instead of treating one date as fixed.
 - Time-based claims (24 h, 1 h floor) depend on the device clock, which follows the Mac.
 - Run on the iOS 27.0 slim device only; local notifications are never disabled by the slim profile.
+
+- **Notification switch (Settings → Notifications → Enable Notifications).**
+
+Measured 2026-11-07: the control is a `CheckBox` (also Haptic, Show Completed, AI-Assisted), not a Switch. In
+the Turkish pass it stayed off ("Kapalı", 0 reminders) after 8 taps and a relaunch; in the English pass it came
+back on after several tries and the total returned to 60. A diagnosis of the code found no app bug: the toggle
+writes its value straight to the setting and nothing turns it back off, so every tap that reaches the app
+saves the new value; the taps did not land (test tool). So:
+
+- Do not rely on one tap on the switch itself. Tap the row (its label, `axe tap --label "<name>" --element-type
+  CheckBox --pre-delay 0.8 --post-delay 2`, which worked about every second try), or `axe tap -x 328 -y <row y>`.
+- Read the value after each tap and retry at most twice. If it still does not flip, write the setting
+  directly: put JSON with `isEnabled` into the app container's defaults key `notification_settings`
+  (`xcrun simctl spawn "$UDID" defaults write "$PREFS" notification_settings -data <hex of the JSON>`; read the
+  current value first and change only `isEnabled`), terminate and `vp launch` again. State in the report that
+  you set the value by defaults, not by a tap.
+- Reminders at 0 and "Off | Kapalı" are the correct result of `isEnabled=false`.
+- Note for the app tests (not a recipe step): the unit tests cover only "off". An off-then-on test for
+  `NotificationManager` (reminders return to the capped total) would close the gap.
+
+Other measurements from the same run: totals (60; nudge 1; 19/20/20 per title) are right. The nudge fires at the
+last selected reminder minus 24 h (2026-11-25 09:45 against 2026-11-26 09:45), not at "the cut by the daily cap
+of 30": the daily series were selected 19 to 20 each.
