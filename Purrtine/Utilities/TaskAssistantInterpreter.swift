@@ -87,6 +87,23 @@ struct TaskAssistantInterpreter {
         let topCandidates = Array(relevantCandidates.prefix(3))
 
         if shouldClarify(topCandidates, bestCandidate: bestCandidate, for: command) {
+            // Only a generic verb ("complete", "done") with no category verb: the user did not say
+            // what to do with a specific task type, so a tie asks which task, like the no-command path.
+            if explicitCommand == nil, hasCategoryVerbEvidence(in: analysis, tasks: tasks) == false {
+                let choices = topCandidates.map { candidate in
+                    TaskAssistantTaskChoice(task: candidate.task, selectedCats: candidate.selectedCats)
+                }
+
+                return .taskDisambiguation(
+                    TaskAssistantTaskDisambiguation(
+                        message: String(localized: .taskAssistantTaskDisambiguation),
+                        choices: choices,
+                        completedForDate: completedForDate,
+                        notes: extractedNotes
+                    )
+                )
+            }
+
             let suggestions = topCandidates.map { candidate in
                 TaskAssistantSuggestion(
                     title: candidate.task.title,
@@ -382,15 +399,20 @@ struct TaskAssistantInterpreter {
     /// for every category: they only pick `.complete` as the command, and ranking still needs the
     /// text to name a task before anything matches.
     private func hasCompletionVerbEvidence(in analysis: QueryAnalysis, tasks: [CareTask]) -> Bool {
+        hasCategoryVerbEvidence(in: analysis, tasks: tasks) || hasGenericCompletionVerb(in: analysis)
+    }
+
+    private func hasCategoryVerbEvidence(in analysis: QueryAnalysis, tasks: [CareTask]) -> Bool {
         let categories = Set(tasks.map(\.category)).subtracting([.general])
 
-        let hasCategoryVerb = categories.contains { category in
+        return categories.contains { category in
             let verbTokens = taskVerbAliases(for: category).flatMap(tokenize)
             let expandedVerbTokens = expand(tokens: verbTokens, language: analysis.dominantLanguage)
             return analysis.expandedTokens.isDisjoint(with: expandedVerbTokens) == false
         }
-        if hasCategoryVerb { return true }
+    }
 
+    private func hasGenericCompletionVerb(in analysis: QueryAnalysis) -> Bool {
         // "done" is a helper word, so it never reaches `significantTokens`; read the raw tokens.
         let genericVerbTokens = taskVerbAliases(for: .general).flatMap(tokenize)
         let expandedGenericTokens = expand(tokens: genericVerbTokens, language: analysis.dominantLanguage)

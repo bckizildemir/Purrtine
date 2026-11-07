@@ -266,6 +266,27 @@ struct TaskAssistantInterpreterTests {
     }
 
     @Test
+    func genericCompletionWordWithManySimilarGeneralTasksAsksTaskDisambiguation() throws {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let tasks = try (1...18).map { number in
+            try insertTask(
+                title: "UI Test Long Task \(number < 10 ? "0\(number)" : "\(number)")",
+                category: .general,
+                into: container
+            )
+        }
+
+        let result = TaskAssistantInterpreter().interpret(text: "complete long task", tasks: tasks)
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        #expect(disambiguation.choices.count > 1)
+    }
+
+    @Test
     func genericPostponeWithoutEvidenceReturnsNoMatch() throws {
         let fixture = try makeFixture()
         assertNoMatch(fixture.interpreter.interpret(text: "remind me later", tasks: fixture.tasks))
