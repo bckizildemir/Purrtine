@@ -5,7 +5,7 @@
   Section order: top ("when did I last…?") → Whiskers (with a mic) → [tasks, optional] → calendar → questions → privacy.
   Only the TOP section changes between variants: ?variant=F|G|H|I. I is built with Emil Kowalski's
   emil-design-eng rules (custom ease-out, blur crossfade, press scale, pause when hidden).
-  ?tasks=1 (or the "Tasks" button in the bar) shows the optional tasks section.
+  ?tasks=1|2|3 (or the "Tasks" button in the bar) shows tasks version T1, T2 or T3.
   Run: python3 -m http.server 8765 -d web/landing-prototype  →  http://localhost:8765/r3.html
 -->
 <html lang="en">
@@ -68,7 +68,6 @@
   .top { display: none; }
   body[data-variant="F"] #top-F, body[data-variant="G"] #top-G,
   body[data-variant="H"] #top-H, body[data-variant="I"] #top-I { display: block; }
-  body:not(.with-tasks) #tasks { display: none; }
 
   /* Number and text swaps: blur crossfade (emil-design-eng) */
   .swap { display: inline-block; transition: opacity .2s ease-out, filter .2s ease-out, transform .2s var(--ease-out); }
@@ -211,6 +210,56 @@
   .pt .task .rep { display: inline-block; font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--glass); color: var(--blue); }
   .pt .task .rem { display: block; font-size: 14px; color: var(--muted); margin-top: 10px; }
   .pt .tasks-head { max-width: 640px; }
+  /* Tasks variants T1-T3 (only one shows) */
+  .pt .tv { display: none; }
+  body[data-tasks="1"] #tv-1, body[data-tasks="3"] #tv-3 { display: block; }
+  body[data-tasks="1"] #tv-1.split, body[data-tasks="2"] #tv-2 { display: grid; }
+  body[data-tasks="0"] #tasks { display: none; }
+  .pt .tlist h3 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 4px 6px; font-weight: 800; }
+  .pt .tlist h3:first-child { margin-top: 0; }
+  .pt .trow { position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 8px; background: var(--green); touch-action: pan-y; }
+  .pt .trow .reveal { position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding-left: 18px; color: #fff; font-weight: 900; font-size: 15px; }
+  .pt .trow-in {
+    position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; padding: 12px 14px;
+    background: var(--white); border: 1px solid var(--line); border-radius: 16px; cursor: grab; user-select: none;
+    transition: transform .22s var(--ease-out);
+  }
+  .pt .trow.drag .trow-in { transition: none; cursor: grabbing; }
+  .pt .circ {
+    width: 26px; height: 26px; margin-top: 2px; border-radius: 50%; border: 2.5px solid var(--c); background: transparent; padding: 0; cursor: pointer;
+    display: grid; place-items: center; transition: transform .16s ease-out, background-color .2s ease-out, border-color .2s ease-out;
+  }
+  .pt .circ:active { transform: scale(.9); }
+  .pt .circ svg { width: 14px; height: 14px; stroke: #fff; opacity: 0; transform: scale(.6); transition: opacity .2s ease-out, transform .25s var(--ease-out); }
+  .pt .trow.late .circ { border-color: #d64545; }
+  .pt .trow.done .circ { background: var(--c); border-color: var(--c); }
+  .pt .trow.done .circ svg { opacity: 1; transform: scale(1); }
+  .pt .trow.done .circ { animation: pop .3s var(--ease-out); }
+  @keyframes pop { 40% { transform: scale(1.18); } }
+  .pt .trow strong { display: block; font-size: 16px; font-weight: 900; line-height: 1.3; }
+  .pt .trow .meta { display: block; font-size: 14px; color: var(--muted); }
+  .pt .trow.late:not(.done) .due { color: #d64545; font-weight: 800; }
+  .pt .trow.done .due { color: var(--green); font-weight: 800; }
+  .pt .trow .last { display: block; font-size: 12px; color: var(--muted); opacity: .85; }
+  /* T2 phone */
+  .pt .phone { width: 300px; justify-self: center; border-radius: 46px; background: var(--navy); padding: 10px; box-shadow: 0 40px 80px -30px rgba(23,50,74,.5); position: relative; }
+  .pt .phone .notch { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 90px; height: 24px; border-radius: 20px; background: #0b1a28; z-index: 2; }
+  .pt .phone .screen { border-radius: 37px; background: #f2f6fa; padding: 54px 12px 0; min-height: 560px; display: flex; flex-direction: column; overflow: hidden; }
+  .pt .phone .nav-title { font-size: 28px; font-weight: 900; margin: 0 4px 10px; }
+  .pt .phone .tlist { flex: 1; }
+  .pt .phone .trow-in { padding: 10px 12px; }
+  .pt .phone .trow strong { font-size: 15px; }
+  .pt .phone .tabbar { display: flex; justify-content: space-around; padding: 10px 0 18px; font-size: 11px; font-weight: 800; color: var(--muted); border-top: 1px solid var(--line); margin: 0 -12px; background: #fff; }
+  .pt .phone .tabbar .on { color: var(--blue); }
+  .pt .hand { position: absolute; left: 30px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; background: rgba(23,50,74,.25); box-shadow: 0 0 0 6px rgba(23,50,74,.08); pointer-events: none; opacity: 0; }
+  /* T3 counter */
+  .pt .t3 { display: grid; grid-template-columns: 440px 1fr; gap: 56px; align-items: start; margin-top: 30px; }
+  .pt .t3 .left { margin: 0; font-weight: 900; font-size: 120px; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .pt .t3 .left small { display: block; font-size: 22px; letter-spacing: 0; color: var(--muted); margin-top: 8px; }
+  .pt .t3 .left.zero { color: var(--green); }
+  .pt .nexts { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 8px; }
+  .pt .nexts li { padding: 10px 14px; border-radius: 14px; background: var(--cream); color: var(--orange-deep); font-weight: 700; font-size: 15px; animation: msg-in .3s var(--ease-out) both; }
+  @media (max-width: 860px) { .pt .t3 { grid-template-columns: 1fr; gap: 30px; } .pt .t3 .left { font-size: 84px; } }
   .pt .tasks-head h2 { font-size: 38px; line-height: 1.08; margin: 0 0 12px; font-weight: 900; letter-spacing: -0.02em; }
   .pt .tasks-head p { color: var(--muted); margin: 0; }
 
@@ -364,13 +413,49 @@
 
 <!-- ═════════ 3 (optional): tasks ═════════ -->
 <section id="tasks">
-  <div class="wrap">
-    <div class="tasks-head">
-      <h2>Every cat, its own rhythm.</h2>
-      <p>Set each task once: how often it repeats and when to remind you. Purrtine does the counting.</p>
+  <!-- T1: the Home list, as is -->
+  <div class="wrap split tv" id="tv-1" data-name="T1 Home list">
+    <div>
+      <h2>One look. One tap. Done.</h2>
+      <p>Home shows what is late and what is due today, for every cat. Tap the circle, or swipe the row, and the task is done.</p>
+      <p>Purrtine sets the next time for you, so tomorrow's breakfast is already waiting.</p>
     </div>
-    <div class="tasks" id="t-list"></div>
-    <p class="hint">Tap a task to change how often it repeats.</p>
+    <div class="panel">
+      <div class="tlist" data-list></div>
+      <p class="hint">Tap a circle, or drag a row to the right.</p>
+    </div>
+  </div>
+
+  <!-- T2: the phone itself, with a swipe hint -->
+  <div class="wrap split flip tv" id="tv-2" data-name="T2 Phone + swipe">
+    <div class="phone" aria-label="Purrtine on an iPhone">
+      <div class="notch" aria-hidden="true"></div>
+      <div class="screen">
+        <p class="nav-title">Tasks</p>
+        <div class="tlist" data-list></div>
+        <div class="tabbar" aria-hidden="true"><span>Home</span><span class="on">Tasks</span><span>Whiskers</span><span>Settings</span></div>
+      </div>
+    </div>
+    <div>
+      <h2>Done in one swipe.</h2>
+      <p>Swipe a task to the right, and Purrtine saves it with the date and time. One cat, one swipe, no forms.</p>
+      <p>A task for two cats? Purrtine asks which cats it was, and who did it.</p>
+    </div>
+  </div>
+
+  <!-- T3: today counts down, next times appear -->
+  <div class="wrap tv" id="tv-3" data-name="T3 Today counts down">
+    <div class="tasks-head">
+      <h2>Watch today get done.</h2>
+      <p>Each tick saves the task and sets its next time. The day counts down to zero.</p>
+    </div>
+    <div class="t3">
+      <div class="panel"><div class="tlist" data-list></div></div>
+      <div class="t3-side">
+        <p class="left"><span class="swap" id="t3-n">4</span><small class="swap" id="t3-lbl">tasks left today</small></p>
+        <ul class="nexts" id="t3-next" aria-live="polite"></ul>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -443,7 +528,7 @@
     var params = new URLSearchParams(location.search);
     function sync() {
       var u = new URL(location.href); u.searchParams.set('variant', document.body.dataset.variant);
-      if (document.body.classList.contains('with-tasks')) u.searchParams.set('tasks', '1'); else u.searchParams.delete('tasks');
+      var tv = document.body.dataset.tasks; if (tv && tv !== '0') u.searchParams.set('tasks', tv); else u.searchParams.delete('tasks');
       history.replaceState(null, '', u);
     }
     function show(v) {
@@ -454,13 +539,13 @@
     }
     function step(d) { var i = keys.indexOf(document.body.dataset.variant); show(keys[(i + d + keys.length) % keys.length]); }
     document.querySelectorAll('.proto-bar [data-step]').forEach(function (b) { b.onclick = function () { step(+b.dataset.step); }; });
-    function setTasks(on) { document.body.classList.toggle('with-tasks', on); tb.textContent = 'Tasks: ' + (on ? 'on' : 'off'); tb.setAttribute('aria-pressed', String(on)); sync(); }
-    tb.onclick = function () { setTasks(!document.body.classList.contains('with-tasks')); };
+    function setTasks(v) { v = String(v); if (!/^[0-3]$/.test(v)) v = '0'; document.body.dataset.tasks = v; tb.textContent = 'Tasks: ' + (v === '0' ? 'off' : 'T' + v); tb.setAttribute('aria-pressed', String(v !== '0')); sync(); }
+    tb.onclick = function () { setTasks((+document.body.dataset.tasks + 1) % 4); if (document.body.dataset.tasks !== '0') document.getElementById('tasks').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); };
     document.addEventListener('keydown', function (e) {
       if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
       if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
     });
-    setTasks(params.get('tasks') === '1');
+    setTasks(params.get('tasks') || '0');
     show(params.get('variant') || 'F');
   })();
 
@@ -606,20 +691,87 @@
     bubble('cat', "Done. Luna's breakfast is ticked for today at 08:04.<br><span class=\"chip-done\">Saved to History</span>");
   })();
 
-  // Tasks (optional): tap a card to cycle how often it repeats.
+  // Tasks T1-T3: rows copy the app's Tasks row (circle, title, "cat • due", "Last completed").
+  // Tap the circle or swipe right = instant completion, like the app for a one-cat task.
   (function () {
-    var list = document.getElementById('t-list');
-    var reps = ['Every day', 'Every 2 days', 'Every 3 days', 'Every week', 'Every 2 weeks', 'Every month', 'Every 3 months'];
-    [
-      { t: 'Breakfast', c: 'Luna', r: 0, rem: 'Reminder at 08:00' },
-      { t: 'Thyroid pill', c: 'Luna', r: 0, rem: 'Reminder at 09:00' },
-      { t: 'Brushing', c: 'Pamuk', r: 2, rem: 'Reminder at 20:30' },
-      { t: 'Flea drop', c: 'Luna and Pamuk', r: 5, rem: 'Reminder at 10:00' }
-    ].forEach(function (x) {
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'task';
-      b.innerHTML = '<span class="cat">' + x.c + '</span><strong>' + x.t + '</strong><span class="rep swap">' + reps[x.r] + '</span><span class="rem">' + x.rem + '</span>';
-      b.addEventListener('click', function () { x.r = (x.r + 1) % reps.length; swapText(b.querySelector('.rep'), reps[x.r]); });
-      list.appendChild(b);
+    var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    var data = [
+      { sec: 'Overdue', t: 'Thyroid pill', c: 'Luna', col: '#2f8fd0', due: '1 hour overdue', last: 'Yesterday, 09:02', next: 'Tomorrow, 9:00 AM', late: true },
+      { sec: 'Overdue', t: 'Brushing', c: 'Pamuk', col: '#b07ad6', due: '1 day overdue', last: 'Sunday, 20:40', next: 'In 3 days, 8:30 PM', late: true },
+      { sec: 'Today', t: 'Breakfast', c: 'Luna', col: '#f2a541', due: 'Today, 8:00 AM', last: 'Yesterday, 08:04', next: 'Tomorrow, 8:00 AM' },
+      { sec: 'Today', t: 'Litter box', c: 'Pamuk', col: '#2fa877', due: 'Today, 6:00 PM', last: 'Yesterday, 18:10', next: 'Tomorrow, 6:00 PM' }
+    ];
+    function now() { var d = new Date(); return 'Today, ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+    function build(listEl, onChange) {
+      var sec = '';
+      data.forEach(function (x) {
+        if (x.sec !== sec) { sec = x.sec; var h = document.createElement('h3'); h.textContent = sec; listEl.appendChild(h); }
+        var row = document.createElement('div'); row.className = 'trow' + (x.late ? ' late' : '');
+        row.innerHTML = '<span class="reveal" aria-hidden="true">' + CHECK.replace('<svg', '<svg width="18" height="18" stroke="#fff"') + 'Complete</span>' +
+          '<div class="trow-in"><button class="circ" type="button" style="--c:' + x.col + '" aria-pressed="false" aria-label="Complete ' + x.t + ' for ' + x.c + '">' + CHECK + '</button>' +
+          '<span><strong>' + x.t + '</strong><span class="meta">' + x.c + ' • <span class="due swap">' + x.due + '</span></span>' +
+          '<span class="last swap">Last completed: ' + x.last + '</span></span></div>';
+        var inner = row.querySelector('.trow-in'), circ = row.querySelector('.circ');
+        function set(on) {
+          if (row.classList.contains('done') === on) return;
+          row.classList.toggle('done', on); circ.setAttribute('aria-pressed', String(on));
+          swapText(row.querySelector('.due'), on ? 'Next: ' + x.next : x.due);
+          swapText(row.querySelector('.last'), 'Last completed: ' + (on ? now() : x.last));
+          if (navigator.vibrate && on) navigator.vibrate(12);
+          if (onChange) onChange(x, on);
+        }
+        circ.addEventListener('click', function (e) { e.stopPropagation(); set(!row.classList.contains('done')); });
+        // Swipe right to complete (velocity or distance, damped past the edge, pointer captured).
+        var x0 = null, t0 = 0, dx = 0, W = 0;
+        inner.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('.circ') || x0 !== null) return;
+          x0 = e.clientX; t0 = Date.now(); dx = 0; W = inner.offsetWidth; inner.setPointerCapture(e.pointerId); row.classList.add('drag');
+        });
+        inner.addEventListener('pointermove', function (e) {
+          if (x0 === null) return;
+          var raw = Math.max(0, e.clientX - x0), lim = W * .45;
+          dx = raw < lim ? raw : lim + (raw - lim) * .25;
+          inner.style.transform = 'translateX(' + dx + 'px)';
+        });
+        function end() {
+          if (x0 === null) return;
+          var v = dx / Math.max(1, Date.now() - t0);
+          row.classList.remove('drag'); inner.style.transform = '';
+          if (dx > W * .3 || (dx > 20 && v > .11)) set(true);
+          x0 = null;
+        }
+        inner.addEventListener('pointerup', end); inner.addEventListener('pointercancel', end);
+        listEl.appendChild(row);
+      });
+      return listEl;
+    }
+
+    build(document.querySelector('#tv-1 [data-list]'));
+
+    // T2: a one-time swipe hint when the phone first comes into view.
+    var l2 = build(document.querySelector('#tv-2 [data-list]'));
+    var hinted = false;
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting || hinted || reduce) return; hinted = true; io.disconnect();
+      var row = l2.querySelectorAll('.trow')[2], inner = row.querySelector('.trow-in');
+      var hand = document.createElement('span'); hand.className = 'hand'; row.appendChild(hand);
+      var opts = { duration: 1100, easing: 'cubic-bezier(.77,0,.175,1)', delay: 500 };
+      inner.animate([{ transform: 'none' }, { transform: 'translateX(90px)', offset: .45 }, { transform: 'translateX(90px)', offset: .6 }, { transform: 'none' }], opts);
+      hand.animate([{ opacity: 0, transform: 'none' }, { opacity: 1, offset: .1 }, { opacity: 1, transform: 'translateX(90px)', offset: .45 }, { opacity: 0, transform: 'translateX(90px)', offset: .7 }, { opacity: 0 }], opts)
+        .onfinish = function () { hand.remove(); };
+    }, { threshold: .6 }).observe(document.querySelector('#tv-2 .phone'));
+
+    // T3: the counter and the list of next times.
+    var left = data.length, n = document.getElementById('t3-n'), lbl = document.getElementById('t3-lbl'), nexts = document.getElementById('t3-next');
+    build(document.querySelector('#tv-3 [data-list]'), function (x, on) {
+      left += on ? -1 : 1;
+      swapText(n, left === 0 ? '0' : String(left));
+      swapText(lbl, left === 0 ? 'All done for today. Nice.' : left === 1 ? 'task left today' : 'tasks left today');
+      n.parentNode.classList.toggle('zero', left === 0);
+      var id = 'nx-' + x.t.replace(/\W/g, '');
+      if (on) { var li = document.createElement('li'); li.id = id; li.textContent = x.t + ', ' + x.c + ': next ' + x.next.charAt(0).toLowerCase() + x.next.slice(1); nexts.prepend(li); }
+      else { var old = document.getElementById(id); if (old) old.remove(); }
     });
   })();
 
