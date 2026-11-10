@@ -12,7 +12,8 @@ Last session:
 - Opened PR #118 (Tasks rows show the category icon, fixes #116) and PR #119 (Whiskers skips tasks done
   today in the "which task?" card, fixes #117). Both had a swift-reviewer pass; review fixes are in.
 - Removed 25 worktrees whose PRs were merged and that had no local work; kept 6 (see the session report).
-- `session-lessons` skill now ends with "update STATUS.md".
+- `session-lessons` skill now ends with "update STATUS.md". Lessons added: worktree names `wt-p<N>` /
+  `wt-t<N>` (global CLAUDE.md), squash-merge check (coordinator.md), real completion path in tests (testing.md).
 
 ## Open PRs
 
@@ -33,4 +34,7 @@ Last session:
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - #118: is a category icon next to the completion circle clear, or does it read as a second button?
+- #119: a daily task that was overdue and is caught up today gets its next due date today. Whiskers now
+  counts it as done ("already done today", same rule as Home's "Last done: Today"), so that second
+  same-day occurrence can only be completed from the Tasks list. Confirm this choice before merging.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).

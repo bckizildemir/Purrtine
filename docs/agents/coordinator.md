@@ -12,3 +12,4 @@ The process is the user-level `/issue-batch-coordinator` skill (`~/.claude/skill
 ## Standing rules
 
 - A batch needs no `decision-check` run. (Set 2026-10-11.)
+- Worktree clean-up: after a squash merge deletes the remote branch, `git rev-list --count <branch> --not --remotes` counts its commits as unpushed. Fetch `pull/<N>/head` and run `git merge-base --is-ancestor <branch> <PR head>`; if it succeeds, nothing is lost. (2026-11-11.)

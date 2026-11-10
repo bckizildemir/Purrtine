@@ -11,4 +11,5 @@ paths:
 - `PurrtineTests/Models/SchemaBaselineTests.swift` pins the V1 store layout with a recorded fingerprint. If a model change makes it fail, add a schema version; do not re-record the fingerprint to make the test pass.
 - `DebugDataService` seeds sample data for previews and debug builds.
 - Avoid arbitrary sleeps in async tests; prefer confirmations/deterministic mocks.
+- A test that needs a completed task completes it through `TaskActionService.recordCompletion`, not by inserting a `CareTaskCompletion` by hand: recording moves the schedule to the next occurrence, and a hand-built state hides bugs (#117, PR #119).
 
