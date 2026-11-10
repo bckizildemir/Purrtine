@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purrtine — calm, reliable cat care</title>
+<meta name="description" content="Purrtine keeps your cats' feeding, medicine, litter and grooming routines on time. Local-first, private, in English and Turkish.">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:title" content="Purrtine — calm, reliable cat care">
+<meta property="og:description" content="Daily cat-care routines, reminders and history. Your data stays on your iPhone.">
+<meta property="og:image" content="icon.png">
+<style>
+  :root {
+    --bg: #f4f8fb;
+    --surface: #ffffff;
+    --ink: #13212c;
+    --muted: #546371;
+    --line: #dbe5ec;
+    --blue: #2f8fd0;
+    --blue-soft: #e3f1fa;
+    --orange: #f0a43a;
+    --orange-soft: #fdf1df;
+    --radius: 20px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e161d;
+      --surface: #16212b;
+      --ink: #e8eef3;
+      --muted: #9aa9b6;
+      --line: #263441;
+      --blue: #5fb2ea;
+      --blue-soft: #16303f;
+      --orange: #f5b55c;
+      --orange-soft: #3a2a14;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--blue); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; text-decoration: none; color: var(--ink); }
+  .brand img { width: 36px; height: 36px; border-radius: 9px; }
+  .lang { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .lang button {
+    border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .lang button[aria-pressed="true"] { background: var(--blue-soft); color: var(--ink); }
+
+  .hero {
+    display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center;
+    padding: 48px 0 64px;
+  }
+  .hero h1 { font-size: clamp(34px, 5.4vw, 56px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 18px; }
+  .hero h1 em { font-style: normal; color: var(--orange); }
+  .hero p.lead { font-size: 19px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--ink); color: var(--bg); text-decoration: none;
+    padding: 12px 20px; border-radius: 14px; font-weight: 600;
+  }
+  .badge small { display: block; font-size: 11px; font-weight: 500; opacity: .75; line-height: 1.1; }
+  .note { font-size: 14px; color: var(--muted); }
+  .hero-art { display: flex; justify-content: center; }
+  .hero-art img {
+    width: min(320px, 70vw); aspect-ratio: 1; border-radius: 22%;
+    box-shadow: 0 30px 60px -20px rgba(47, 143, 208, .45);
+  }
+
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 30px; letter-spacing: -0.01em; margin: 0 0 10px; }
+  section p.sub { color: var(--muted); margin: 0 0 32px; max-width: 40em; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  .card .ic {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    font-size: 22px; margin-bottom: 12px; background: var(--orange-soft);
+  }
+  .card:nth-child(even) .ic { background: var(--blue-soft); }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+  .privacy {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;
+  }
+  .privacy ul { margin: 0; padding: 0; list-style: none; }
+  .privacy li { padding: 10px 0 10px 30px; position: relative; border-bottom: 1px solid var(--line); }
+  .privacy li:last-child { border-bottom: 0; }
+  .privacy li::before { content: "✓"; position: absolute; left: 4px; color: var(--blue); font-weight: 700; }
+
+  footer { padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 10px; }
+  footer a { color: var(--muted); }
+
+  [data-lang="tr"] .en, [data-lang="en"] .tr { display: none; }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; padding-top: 24px; gap: 28px; }
+    .hero-art { order: -1; }
+    .hero-art img { width: 180px; }
+    .grid { grid-template-columns: 1fr; }
+    .privacy { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-lang="en">
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="icon.png" alt="">Purrtine</a>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="tr" aria-pressed="false">TR</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>
+          <span class="en">Calm, reliable <em>cat care</em>, every day.</span>
+          <span class="tr" lang="tr">Sakin ve düzenli <em>kedi bakımı</em>, her gün.</span>
+        </h1>
+        <p class="lead en">Purrtine keeps feeding, medicine, litter and grooming on time for every cat you look after. Tick a task in one tap, get a reminder before it is late, and see what was done and when.</p>
+        <p class="lead tr" lang="tr">Purrtine, baktığınız her kedinin mama, ilaç, kum ve tımar rutinlerini zamanında tutar. Görevi tek dokunuşla tamamlayın, geç kalmadan hatırlatma alın, neyin ne zaman yapıldığını görün.</p>
+        <div class="cta">
+          <span class="badge" aria-disabled="true">
+            <span><small class="en">Coming soon on the</small><small class="tr" lang="tr">Yakında</small>App Store</span>
+          </span>
+          <span class="note en">For iPhone · iOS 18.4 or later · English and Turkish</span>
+          <span class="note tr" lang="tr">iPhone için · iOS 18.4 ve üstü · Türkçe ve İngilizce</span>
+        </div>
+      </div>
+      <div class="hero-art"><img src="icon.png" alt="The Purrtine app icon: a cat face on a calendar"></div>
+    </div>
+
+    <section aria-labelledby="features">
+      <h2 id="features"><span class="en">Everything your cats need, in one calm list</span><span class="tr" lang="tr">Kedilerinizin tüm ihtiyaçları, tek bir sakin listede</span></h2>
+      <p class="sub en">Set up your first cat and its daily routine in under two minutes.</p>
+      <p class="sub tr" lang="tr">İlk kedinizi ve günlük rutinini iki dakikadan kısa sürede kurun.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="ic" aria-hidden="true">🐾</div>
+          <h3 class="en">Routines per cat</h3><h3 class="tr" lang="tr">Kedi başına rutinler</h3>
+          <p class="en">Daily, weekly, monthly or custom repeats for each cat, with starter tasks you can change.</p>
+          <p class="tr" lang="tr">Her kedi için günlük, haftalık, aylık veya özel tekrarlar; değiştirebileceğiniz hazır görevlerle.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true">⏰</div>
+          <h3 class="en">Reminders you can trust</h3><h3 class="tr" lang="tr">Güvenilir hatırlatmalar</h3>
+          <p class="en">On-device reminders, with snooze and complete right from the notification.</p>
+          <p class="tr" lang="tr">Cihaz üzerinde hatırlatmalar; bildirimin içinden erteleyin veya tamamlayın.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true">✅</div>
+          <h3 class="en">One-tap complete</h3><h3 class="tr" lang="tr">Tek dokunuşla tamamla</h3>
+          <p class="en">Tick a task from Home or the task list. Add a note or a photo when it matters.</p>
+          <p class="tr" lang="tr">Görevi Ana Sayfa'dan veya listeden işaretleyin. Gerektiğinde not ya da fotoğraf ekleyin.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true">📖</div>
+          <h3 class="en">Care history</h3><h3 class="tr" lang="tr">Bakım geçmişi</h3>
+          <p class="en">See what was done, by whom and when — handy for the vet or a pet sitter.</p>
+          <p class="tr" lang="tr">Neyin, kim tarafından ve ne zaman yapıldığını görün; veteriner veya bakıcı için ideal.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true">💬</div>
+          <h3 class="en">Whiskers, your helper</h3><h3 class="tr" lang="tr">Yardımcınız Whiskers</h3>
+          <p class="en">Type or say "fed Luna" and Whiskers does it. It works on your iPhone first.</p>
+          <p class="tr" lang="tr">"Luna'yı besledim" yazın ya da söyleyin, Whiskers halletsin. Önce iPhone'unuzda çalışır.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true">🏠</div>
+          <h3 class="en">Many cats, many hands</h3><h3 class="tr" lang="tr">Çok kedi, çok el</h3>
+          <p class="en">Track several cats and note which person in the home did each task.</p>
+          <p class="tr" lang="tr">Birden fazla kediyi takip edin, evde her görevi kimin yaptığını not edin.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="privacy">
+      <div class="privacy">
+        <div>
+          <h2 id="privacy"><span class="en">Private by design</span><span class="tr" lang="tr">Gizlilik esaslı tasarım</span></h2>
+          <p class="sub en">Your cats, tasks, history and photos stay on your iPhone. There is no account and no ads.</p>
+          <p class="sub tr" lang="tr">Kedileriniz, görevleriniz, geçmişiniz ve fotoğraflarınız iPhone'unuzda kalır. Hesap yok, reklam yok.</p>
+        </div>
+        <ul>
+          <li class="en">No account, no sign-up, no analytics or tracking.</li>
+          <li class="tr" lang="tr">Hesap yok, kayıt yok, analitik veya izleme yok.</li>
+          <li class="en">Reminders are local notifications on your device.</li>
+          <li class="tr" lang="tr">Hatırlatmalar cihazınızdaki yerel bildirimlerdir.</li>
+          <li class="en">Whiskers' cloud help is off until you allow it, and you can turn it off at any time in Settings.</li>
+          <li class="tr" lang="tr">Whiskers'ın bulut yardımı siz izin verene kadar kapalıdır ve Ayarlar'dan istediğiniz zaman kapatabilirsiniz.</li>
+          <li class="en">Delete the app and all its data is gone.</li>
+          <li class="tr" lang="tr">Uygulamayı silerseniz tüm verileri de silinir.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <nav>
+      <a href="https://bckizildemir.github.io/catcarecalendar-legal/privacy/"><span class="en">Privacy Policy</span><span class="tr" lang="tr">Gizlilik Politikası</span></a>
+      <a href="https://bckizildemir.github.io/catcarecalendar-legal/terms/"><span class="en">Terms of Use</span><span class="tr" lang="tr">Kullanım Koşulları</span></a>
+      <a href="https://bckizildemir.github.io/catcarecalendar-legal/support/"><span class="en">Support</span><span class="tr" lang="tr">Destek</span></a>
+      <a href="mailto:bcankizildemir@gmail.com?subject=Purrtine">bcankizildemir@gmail.com</a>
+    </nav>
+    © 2026 Berkecan Kızıldemir · Purrtine
+  </footer>
+</div>
+<script>
+  (function () {
+    var body = document.body;
+    function setLang(lang) {
+      body.setAttribute('data-lang', lang);
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-set-lang') === lang));
+      });
+      try { localStorage.setItem('purrtine-lang', lang); } catch (e) {}
+    }
+    var saved = null;
+    try { saved = localStorage.getItem('purrtine-lang'); } catch (e) {}
+    var initial = saved || ((navigator.language || '').toLowerCase().indexOf('tr') === 0 ? 'tr' : 'en');
+    setLang(initial);
+    document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+      b.addEventListener('click', function () { setLang(b.getAttribute('data-set-lang')); });
+    });
+  })();
+</script>
+</body>
+</html>
