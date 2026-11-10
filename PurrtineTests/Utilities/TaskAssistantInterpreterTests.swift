@@ -287,6 +287,74 @@ struct TaskAssistantInterpreterTests {
     }
 
     @Test
+    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne() throws {
+        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0])
+        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(let task, _, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation, got \(result).")
+            return
+        }
+
+        #expect(task === fixture.tasks[1])
+    }
+
+    @Test
+    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone() throws {
+        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0, 1])
+        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+
+        guard case .assistantMessage(let message) = result else {
+            Issue.record("Expected an assistant message, got \(result).")
+            return
+        }
+
+        #expect(message == String(localized: .taskAssistantAlreadyDoneToday))
+    }
+
+    @Test
+    func completeRequestWithSeveralOpenMatchesListsOnlyTheOpenOnes() throws {
+        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0], taskCount: 3)
+        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        let offered = disambiguation.choices.map(\.task)
+        #expect(offered.count == 2)
+        #expect(offered.contains { $0 === fixture.tasks[0] } == false)
+    }
+
+    @Test
+    func postponeRequestStillOffersTasksDoneToday() throws {
+        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0])
+        let result = fixture.interpreter.interpret(text: "postpone water refresh", tasks: fixture.tasks)
+
+        guard case .clarification(let clarification) = result else {
+            Issue.record("Expected a clarification response, got \(result).")
+            return
+        }
+
+        #expect(clarification.suggestions.count == 2)
+    }
+
+    @Test
+    func completionOfAnEarlierOccurrenceDoesNotCountAsDoneToday() throws {
+        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [], doneYesterdayIndices: [0])
+        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        #expect(disambiguation.choices.count == 2)
+    }
+
+    @Test
     func genericPostponeWithoutEvidenceReturnsNoMatch() throws {
         let fixture = try makeFixture()
         assertNoMatch(fixture.interpreter.interpret(text: "remind me later", tasks: fixture.tasks))
@@ -401,6 +469,47 @@ struct TaskAssistantInterpreterTests {
             tasks: [overdueFeeding, todayFeeding, litterTask, waterTask],
             interpreter: TaskAssistantInterpreter()
         )
+    }
+
+    /// Daily general tasks with the same title, one per cat, all due today. A completion for today's
+    /// occurrence marks that task done; the schedule is left untouched so it stays due today.
+    private func makeWaterRefreshFixture(
+        doneTodayIndices: Set<Int>,
+        doneYesterdayIndices: Set<Int> = [],
+        taskCount: Int = 2
+    ) throws -> (container: ModelContainer, tasks: [CareTask], interpreter: TaskAssistantInterpreter) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        let catNames = ["Luna", "Mochi", "Pamuk"]
+
+        let tasks = (0..<taskCount).map { index -> CareTask in
+            let cat = Cat(name: catNames[index])
+            let task = CareTask(title: "Water Refresh", category: .general)
+            task.assignedCats = [cat]
+            let schedule = CareTaskSchedule(scheduledDate: today, frequency: .daily)
+            schedule.task = task
+            task.schedules = [schedule]
+            context.insert(cat)
+            context.insert(task)
+            context.insert(schedule)
+
+            let completionDay: Date? = doneTodayIndices.contains(index)
+                ? today
+                : (doneYesterdayIndices.contains(index) ? yesterday : nil)
+            if let completionDay {
+                let completion = CareTaskCompletion(completedAt: Date(), completedForDate: completionDay)
+                completion.task = task
+                task.completions.append(completion)
+                context.insert(completion)
+            }
+            return task
+        }
+        try context.save()
+
+        return (container: container, tasks: tasks, interpreter: TaskAssistantInterpreter())
     }
 
     private func insertTask(
