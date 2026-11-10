@@ -210,6 +210,16 @@
   .pt .task .rep { display: inline-block; font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--glass); color: var(--blue); }
   .pt .task .rem { display: block; font-size: 14px; color: var(--muted); margin-top: 10px; }
   .pt .tasks-head { max-width: 640px; }
+  /* Real screens row */
+  .pt .screens { padding: 20px 0 40px; }
+  .pt .shots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .pt .shots li { display: grid; gap: 10px; justify-items: center; font-weight: 800; font-size: 15px; color: var(--muted); animation: msg-in .5s var(--ease-out) both; }
+  .pt .shots li:nth-child(2) { animation-delay: 60ms; } .pt .shots li:nth-child(3) { animation-delay: 120ms; } .pt .shots li:nth-child(4) { animation-delay: 180ms; }
+  .pt .shots img, .pt .shots .ph { width: 100%; height: auto; aspect-ratio: 1170 / 2532; border-radius: 28px; border: 6px solid var(--navy); background: #f2f6fa; box-shadow: 0 24px 50px -28px rgba(23,50,74,.45); }
+  .pt .shots .ph { display: grid; place-items: center; text-align: center; color: var(--muted); border-style: dashed; border-color: rgba(23,50,74,.3); font-size: 18px; }
+  .pt .shots .ph small { font-size: 13px; font-weight: 600; }
+  @media (hover: hover) and (pointer: fine) { .pt .shots img { transition: transform .25s var(--ease-out); } .pt .shots img:hover { transform: translateY(-4px); } }
+  @media (max-width: 860px) { .pt .shots { grid-template-columns: repeat(4, 70vw); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; } .pt .shots li { scroll-snap-align: center; } }
   /* Tasks variants T1-T3 (only one shows) */
   .pt .tv { display: none; }
   body[data-tasks="1"] #tv-1, body[data-tasks="3"] #tv-3 { display: block; }
@@ -381,6 +391,18 @@
   </div>
 </div>
 
+<!-- ═════════ 1b: real screens ═════════ -->
+<section class="screens" aria-label="Screens from the app">
+  <div class="wrap">
+    <ul class="shots">
+      <li><img src="shots/home.jpg" alt="Purrtine Home: Routine Status, Today and Overdue, Quick Actions" loading="lazy" width="554" height="1200"><span>Home</span></li>
+      <li><img src="shots/history.jpg" alt="Purrtine History: each completed task with date, time and cat" loading="lazy" width="554" height="1200"><span>History</span></li>
+      <li><img src="shots/whiskers.jpg" alt="Whiskers: How can I help?" loading="lazy" width="554" height="1200"><span>Whiskers</span></li>
+      <li class="todo"><span class="ph">Calendar<br><small>screenshot to come</small></span><span>Calendar</span></li>
+    </ul>
+  </div>
+</section>
+
 <!-- ═════════ 2: Whiskers ═════════ -->
 <section>
   <div class="wrap split">
@@ -427,19 +449,19 @@
   </div>
 
   <!-- T2: the phone itself, with a swipe hint -->
-  <div class="wrap split flip tv" id="tv-2" data-name="T2 Phone + swipe">
+  <div class="wrap split flip tv" id="tv-2" data-name="T2 Phone + T1 motto (picked)">
     <div class="phone" aria-label="Purrtine on an iPhone">
       <div class="notch" aria-hidden="true"></div>
       <div class="screen">
         <p class="nav-title">Tasks</p>
         <div class="tlist" data-list></div>
-        <div class="tabbar" aria-hidden="true"><span>Home</span><span class="on">Tasks</span><span>Whiskers</span><span>Settings</span></div>
+        <div class="tabbar" aria-hidden="true"><span>Home</span><span class="on">Tasks</span><span>Whiskers</span><span>More</span></div>
       </div>
     </div>
     <div>
-      <h2>Done in one swipe.</h2>
-      <p>Swipe a task to the right, and Purrtine saves it with the date and time. One cat, one swipe, no forms.</p>
-      <p>A task for two cats? Purrtine asks which cats it was, and who did it.</p>
+      <h2>One look. One tap. Done.</h2>
+      <p>Purrtine shows what is late and what is due today, for every cat. Tap the circle, or swipe the row, and the task is done.</p>
+      <p>Purrtine sets the next time for you, so tomorrow's breakfast is already waiting.</p>
     </div>
   </div>
 
@@ -545,7 +567,7 @@
       if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
       if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
     });
-    setTasks(params.get('tasks') || '0');
+    setTasks(params.get('tasks') || '2');
     show(params.get('variant') || 'F');
   })();
 
