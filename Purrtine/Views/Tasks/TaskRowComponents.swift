@@ -7,7 +7,9 @@ struct TaskRow: View {
     let onTap: () -> Void
     let onComplete: () -> Void
     let onDelete: () -> Void
-    
+
+    @ScaledMetric(relativeTo: .title3) private var iconWidth: CGFloat = 28
+
     // MARK: - Computed Properties
     
     /// Formatted time display with scheduled time or relative time
@@ -125,12 +127,16 @@ struct TaskRow: View {
             )
             
             Button(action: onTap) {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: task.displayIconName)
-                        .font(.title3)
-                        .foregroundStyle(task.isOverdue ? Color.red : Color.secondary)
-                        .accessibilityHidden(true)
-                    taskContent
+                HStack(alignment: .top, spacing: 0) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Image(systemName: task.displayIconName)
+                            .font(.title3)
+                            .foregroundStyle(timeColor)
+                            .frame(width: iconWidth)
+                            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                            .accessibilityHidden(true)
+                        taskContent
+                    }
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
