@@ -125,7 +125,11 @@ struct TaskRow: View {
             )
             
             Button(action: onTap) {
-                HStack(alignment: .top, spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: task.displayIconName)
+                        .font(.title3)
+                        .foregroundStyle(task.isOverdue ? Color.red : Color.secondary)
+                        .accessibilityHidden(true)
                     taskContent
                     Spacer(minLength: 0)
                 }
