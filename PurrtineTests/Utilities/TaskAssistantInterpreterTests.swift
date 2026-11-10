@@ -343,8 +343,29 @@ struct TaskAssistantInterpreterTests {
     }
 
     @Test
+    func weakSingleOpenMatchFallsBackToACardWithThatTask() throws {
+        let fixture = try makeWaterRefreshFixture(
+            doneIndices: [0],
+            completion: .overdueCaughtUp,
+            titles: ["Water bowl", "Fresh water"]
+        )
+        let result = fixture.interpreter.interpret(
+            text: "complete water",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        #expect(disambiguation.choices.map(\.task) == [fixture.tasks[1]])
+    }
+
+    @Test
     func openMatchBeyondTheFirstThreeIsNotHiddenByDoneOnes() throws {
-        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], taskCount: 4)
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], completion: .overdueCaughtUp, taskCount: 4)
         let result = fixture.interpreter.interpret(
             text: "complete water refresh",
             tasks: fixture.tasks,
@@ -527,7 +548,8 @@ struct TaskAssistantInterpreterTests {
     private func makeWaterRefreshFixture(
         doneIndices: Set<Int>,
         completion: WaterRefreshCompletion = .onTime,
-        taskCount: Int = 2
+        taskCount: Int = 2,
+        titles: [String] = []
     ) throws -> (
         container: ModelContainer,
         tasks: [CareTask],
@@ -543,10 +565,12 @@ struct TaskAssistantInterpreterTests {
         context.insert(Caregiver(name: "Tester", role: .primary))
 
         var tasks: [CareTask] = []
-        for index in 0..<taskCount {
+        for index in 0..<(titles.isEmpty ? taskCount : titles.count) {
             let isDone = doneIndices.contains(index)
             let cat = Cat(name: "Cat \(index)")
-            let task = CareTask(title: "Water Refresh", category: .general)
+            let task = CareTask(title: titles.isEmpty ? "Water Refresh" : titles[index], category: .general)
+            // Open tasks are the least recently touched, so a score tie ranks them after done ones.
+            task.updatedAt = yesterday
             task.assignedCats = [cat]
             let dueDate = isDone && completion != .onTime ? yesterday : today
             let schedule = CareTaskSchedule(scheduledDate: dueDate, frequency: .daily)
