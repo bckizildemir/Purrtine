@@ -11932,6 +11932,23 @@
         }
       }
     },
+    "task.assistant.already_done_today" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That task is already done today."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu görevi bugün zaten tamamlamışsın."
+          }
+        }
+      }
+    },
     "task.assistant.no_match" : {
       "extractionState" : "manual",
       "localizations" : {

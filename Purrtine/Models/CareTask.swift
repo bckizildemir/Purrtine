@@ -363,6 +363,21 @@ extension CareTask {
     var lastCompletionDate: Date? {
         lastCompletion?.completedAt
     }
+
+    /// The one "completed today" rule: the last completion falls on `referenceDate`'s day (or a
+    /// later one). Home's "Last done: Today" label and the Whiskers assistant both use it.
+    func isCompletedToday(referenceDate: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let lastCompletionDate else { return false }
+        return Self.isCompletionToday(lastCompletionDate, referenceDate: referenceDate, calendar: calendar)
+    }
+
+    static func isCompletionToday(
+        _ completionDate: Date,
+        referenceDate: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        calendar.startOfDay(for: completionDate) >= calendar.startOfDay(for: referenceDate)
+    }
     
     var completionCount: Int {
         completions.count

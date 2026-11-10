@@ -286,6 +286,135 @@ struct TaskAssistantInterpreterTests {
         #expect(disambiguation.choices.count > 1)
     }
 
+    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
+    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne(
+        completion: WaterRefreshCompletion
+    ) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: completion)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(let task, _, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation, got \(result).")
+            return
+        }
+
+        #expect(task === fixture.tasks[1])
+    }
+
+    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
+    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone(completion: WaterRefreshCompletion) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1], completion: completion)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .assistantMessage(let message) = result else {
+            Issue.record("Expected an assistant message, got \(result).")
+            return
+        }
+
+        #expect(message == String(localized: .taskAssistantAlreadyDoneToday))
+    }
+
+    @Test
+    func completeRequestWithSeveralOpenMatchesListsOnlyTheOpenOnes() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], taskCount: 3)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        let offered = disambiguation.choices.map(\.task)
+        #expect(offered.count == 2)
+        #expect(offered.contains { $0 === fixture.tasks[0] } == false)
+    }
+
+    @Test
+    func weakSingleOpenMatchFallsBackToACardWithThatTask() throws {
+        let fixture = try makeWaterRefreshFixture(
+            doneIndices: [0],
+            completion: .overdueCaughtUp,
+            titles: ["Water bowl", "Fresh water"]
+        )
+        let result = fixture.interpreter.interpret(
+            text: "complete water",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        #expect(disambiguation.choices.map(\.task) == [fixture.tasks[1]])
+    }
+
+    @Test
+    func openMatchBeyondTheFirstThreeIsNotHiddenByDoneOnes() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], completion: .overdueCaughtUp, taskCount: 4)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(let task, _, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation, got \(result).")
+            return
+        }
+
+        #expect(task === fixture.tasks[3])
+    }
+
+    @Test(arguments: ["postpone water refresh", "open water refresh"])
+    func nonCompleteRequestsStillOfferTasksDoneToday(text: String) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0])
+        let result = fixture.interpreter.interpret(
+            text: text,
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .clarification(let clarification) = result else {
+            Issue.record("Expected a clarification response, got \(result).")
+            return
+        }
+
+        #expect(clarification.suggestions.count == 2)
+    }
+
+    @Test
+    func completionFromYesterdayDoesNotCountAsDoneToday() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: .yesterday)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .taskDisambiguation(let disambiguation) = result else {
+            Issue.record("Expected a task-disambiguation response, got \(result).")
+            return
+        }
+
+        #expect(disambiguation.choices.count == 2)
+    }
+
     @Test
     func genericPostponeWithoutEvidenceReturnsNoMatch() throws {
         let fixture = try makeFixture()
@@ -399,6 +528,73 @@ struct TaskAssistantInterpreterTests {
         return (
             container: container,
             tasks: [overdueFeeding, todayFeeding, litterTask, waterTask],
+            interpreter: TaskAssistantInterpreter()
+        )
+    }
+
+    /// How a done task in the water-refresh fixture was completed.
+    enum WaterRefreshCompletion: Sendable {
+        /// Due today, completed in the app today: the next occurrence is due tomorrow.
+        case onTime
+        /// Due yesterday, caught up in the app today: the next occurrence is due today.
+        case overdueCaughtUp
+        /// Completed yesterday: nothing done today, the next occurrence is due today.
+        case yesterday
+    }
+
+    /// Daily general tasks with the same title, one per cat, all due today unless stated otherwise.
+    /// Done tasks are completed through `TaskActionService.recordCompletion`, the app's real path,
+    /// which retires the active schedule and adds the next one.
+    private func makeWaterRefreshFixture(
+        doneIndices: Set<Int>,
+        completion: WaterRefreshCompletion = .onTime,
+        taskCount: Int = 2,
+        titles: [String] = []
+    ) throws -> (
+        container: ModelContainer,
+        tasks: [CareTask],
+        referenceDate: Date,
+        interpreter: TaskAssistantInterpreter
+    ) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let calendar = Calendar.current
+        let referenceDate = Date()
+        let today = calendar.startOfDay(for: referenceDate)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        context.insert(Caregiver(name: "Tester", role: .primary))
+
+        var tasks: [CareTask] = []
+        for index in 0..<(titles.isEmpty ? taskCount : titles.count) {
+            let isDone = doneIndices.contains(index)
+            let cat = Cat(name: "Cat \(index)")
+            let task = CareTask(title: titles.isEmpty ? "Water Refresh" : titles[index], category: .general)
+            // Open tasks are the least recently touched, so a score tie ranks them after done ones.
+            task.updatedAt = yesterday
+            task.assignedCats = [cat]
+            let dueDate = isDone && completion != .onTime ? yesterday : today
+            let schedule = CareTaskSchedule(scheduledDate: dueDate, frequency: .daily)
+            schedule.task = task
+            task.schedules = [schedule]
+            context.insert(cat)
+            context.insert(task)
+            context.insert(schedule)
+            try context.save()
+
+            if isDone {
+                try TaskActionService.recordCompletion(of: task, with: CareTaskCompletionInput(), in: context)
+                if completion == .yesterday {
+                    task.lastCompletion?.completedAt = yesterday
+                }
+                try context.save()
+            }
+            tasks.append(task)
+        }
+
+        return (
+            container: container,
+            tasks: tasks,
+            referenceDate: referenceDate,
             interpreter: TaskAssistantInterpreter()
         )
     }

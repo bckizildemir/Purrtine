@@ -84,9 +84,39 @@ struct TaskAssistantInterpreter {
             candidate.explicitMatchScore >= minimumClarificationExplicitScore(for: command)
                 && candidate.score >= minimumClarificationScore(for: command)
         }
-        let topCandidates = Array(relevantCandidates.prefix(3))
+        var topCandidates = Array(relevantCandidates.prefix(3))
 
         if shouldClarify(topCandidates, bestCandidate: bestCandidate, for: command) {
+            // A tie on a complete request ignores tasks already completed today (Home's rule): none
+            // left says so, one left is confirmed directly when it is a confident match, otherwise
+            // the card or clarification lists the open ones. The filter runs before the top-3 cut.
+            if case .complete = command {
+                let openCandidates = relevantCandidates.filter { candidate in
+                    candidate.task.isCompletedToday(referenceDate: referenceDate) == false
+                }
+                if openCandidates.isEmpty {
+                    return .assistantMessage(String(localized: .taskAssistantAlreadyDoneToday))
+                }
+                topCandidates = Array(openCandidates.prefix(3))
+                if openCandidates.count == 1, let onlyOpen = openCandidates.first,
+                   isHighConfidenceMatch(onlyOpen, for: command) {
+                    let resolvedAction = action(
+                        for: command,
+                        task: onlyOpen.task,
+                        completedForDate: completedForDate,
+                        notes: extractedNotes,
+                        selectedCats: onlyOpen.selectedCats
+                    )
+                    return .confirmation(
+                        TaskAssistantConfirmation(
+                            title: confirmationTitle(for: command),
+                            message: confirmationMessage(for: resolvedAction),
+                            action: resolvedAction
+                        )
+                    )
+                }
+            }
+
             // Only a generic verb ("complete", "done") with no category verb: the user did not say
             // what to do with a specific task type, so a tie asks which task, like the no-command path.
             if explicitCommand == nil, hasCategoryVerbEvidence(in: analysis, tasks: tasks) == false {
