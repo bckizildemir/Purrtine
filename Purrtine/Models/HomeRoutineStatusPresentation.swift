@@ -129,7 +129,12 @@ struct HomeRoutineStatusPresentation {
             0
         )
 
-        let relativeText = dayCount == 0
+        // The day-0 case is the shared "completed today" rule the Whiskers assistant also uses.
+        let relativeText = CareTask.isCompletionToday(
+            lastCompletionDate,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
             ? String(localized: .homeRoutineStatusToday)
             : String(localized: .homeRoutineStatusDaysAgo(Int32(dayCount)))
 

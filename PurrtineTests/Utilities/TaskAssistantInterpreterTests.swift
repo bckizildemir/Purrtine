@@ -286,10 +286,16 @@ struct TaskAssistantInterpreterTests {
         #expect(disambiguation.choices.count > 1)
     }
 
-    @Test
-    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne() throws {
-        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0])
-        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
+    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne(
+        completion: WaterRefreshCompletion
+    ) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: completion)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
 
         guard case .confirmation(let confirmation) = result,
               case .complete(let task, _, _, _) = confirmation.action else {
@@ -300,10 +306,14 @@ struct TaskAssistantInterpreterTests {
         #expect(task === fixture.tasks[1])
     }
 
-    @Test
-    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone() throws {
-        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0, 1])
-        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
+    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone(completion: WaterRefreshCompletion) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1], completion: completion)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
 
         guard case .assistantMessage(let message) = result else {
             Issue.record("Expected an assistant message, got \(result).")
@@ -315,8 +325,12 @@ struct TaskAssistantInterpreterTests {
 
     @Test
     func completeRequestWithSeveralOpenMatchesListsOnlyTheOpenOnes() throws {
-        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0], taskCount: 3)
-        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], taskCount: 3)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
 
         guard case .taskDisambiguation(let disambiguation) = result else {
             Issue.record("Expected a task-disambiguation response, got \(result).")
@@ -329,9 +343,31 @@ struct TaskAssistantInterpreterTests {
     }
 
     @Test
-    func postponeRequestStillOffersTasksDoneToday() throws {
-        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [0])
-        let result = fixture.interpreter.interpret(text: "postpone water refresh", tasks: fixture.tasks)
+    func openMatchBeyondTheFirstThreeIsNotHiddenByDoneOnes() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], taskCount: 4)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(let task, _, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation, got \(result).")
+            return
+        }
+
+        #expect(task === fixture.tasks[3])
+    }
+
+    @Test(arguments: ["postpone water refresh", "open water refresh"])
+    func nonCompleteRequestsStillOfferTasksDoneToday(text: String) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0])
+        let result = fixture.interpreter.interpret(
+            text: text,
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
 
         guard case .clarification(let clarification) = result else {
             Issue.record("Expected a clarification response, got \(result).")
@@ -342,9 +378,13 @@ struct TaskAssistantInterpreterTests {
     }
 
     @Test
-    func completionOfAnEarlierOccurrenceDoesNotCountAsDoneToday() throws {
-        let fixture = try makeWaterRefreshFixture(doneTodayIndices: [], doneYesterdayIndices: [0])
-        let result = fixture.interpreter.interpret(text: "complete water refresh", tasks: fixture.tasks)
+    func completionFromYesterdayDoesNotCountAsDoneToday() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: .yesterday)
+        let result = fixture.interpreter.interpret(
+            text: "complete water refresh",
+            tasks: fixture.tasks,
+            referenceDate: fixture.referenceDate
+        )
 
         guard case .taskDisambiguation(let disambiguation) = result else {
             Issue.record("Expected a task-disambiguation response, got \(result).")
@@ -471,45 +511,68 @@ struct TaskAssistantInterpreterTests {
         )
     }
 
-    /// Daily general tasks with the same title, one per cat, all due today. A completion for today's
-    /// occurrence marks that task done; the schedule is left untouched so it stays due today.
+    /// How a done task in the water-refresh fixture was completed.
+    enum WaterRefreshCompletion: Sendable {
+        /// Due today, completed in the app today: the next occurrence is due tomorrow.
+        case onTime
+        /// Due yesterday, caught up in the app today: the next occurrence is due today.
+        case overdueCaughtUp
+        /// Completed yesterday: nothing done today, the next occurrence is due today.
+        case yesterday
+    }
+
+    /// Daily general tasks with the same title, one per cat, all due today unless stated otherwise.
+    /// Done tasks are completed through `TaskActionService.recordCompletion`, the app's real path,
+    /// which retires the active schedule and adds the next one.
     private func makeWaterRefreshFixture(
-        doneTodayIndices: Set<Int>,
-        doneYesterdayIndices: Set<Int> = [],
+        doneIndices: Set<Int>,
+        completion: WaterRefreshCompletion = .onTime,
         taskCount: Int = 2
-    ) throws -> (container: ModelContainer, tasks: [CareTask], interpreter: TaskAssistantInterpreter) {
+    ) throws -> (
+        container: ModelContainer,
+        tasks: [CareTask],
+        referenceDate: Date,
+        interpreter: TaskAssistantInterpreter
+    ) {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let referenceDate = Date()
+        let today = calendar.startOfDay(for: referenceDate)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        let catNames = ["Luna", "Mochi", "Pamuk"]
+        context.insert(Caregiver(name: "Tester", role: .primary))
 
-        let tasks = (0..<taskCount).map { index -> CareTask in
-            let cat = Cat(name: catNames[index])
+        var tasks: [CareTask] = []
+        for index in 0..<taskCount {
+            let isDone = doneIndices.contains(index)
+            let cat = Cat(name: "Cat \(index)")
             let task = CareTask(title: "Water Refresh", category: .general)
             task.assignedCats = [cat]
-            let schedule = CareTaskSchedule(scheduledDate: today, frequency: .daily)
+            let dueDate = isDone && completion != .onTime ? yesterday : today
+            let schedule = CareTaskSchedule(scheduledDate: dueDate, frequency: .daily)
             schedule.task = task
             task.schedules = [schedule]
             context.insert(cat)
             context.insert(task)
             context.insert(schedule)
+            try context.save()
 
-            let completionDay: Date? = doneTodayIndices.contains(index)
-                ? today
-                : (doneYesterdayIndices.contains(index) ? yesterday : nil)
-            if let completionDay {
-                let completion = CareTaskCompletion(completedAt: Date(), completedForDate: completionDay)
-                completion.task = task
-                task.completions.append(completion)
-                context.insert(completion)
+            if isDone {
+                try TaskActionService.recordCompletion(of: task, with: CareTaskCompletionInput(), in: context)
+                if completion == .yesterday {
+                    task.lastCompletion?.completedAt = yesterday
+                }
+                try context.save()
             }
-            return task
+            tasks.append(task)
         }
-        try context.save()
 
-        return (container: container, tasks: tasks, interpreter: TaskAssistantInterpreter())
+        return (
+            container: container,
+            tasks: tasks,
+            referenceDate: referenceDate,
+            interpreter: TaskAssistantInterpreter()
+        )
     }
 
     private func insertTask(

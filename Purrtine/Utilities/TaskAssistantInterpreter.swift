@@ -87,17 +87,19 @@ struct TaskAssistantInterpreter {
         var topCandidates = Array(relevantCandidates.prefix(3))
 
         if shouldClarify(topCandidates, bestCandidate: bestCandidate, for: command) {
-            // A tie on a complete request ignores tasks already done for their current occurrence:
-            // none left says so, one left is confirmed directly, several stay a card of the open ones.
+            // A tie on a complete request ignores tasks already completed today (Home's rule): none
+            // left says so, one left is confirmed directly when it is a confident match, otherwise
+            // the card or clarification lists the open ones. The filter runs before the top-3 cut.
             if case .complete = command {
-                let openCandidates = topCandidates.filter { isDoneForCurrentOccurrence($0.task, on: referenceDate) == false }
+                let openCandidates = relevantCandidates.filter { candidate in
+                    candidate.task.isCompletedToday(referenceDate: referenceDate) == false
+                }
                 if openCandidates.isEmpty {
                     return .assistantMessage(String(localized: .taskAssistantAlreadyDoneToday))
                 }
-                if openCandidates.count == 1, let onlyOpen = openCandidates.first {
-                    guard isHighConfidenceMatch(onlyOpen, for: command) else {
-                        return .assistantMessage(String(localized: .taskAssistantNoMatch))
-                    }
+                topCandidates = Array(openCandidates.prefix(3))
+                if openCandidates.count == 1, let onlyOpen = openCandidates.first,
+                   isHighConfidenceMatch(onlyOpen, for: command) {
                     let resolvedAction = action(
                         for: command,
                         task: onlyOpen.task,
@@ -113,7 +115,6 @@ struct TaskAssistantInterpreter {
                         )
                     )
                 }
-                topCandidates = openCandidates
             }
 
             // Only a generic verb ("complete", "done") with no category verb: the user did not say
@@ -231,12 +232,6 @@ struct TaskAssistantInterpreter {
                 notes: notes
             )
         )
-    }
-
-    /// Same rule the calendar uses for "completed": a completion recorded for the day of the
-    /// task's current occurrence (its due day, or today when it has no schedule).
-    private func isDoneForCurrentOccurrence(_ task: CareTask, on referenceDate: Date) -> Bool {
-        TaskCalendarDerivation.hasCompletion(for: task, on: task.activeDueDate ?? referenceDate)
     }
 
     private func analyze(_ text: String) -> QueryAnalysis {
