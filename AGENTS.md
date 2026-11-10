@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is a copy of this file for Codex. Edit `CLAUDE.md`, then copy it to `AGENTS.md`.
 
+Read `STATUS.md` (open PRs, next step, what waits for the owner) at session start; update it before the final report.
+
 ## Swift skills are mandatory
 
 Before you write or edit a Swift file under `Purrtine/`, `PurrtineTests/`, or
