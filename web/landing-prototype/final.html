@@ -1,8 +1,8 @@
 <!doctype html>
 <!--
   PROTOTYPE, FINAL STATE (2026-11-11), throwaway (branch prototype/landing-page). Not production.
-  Owner picks: top = variant I (emil-design-eng "When did I last…?"), tasks = T2 phone with the T1 motto.
-  Section order: top → Whiskers (with a mic) → tasks (phone) → calendar → questions → privacy.
+  Owner picks: top = variant I (emil-design-eng "When did I last…?"), tasks = the list card (no phone frame) with the T1 motto.
+  Section order: top → Whiskers (with a mic) → tasks (list card) → calendar → questions → privacy.
   Left out on purpose: real app screenshots (owner: add them when the app is final).
   The earlier variants stay in r3.html (F, G, H, I and T1-T3) for history.
   Run: python3 -m http.server 8765 -d web/landing-prototype  →  http://localhost:8765/final.html
@@ -166,16 +166,6 @@
   .pt .trow.late:not(.done) .due { color: #d64545; font-weight: 800; }
   .pt .trow.done .due { color: var(--green); font-weight: 800; }
   .pt .trow .last { display: block; font-size: 12px; color: var(--muted); opacity: .85; }
-  /* T2 phone */
-  .pt .phone { width: 300px; justify-self: center; border-radius: 46px; background: var(--navy); padding: 10px; box-shadow: 0 40px 80px -30px rgba(23,50,74,.5); position: relative; }
-  .pt .phone .notch { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 90px; height: 24px; border-radius: 20px; background: #0b1a28; z-index: 2; }
-  .pt .phone .screen { border-radius: 37px; background: #f2f6fa; padding: 54px 12px 0; min-height: 560px; display: flex; flex-direction: column; overflow: hidden; }
-  .pt .phone .nav-title { font-size: 28px; font-weight: 900; margin: 0 4px 10px; }
-  .pt .phone .tlist { flex: 1; }
-  .pt .phone .trow-in { padding: 10px 12px; }
-  .pt .phone .trow strong { font-size: 15px; }
-  .pt .phone .tabbar { display: flex; justify-content: space-around; padding: 10px 0 18px; font-size: 11px; font-weight: 800; color: var(--muted); border-top: 1px solid var(--line); margin: 0 -12px; background: #fff; }
-  .pt .phone .tabbar .on { color: var(--blue); }
   .pt .hand { position: absolute; left: 30px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; background: rgba(23,50,74,.25); box-shadow: 0 0 0 6px rgba(23,50,74,.08); pointer-events: none; opacity: 0; }
   /* T3 counter */
   .pt .tasks-head h2 { font-size: 38px; line-height: 1.08; margin: 0 0 12px; font-weight: 900; letter-spacing: -0.02em; }
@@ -272,20 +262,16 @@
 
 <!-- ═════════ 3 (optional): tasks ═════════ -->
 <section id="tasks">
-  <!-- T2: the phone itself, with a swipe hint -->
-  <div class="wrap split flip" id="tv-2" data-name="T2 Phone + T1 motto (picked)">
-    <div class="phone" aria-label="Purrtine on an iPhone">
-      <div class="notch" aria-hidden="true"></div>
-      <div class="screen">
-        <p class="nav-title">Tasks</p>
-        <div class="tlist" data-list></div>
-        <div class="tabbar" aria-hidden="true"><span>Home</span><span class="on">Tasks</span><span>Whiskers</span><span>More</span></div>
-      </div>
-    </div>
+  <!-- Tasks: the list card only (owner, 2026-11-11: no phone frame), with the T1 motto -->
+  <div class="wrap split" id="tv-2" data-name="Tasks card + T1 motto (picked)">
     <div>
       <h2>One look. One tap. Done.</h2>
       <p>Purrtine shows what is late and what is due today, for every cat. Tap the circle, or swipe the row, and the task is done.</p>
       <p>Purrtine sets the next time for you, so tomorrow's breakfast is already waiting.</p>
+    </div>
+    <div class="panel" id="tasks-card">
+      <div class="tlist" data-list></div>
+      <p class="hint">Tap a circle, or drag a row to the right.</p>
     </div>
   </div>
 
@@ -491,7 +477,7 @@
       return listEl;
     }
 
-    // T2: a one-time swipe hint when the phone first comes into view.
+    // A one-time swipe hint when the tasks card first comes into view.
     var l2 = build(document.querySelector('#tv-2 [data-list]'));
     var hinted = false;
     new IntersectionObserver(function (es, io) {
@@ -502,7 +488,7 @@
       inner.animate([{ transform: 'none' }, { transform: 'translateX(90px)', offset: .45 }, { transform: 'translateX(90px)', offset: .6 }, { transform: 'none' }], opts);
       hand.animate([{ opacity: 0, transform: 'none' }, { opacity: 1, offset: .1 }, { opacity: 1, transform: 'translateX(90px)', offset: .45 }, { opacity: 0, transform: 'translateX(90px)', offset: .7 }, { opacity: 0 }], opts)
         .onfinish = function () { hand.remove(); };
-    }, { threshold: .6 }).observe(document.querySelector('#tv-2 .phone'));
+    }, { threshold: .6 }).observe(document.querySelector('#tasks-card'));
 
   })();
 
