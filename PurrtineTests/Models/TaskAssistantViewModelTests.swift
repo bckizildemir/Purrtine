@@ -175,6 +175,82 @@ struct TaskAssistantViewModelTests {
     }
 
     @Test
+    func cloudResultIsMarkedAIGenerated() async throws {
+        let fixture = try makeFixture()
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.confirmation(
+            TaskAssistantConfirmation(title: "Open task", message: "Open Feed Luna?", action: .open(task: fixture.task))
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(sut.messages.last?.role == .assistant)
+        #expect(sut.messages.last?.isAIGenerated == true)
+        #expect(sut.messages.first?.isAIGenerated == false)
+    }
+
+    @Test
+    func cloudTaskDisambiguationIsMarkedAIGenerated() async throws {
+        let fixture = try makeFixture()
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.taskDisambiguation(
+            TaskAssistantTaskDisambiguation(
+                message: "Which task?",
+                choices: [TaskAssistantTaskChoice(task: fixture.task, selectedCats: [])],
+                completedForDate: nil,
+                notes: nil
+            )
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(sut.pendingTaskDisambiguation != nil)
+        #expect(sut.isPendingTaskDisambiguationAIGenerated)
+    }
+
+    @Test
+    func ruleBasedReplyIsNotMarkedAIGenerated() async throws {
+        let fixture = try makeFixture()
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "open Luna feeding details"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(cloudInterpreter.callCount == 0)
+        #expect(sut.messages.allSatisfy { $0.isAIGenerated == false })
+        #expect(sut.isPendingTaskDisambiguationAIGenerated == false)
+    }
+
+    @Test
+    func cloudFailureFallbackIsNotMarkedAIGenerated() async throws {
+        let fixture = try makeFixture()
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(sut.messages.allSatisfy { $0.isAIGenerated == false })
+    }
+
+    @Test
     func forcedCompletionErrorTagsMessageAsFailure() async throws {
         let fixture = try makeFixture()
         let sut = TaskAssistantViewModel()

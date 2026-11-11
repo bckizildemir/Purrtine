@@ -511,6 +511,10 @@ private extension TaskAssistantChatView {
             .font(.footnote.weight(.semibold))
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("taskAssistant.cancelTaskDisambiguationButton")
+
+            if viewModel.isPendingTaskDisambiguationAIGenerated {
+                AIGeneratedNotice(surface: "task-assistant-disambiguation")
+            }
         }
         .padding(14)
         .background(Theme.backgroundSecondary)

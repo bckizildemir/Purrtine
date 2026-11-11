@@ -15,6 +15,9 @@ final class TaskAssistantViewModel {
     var pendingConfirmation: TaskAssistantConfirmation?
     var pendingClarification: TaskAssistantClarification?
     var pendingTaskDisambiguation: TaskAssistantTaskDisambiguation?
+    /// The pending task list came from the cloud AI. That card has no bubble, so it shows the
+    /// "AI can make mistakes" notice itself. Only `apply` sets it.
+    private(set) var isPendingTaskDisambiguationAIGenerated = false
     var pendingIntentSelection: TaskAssistantIntentSelection?
     var taskCompletionRequest: TaskAssistantCompletionRequest?
     /// Active conversational "create a task" flow, or nil when not creating. Single-slot and
@@ -72,8 +75,8 @@ final class TaskAssistantViewModel {
         scrollToBottomToken += 1
 
         let heuristicResult = interpreter.interpret(text: text, tasks: tasks)
-        let interpretation = await resolvedInterpretation(heuristicResult, text: text, tasks: tasks)
-        apply(interpretation)
+        let resolved = await resolvedInterpretation(heuristicResult, text: text, tasks: tasks)
+        apply(resolved.interpretation, isAIGenerated: resolved.isAIGenerated)
     }
 
     /// The heuristic interpreter runs first (instant, offline). Only when it can't
@@ -83,52 +86,68 @@ final class TaskAssistantViewModel {
         _ heuristicResult: TaskAssistantInterpreter.Interpretation,
         text: String,
         tasks: [CareTask]
-    ) async -> TaskAssistantInterpreter.Interpretation {
+    ) async -> (interpretation: TaskAssistantInterpreter.Interpretation, isAIGenerated: Bool) {
         guard
             case .assistantMessage = heuristicResult,
             let cloudInterpreter,
             SettingsPreferences.isTaskAssistantCloudConsentGranted(in: userDefaults)
         else {
-            return heuristicResult
+            return (heuristicResult, false)
         }
 
         isProcessing = true
         defer { isProcessing = false }
 
         if let cloudResult = try? await cloudInterpreter.interpret(text: text, tasks: tasks, referenceDate: Date()) {
-            return cloudResult
+            return (cloudResult, true)
         }
 
-        return heuristicResult
+        return (heuristicResult, false)
     }
 
-    private func apply(_ interpretation: TaskAssistantInterpreter.Interpretation) {
+    /// `isAIGenerated` is true only for a result the cloud AI produced: the bubble (or the
+    /// task list card) then shows the "AI can make mistakes" notice. The later steps the user
+    /// takes on that result are rule-based and carry no notice.
+    private func apply(_ interpretation: TaskAssistantInterpreter.Interpretation, isAIGenerated: Bool) {
         switch interpretation {
         case .confirmation(let confirmation):
             pendingConfirmation = confirmation
-            messages.append(TaskAssistantMessage(role: .assistant, text: confirmation.message))
+            messages.append(
+                TaskAssistantMessage(role: .assistant, text: confirmation.message, isAIGenerated: isAIGenerated)
+            )
 
         case .clarification(let clarification):
             pendingClarification = clarification
-            messages.append(TaskAssistantMessage(role: .assistant, text: clarification.message))
+            messages.append(
+                TaskAssistantMessage(role: .assistant, text: clarification.message, isAIGenerated: isAIGenerated)
+            )
 
         case .taskDisambiguation(let disambiguation):
             // No assistant bubble: the card carries the question as its heading. A bubble too
             // repeated the text and pushed the user's own message out of view.
             pendingTaskDisambiguation = disambiguation
+            isPendingTaskDisambiguationAIGenerated = isAIGenerated
 
         case .intentSelection(let selection):
             pendingIntentSelection = selection
             messages.append(
                 TaskAssistantMessage(
                     role: .assistant,
-                    text: String(localized: .taskAssistantIntentPrompt(selection.task.title))
+                    text: String(localized: .taskAssistantIntentPrompt(selection.task.title)),
+                    isAIGenerated: isAIGenerated
                 )
             )
 
         case .assistantMessage(let message):
             let isNoMatch = message == String(localized: .taskAssistantNoMatch)
-            messages.append(TaskAssistantMessage(role: .assistant, text: message, style: isNoMatch ? .failure : .normal))
+            messages.append(
+                TaskAssistantMessage(
+                    role: .assistant,
+                    text: message,
+                    style: isNoMatch ? .failure : .normal,
+                    isAIGenerated: isAIGenerated
+                )
+            )
         }
     }
 
