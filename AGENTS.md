@@ -34,6 +34,13 @@ The five rows above under the style-guide row are Apple's own skills, exported f
 older training; when one disagrees with a community skill above, follow Apple's. Re-export after each Xcode update
 (`--replace-existing`).
 
+**Newer-iOS APIs go through `Backport`.** The deployment target is iOS 18.4, and `swiftui-whats-new-27`,
+`app-intents-whats-new-27` and the Liquid Glass skills teach iOS 26/27-only API. Wrap each such API in the
+existing backport system: `Purrtine/Utilities/Backport.swift` (`view.backport.<name>(…)`, or `Backport.<Name>` for
+toolbar content), one `Purrtine/Utilities/Backport+<Feature>.swift` per API, with `if #available(iOS 26.0, *)` (or
+27.0) inside it and a fallback for older iOS (the old look, or nothing when the feature is cosmetic). Do
+not add a new `#available` check in a view; reuse or add a `Backport+` file. Example: `Backport+ToolbarSpacer.swift`.
+
 More than one row can apply — invoke each that does. `ios-memory-perf` is the one exception to
 "load it before you edit": it is measure-first, so run it on a reported symptom, a deliberate perf
 pass, or a review of image loading, body-read computed properties, or `@Query` cost.
