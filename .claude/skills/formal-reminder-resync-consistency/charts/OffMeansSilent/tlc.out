@@ -1,0 +1,340 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 0 and seed 2865200622823369378 with 1 worker on 8 cores with 4096MB heap and 64MB offheap memory [pid: 48479] (Mac OS X 27.0.1 aarch64, Eclipse Adoptium 25.0.5 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/berkecankizildemir/iCloud Drive (Archive)/Documents/iOS Dev/wt-p-fv-reminder-resync-consistency/.claude/skills/formal-reminder-resync-consistency/ReminderResync.tla
+Parsing file /private/var/folders/v1/ljx1z66s1z933xbnjcpbh91c0000gn/T/statechart-wNPABX/statechart-QKGyHS/tmp-verdict-1/Naturals.tla
+Parsing file /private/var/folders/v1/ljx1z66s1z933xbnjcpbh91c0000gn/T/statechart-wNPABX/statechart-QKGyHS/tmp-verdict-1/FiniteSets.tla
+Parsing file /private/var/folders/v1/ljx1z66s1z933xbnjcpbh91c0000gn/T/statechart-wNPABX/statechart-QKGyHS/tmp-verdict-1/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module ReminderResync
+Starting... (2026-11-12 01:11:31)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-12 01:11:31.
+Error: Invariant OffMeansSilent is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 0
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = TRUE
+/\ catGone = FALSE
+/\ remAtPassStart = {}
+/\ passToAdd = {}
+/\ passSnap = {}
+/\ lastPass = "none"
+/\ pending = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "unknown"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 2: <ToggleSettings line 253, col 5 to line 257, col 90 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = TRUE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = {}
+/\ passToAdd = {}
+/\ passSnap = {}
+/\ lastPass = "none"
+/\ pending = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "unknown"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = TRUE
+
+State 3: <PassFetch line 120, col 5 to line 132, col 91 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = {}
+/\ lastPass = "running"
+/\ pending = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "unknown"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "auth"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 4: <PassAuth line 137, col 5 to line 142, col 99 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = {}
+/\ lastPass = "running"
+/\ pending = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "read"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 5: <PassRead line 147, col 5 to line 152, col 91 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "running"
+/\ pending = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "apply"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 6: <PassApply line 157, col 5 to line 168, col 88 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "running"
+/\ pending = {}
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "add"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 7: <PassAdd line 172, col 5 to line 184, col 88 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "ok"
+/\ pending = {}
+/\ sysPerm = "on"
+/\ launched = FALSE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 8: <LaunchPermissionCheck line 268, col 5 to line 272, col 94 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 1
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "ok"
+/\ pending = {}
+/\ sysPerm = "on"
+/\ launched = TRUE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 9: <SnoozeTap line 290, col 5 to line 293, col 116 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 2
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "ok"
+/\ pending = {}
+/\ sysPerm = "on"
+/\ launched = TRUE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 1, pc |-> "sz_fetch", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 10: <SnoozeFetch line 298, col 5 to line 304, col 99 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 2
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "ok"
+/\ pending = {}
+/\ sysPerm = "on"
+/\ launched = TRUE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 0
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 1, pc |-> "sz_add", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+State 11: <SnoozeAdd line 309, col 5 to line 316, col 79 of module ReminderResync>
+/\ passInfo = [alive |-> <<TRUE, TRUE>>, occ |-> <<0, 0>>, ver |-> <<0, 0>>]
+/\ cancelled = FALSE
+/\ events = 2
+/\ alive = <<TRUE, TRUE>>
+/\ settingsOn = FALSE
+/\ catGone = FALSE
+/\ remAtPassStart = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ passToAdd = {}
+/\ passSnap = { [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "rem", task |-> 1],
+  [occ |-> 0, ver |-> 0, n |-> 0, kind |-> "nudge", task |-> 0] }
+/\ lastPass = "ok"
+/\ pending = {[occ |-> 0, ver |-> 0, n |-> 0, kind |-> "snooze", task |-> 1]}
+/\ sysPerm = "on"
+/\ launched = TRUE
+/\ ver = <<0, 0>>
+/\ snoozeSeq = 1
+/\ perm = "on"
+/\ act = [ app |-> [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"],
+  notif |->
+      [occ |-> 0, task |-> 0, pc |-> "idle", snap |-> {}, then |-> "none"] ]
+/\ fetchFails = 0
+/\ occ = <<0, 0>>
+/\ passOn = FALSE
+/\ passPc = "idle"
+/\ staged = <<FALSE, FALSE>>
+/\ queued = FALSE
+
+312175 states generated, 118252 distinct states found, 30312 states left on queue.
+The depth of the complete state graph search is 11.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 18 and the 95th percentile is 5).
+Finished in 03s at (2026-11-12 01:11:34)
+
