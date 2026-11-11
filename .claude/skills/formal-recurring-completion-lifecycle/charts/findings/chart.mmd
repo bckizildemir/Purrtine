@@ -1,0 +1,47 @@
+---
+title: "One daily care task as caregivers complete it"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: open
+    lg1: Breaks CompletedNeverReappears or CompletesTheOccurrenceShown or NeverCompletedTwice or NoOccurrenceSkipped
+    lg2: Path to the CompletedNeverReappears or CompletesTheOccurrenceShown or NeverCompletedTwice or NoOccurrenceSkipped bug
+  }
+  class lg0 blue
+  class lg1 breaks
+  class lg2 bugPath
+  s0: Due day 0, today is day 0 (nothing done yet)
+  s1: Due day 0, today is day 1 (nothing done yet)
+  s2: Due day 2, today is day 0 (done: day 1)
+  s3: Due day 1, today is day 0 (done: day 0)
+  s4: Due day 1, today is day 1 (done: day 0)
+  s5: Due day 1, today is day 0 (done: day 0, day 0)
+  s6: Due day 0, today is day 0 (done: day 0)
+  [*] --> s0
+  s0 --> s1: a new day begins
+  s0 --> s0: the reminder for day 0 arrives or a caregiver picks day 1 in the calendar and taps Complete or a caregiver taps Complete in the task list for day 0 or a caregiver opens Edit Task (date shows day 0) or a caregiver tells Whiskers it was done on day 0#59; Whiskers asks to confirm
+  s1 --> s1: the reminder for day 1 arrives
+  s0 --> s2: the calendar's Complete saves a completion for day 1
+  s0 --> s3: Complete on the reminder saves a completion for day 0 or the task list's Complete (row or sheet) saves a completion for day 0
+  s1 --> s4: Complete on the reminder saves a completion for day 0
+  s3 --> s6: the caregiver saves Edit Task
+  s3 --> s5: Whiskers' confirmation saves a completion for day 0
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 blue
+  class s0 bugPath
+  class s1 blue
+  class s1 bugPath
+  class s2 blue
+  class s2 breaks
+  class s2 bugPath
+  class s3 blue
+  class s3 bugPath
+  class s4 blue
+  class s4 breaks
+  class s4 bugPath
+  class s5 blue
+  class s5 breaks
+  class s5 bugPath
+  class s6 blue
+  class s6 breaks
+  class s6 bugPath
