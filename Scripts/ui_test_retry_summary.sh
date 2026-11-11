@@ -100,23 +100,23 @@ run_self_test() {
     trap cleanup_self_test EXIT
 
     cat > "$self_test_tmp/pass-on-retry.log" <<'LOG'
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testRetried]' started (Iteration 1 of 2).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testRetried]' failed (1.234 seconds).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testGreen]' started (Iteration 1 of 2).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testGreen]' passed (1.234 seconds).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testRetried]' started (Iteration 2 of 2).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testRetried]' passed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testRetried]' started (Iteration 1 of 2).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testRetried]' failed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testGreen]' started (Iteration 1 of 2).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testGreen]' passed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testRetried]' started (Iteration 2 of 2).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testRetried]' passed (1.234 seconds).
 LOG
 
     cat > "$self_test_tmp/still-failing.log" <<'LOG'
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testBroken]' started (Iteration 1 of 2).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testBroken]' failed (1.234 seconds).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testBroken]' started (Iteration 2 of 2).
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testBroken]' failed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testBroken]' started (Iteration 1 of 2).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testBroken]' failed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testBroken]' started (Iteration 2 of 2).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testBroken]' failed (1.234 seconds).
 LOG
 
     cat > "$self_test_tmp/green.log" <<'LOG'
-Test Case '-[CatCareCalendarUITests.CriticalFlowsUITests testGreen]' passed (1.234 seconds).
+Test Case '-[PurrtineUITests.CriticalFlowsUITests testGreen]' passed (1.234 seconds).
 LOG
 
     # Newer xcodebuild versions print "Test case 'Class.test()' passed on 'device'" instead.
@@ -128,7 +128,7 @@ LOG
     output="$(print_summary "$self_test_tmp/pass-on-retry.log")"
     assert_contains "$output" "passed on retry (1):" "pass-on-retry count"
     assert_contains "$output" \
-        "- CatCareCalendarUITests.CriticalFlowsUITests testRetried" \
+        "- PurrtineUITests.CriticalFlowsUITests testRetried" \
         "pass-on-retry test name"
     assert_contains "$output" "did not pass (0):" "pass-on-retry did-not-pass count"
 
@@ -136,7 +136,7 @@ LOG
     assert_contains "$output" "passed on retry (0):" "still-failing recovered count"
     assert_contains "$output" "did not pass (1):" "still-failing did-not-pass count"
     assert_contains "$output" \
-        "- CatCareCalendarUITests.CriticalFlowsUITests testBroken" \
+        "- PurrtineUITests.CriticalFlowsUITests testBroken" \
         "still-failing test name"
 
     output="$(print_summary "$self_test_tmp/green.log")"

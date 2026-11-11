@@ -1,12 +1,12 @@
 # Localization & Formatting Guidelines
 
-These guidelines capture the rules for localized copy in CatCareCalendar following the July 2026 migration to a String Catalog.
+These guidelines capture the rules for localized copy in Purrtine following the July 2026 migration to a String Catalog.
 
 ---
 
 ## 1. Storage
 
-- All user-facing strings live in the String Catalog `CatCareCalendar/Resources/Localizable.xcstrings`, covering English (`en`) and Turkish (`tr`).
+- All user-facing strings live in the String Catalog `Purrtine/Resources/Localizable.xcstrings`, covering English (`en`) and Turkish (`tr`).
 - Keys are dot-separated (e.g. `tasks.header.today`) and use `extractionState: "manual"`.
 - The build setting `STRING_CATALOG_GENERATE_SYMBOLS = YES` generates typed `LocalizedStringResource` symbols from the catalog at build time (`GeneratedStringSymbols_Localizable.swift`).
 - The legacy per-locale `.strings`/`.stringsdict` files and the `localized` / `localized(with:)` String extensions were removed in this migration.

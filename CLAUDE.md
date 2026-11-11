@@ -4,10 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is a copy of this file for Codex. Edit `CLAUDE.md`, then copy it to `AGENTS.md`.
 
+Read `STATUS.md` (open PRs, next step, what waits for the owner) at session start; update it before the final report.
+
+**Safe merges.** The owner (2026-11-11) keeps routine PRs off their list. Once CI is green and GitHub
+shows the PR `MERGEABLE`, an agent squash-merges these itself and deletes the branch (main requires an up-to-date branch: when
+GitHub says it is behind, run `gh pr update-branch` and wait for the new CI): docs-only PRs
+(Markdown and `docs/` only), including `STATUS.md` updates, and Dependabot patch and minor bumps. App
+code, config, a major bump and every Cloud Function change still wait for the owner. A merged bump in
+the functions folder still needs a deploy, and the deploy needs the owner's yes: ask once, in the same
+message that reports the merges. Record each merge in `STATUS.md` in the same session.
+
 ## Swift skills are mandatory
 
-Before you write or edit a Swift file under `CatCareCalendar/`, `CatCareCalendarTests/`, or
-`CatCareCalendarUITests/`, invoke the matching skill, then edit. This applies to one-line changes
+Before you write or edit a Swift file under `Purrtine/`, `PurrtineTests/`, or
+`PurrtineUITests/`, invoke the matching skill, then edit. This applies to one-line changes
 too: a small change to a `body` or an `async` call is where these skills catch the most problems.
 
 | You are touching                                                   | Invoke                  |
@@ -21,19 +31,36 @@ too: a small change to a `body` or an `async` call is where these skills catch t
 | Navigation titles, toolbars, `ToolbarSpacer`                        | `ios-navigation-chrome` |
 | Anything perf-shaped: scroll, memory, launch, image decode          | `ios-memory-perf`       |
 | Any Swift file — modern-API choice over legacy, naming, structure   | `swift-style-guide`     |
+| Any SwiftUI view — Apple's own SwiftUI guidance (with `swiftui-pro`) | `swiftui-specialist`    |
+| iOS 27 SwiftUI API: `reorderable`, swipe actions outside `List`, toolbar overflow, `@State` macro errors | `swiftui-whats-new-27`  |
+| An XCTest file, or moving a test to Swift Testing (with `swift-testing-pro`) | `modernize-tests`       |
+| Profiling with Instruments or `xctrace` (with `ios-memory-perf`)    | `xctrace`               |
+| App Intents, Shortcuts, Siri, widget configuration intents          | `app-intents-specialist`, `app-intents-whats-new-27` |
+
+The five rows above under the style-guide row are Apple's own skills, exported from Xcode 27 with
+`xcrun mcpbridge run-agent skills export` into `~/.claude/skills/` (2026-11-11). Their text says it supersedes
+older training; when one disagrees with a community skill above, follow Apple's. Re-export after each Xcode update
+(`--replace-existing`).
+
+**Newer-iOS APIs go through `Backport`.** The deployment target is iOS 18.4, and `swiftui-whats-new-27`,
+`app-intents-whats-new-27` and the Liquid Glass skills teach iOS 26/27-only API. Wrap each such API in the
+existing backport system: `Purrtine/Utilities/Backport.swift` (`view.backport.<name>(…)`, or `Backport.<Name>` for
+toolbar content), one `Purrtine/Utilities/Backport+<Feature>.swift` per API, with `if #available(iOS 26.0, *)` (or
+27.0) inside it and a fallback for older iOS (the old look, or nothing when the feature is cosmetic). Do
+not add a new `#available` check in a view; reuse or add a `Backport+` file. Example: `Backport+ToolbarSpacer.swift`.
 
 More than one row can apply — invoke each that does. `ios-memory-perf` is the one exception to
 "load it before you edit": it is measure-first, so run it on a reported symptom, a deliberate perf
 pass, or a review of image loading, body-read computed properties, or `@Query` cost.
 `swiftdata-pro` applies here: this app is local-first on SwiftData, and 45 app-target files import it
 (measured 2026-10-02 — recount with
-`grep -rl 'import SwiftData' --include='*.swift' CatCareCalendar | wc -l`).
+`grep -rl 'import SwiftData' --include='*.swift' Purrtine | wc -l`).
 Run the same skills again over the finished change before you end the turn; a `PostToolUse` hook
 names them for you. `### Swift review skills` below covers the paths that hook cannot reach.
 
 ## Project Overview
 
-CatCareCalendar is a local-first iOS app (SwiftUI + SwiftData) for cat owners to manage care routines, recurring tasks, and history across multiple cats. It targets iOS 18.4+ and uses Swift 6-style patterns (project file now reports `SWIFT_VERSION = 6.0`, verified 2026-09-24 against `project.pbxproj`, all configurations and targets). See the reconciliation notes at the top of "Agent Guide for Swift and SwiftUI" below before applying that section's iOS 26/Swift 6.2 version claims literally.
+Purrtine is a local-first iOS app (SwiftUI + SwiftData) for cat owners to manage care routines, recurring tasks, and history across multiple cats. It targets iOS 18.4+ and uses Swift 6-style patterns (project file now reports `SWIFT_VERSION = 6.0`, verified 2026-09-24 against `project.pbxproj`, all configurations and targets). See the reconciliation notes at the top of "Agent Guide for Swift and SwiftUI" below before applying that section's iOS 26/Swift 6.2 version claims literally.
 
 ### Dependencies
 
@@ -41,25 +68,25 @@ The app is local-first, but it is **not dependency-free**. Verified 2026-09-08:
 
 - One Swift package: `firebase-ios-sdk` (`https://github.com/firebase/firebase-ios-sdk`, `upToNextMajorVersion` from `11.7.0`). Four products are linked into the app target: `FirebaseCore`, `FirebaseAuth`, `FirebaseAppCheck`, `FirebaseFunctions`.
 - Two app-target files import it: `Utilities/FirebaseBootstrapper.swift` and `Utilities/TaskAssistantCloudInterpreter.swift`.
-- Recount with `grep -o 'repositoryURL = [^;]*' CatCareCalendar.xcodeproj/project.pbxproj | sort -u`.
+- Recount with `grep -o 'repositoryURL = [^;]*' Purrtine.xcodeproj/project.pbxproj | sort -u`.
 
 Two consequences an agent must respect:
 
 - **Never set `SWIFT_STRICT_CONCURRENCY = complete` project-wide.** It crashes the compiler on the `FirebaseAuth` target. `docs/swift6-concurrency-assessment.md` and `Config/StrictConcurrency.xcconfig` hold the measured per-file plan instead.
-- `Package.resolved` **is tracked in git**, pinning the vendor SDK version so every checkout resolves the same one. Adding another file under `project.xcworkspace/` needs the same trick, so know why: `*.xcworkspace` at `.gitignore:4` ignores the whole **directory**, and git never descends into an ignored directory, so `git add` on a path inside it silently does nothing and a lone `!…/Package.resolved` cannot rescue it. Every parent directory on the path carries its own negating rule (`.gitignore:12-15`). Re-verify with `git check-ignore -v CatCareCalendar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` — it prints nothing today.
+- `Package.resolved` **is tracked in git**, pinning the vendor SDK version so every checkout resolves the same one. Adding another file under `project.xcworkspace/` needs the same trick, so know why: `*.xcworkspace` at `.gitignore:4` ignores the whole **directory**, and git never descends into an ignored directory, so `git add` on a path inside it silently does nothing and a lone `!…/Package.resolved` cannot rescue it. Every parent directory on the path carries its own negating rule (`.gitignore:12-15`). Re-verify with `git check-ignore -v Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` — it prints nothing today.
 
 ## Build & Test Commands
 
 ```bash
 # Open in Xcode (preferred for day-to-day work)
-open CatCareCalendar.xcodeproj
+open Purrtine.xcodeproj
 
 # Build from CLI
 Scripts/xcb.sh build
 
 # Local loop: the unit scheme (no UI test build, no coverage), only the suites you touched;
 # --only takes a Swift Testing suite or test name and is repeatable
-Scripts/xcb.sh test --scheme CatCareCalendarTests --only CatCareCalendarTests/TaskActionServiceTests
+Scripts/xcb.sh test --scheme PurrtineTests --only PurrtineTests/TaskActionServiceTests
 
 # This project's SimSlim devices (template, test device, verify slots)
 Scripts/slim-sim.sh names
@@ -68,17 +95,17 @@ Scripts/slim-sim.sh slots
 
 - **Verify trial** (owner, 2026-10-14). UI tests, the `-ui-testing` launch mode, simulator checks, and iOS-version passes are paused while the owner tries the verification skill. Prove what a user sees with `verify-purrtine` (`.claude/skills/verify-purrtine/`). Run the check through the `sim-verifier` subagent (`~/.claude/agents/sim-verifier.md`, user-level: a fresh clone or Codex has no such agent, so drive the skill yourself there): name `verify-purrtine`, the feature files and the language in its prompt. It returns PASS, FAIL, BLOCKED or NEEDS OWNER YES with evidence paths; on NEEDS OWNER YES ask the owner, then continue the same subagent with the answers. You attach the key screenshots to the PR. The paused rules are parked outside the repo at `~/.claude/parked/2026-10-14-verify-trial/`; they do not apply during the trial. A photo pick stays "not checked by hand" during the Verify trial: the system picker runs out of process, and the verify skill launches with no flags. The DEBUG-only `-inject-test-photo[=rotated|large|heic]` launch flag (#52; needs `-ui-testing`) is for the UI-test harness only: it makes "choose from library" on Add/Edit Cat, Add Caregiver and Task Completion feed a generated photo into the same loading code. UI tests that use it wait until the Verify trial ends (#94). Release builds have no such flag.
 - Host toolchain as of 2026-09-08: **Xcode 27.0** (build `27A5194q`), **Swift 6.4**. The project's `SWIFT_VERSION = 6.0` (verified 2026-09-24) selects the language mode; it does not limit which syntax this compiler accepts. See the reconciliation notes below.
-- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. The jobs skip themselves on a private repo, and a run whose jobs all skip still shows "success" (header comment of `ci.yml`); the repo is public (verified 2026-10-12), so the jobs run. CI runs the UI tests too, in the separate `ui-tests` job on one iOS runtime, the one that matches the runner's simulator SDK (#48; the `app` job still skips them with `-skip-testing:CatCareCalendarUITests`). On a PR the job runs only when the PR changes `CatCareCalendar/**`, `CatCareCalendarUITests/**`, `*.xcodeproj/**` or `.github/workflows/**`; a docs-only PR skips it, and every push to main and every manual run runs it. Locally, run only the UI tests you added or changed, on each simulator the task names. List the tests you ran in the PR body.
+- **Local tests: only what changed** (owner rule, 2026-10-11; the user-level `~/.claude/CLAUDE.md` carries the same rule). Locally, run the tests you added or changed plus the suites of the files you changed, each with `--only`. The full scheme stays a CI job: `.github/workflows/ci.yml` runs every unit test with coverage on each PR, and its result is the gate. The jobs skip themselves on a private repo, and a run whose jobs all skip still shows "success" (header comment of `ci.yml`); the repo is public (verified 2026-10-12), so the jobs run. CI runs the UI tests too, in the separate `ui-tests` job on one iOS runtime, the one that matches the runner's simulator SDK (#48; the `app` job still skips them with `-skip-testing:PurrtineUITests`). On a PR the job runs only when the PR changes `Purrtine/**`, `PurrtineUITests/**`, `*.xcodeproj/**` or `.github/workflows/**`; a docs-only PR skips it, and every push to main and every manual run runs it. Locally, run only the UI tests you added or changed, on each simulator the task names. List the tests you ran in the PR body.
 - Agents build and test through `Scripts/xcb.sh`, never a bare `xcodebuild`. The script holds a machine-wide lock, so builds from every worktree and from TTB queue one at a time on this 16GB Mac; it shares one DerivedData and package checkout across worktrees, so Firebase compiles once. It writes the full log to a file and prints only errors, failures, and the tail. A run can wait minutes for the lock: give it a long Bash timeout or run it in the background. `Scripts/xcb.sh --help` lists the options.
 - `Scripts/xcb.sh` and `Scripts/slim-sim.sh` are shared with TTB; keep each pair identical. `Scripts/simslim-profile.json` is this project's own.
 - **Simulators** (owner, 2026-10-27). Every simulator here is an iPhone 12 / iOS 27.0 slimmed by SimSlim with `Scripts/simslim-profile.json` (all background services off except `photos` and `siri`; Purrtine needs the photo picker and speech recognition). `Scripts/slim-sim.sh` makes them: a pristine template `iPhone 12 slim tmpl (Purrtine)` that nobody boots or installs on; a persistent test device `iPhone 12 slim test (Purrtine)` that `Scripts/xcb.sh` builds and tests on by default (made from the template on first use; xcb shuts it down after a test that booted it and never shuts down any other simulator); and one `verify-purrtine-*` clone per verify run. At most `SLIM_SIM_MAX` verify clones run at once across Purrtine and TriQ (default 2). The shared stock `iPhone 12 (iOS 27)` is no longer used by these scripts. A feature that needs a disabled category (iCloud, Contacts, push) needs that category added to the profile in a PR.
-- Two schemes. `CatCareCalendarTests` (plan `CatCareCalendarUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `CatCareCalendar` (plan `CatCareCalendar.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. CI (`.github/workflows/ci.yml`) runs this scheme without the UI tests in the `app` job (the `ui-tests` job runs them) and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage; the coverage bundle therefore comes from CI, not from a local run. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
+- Two schemes. `PurrtineTests` (plan `PurrtineUnitTests.xctestplan`) is the inner loop: it builds the app and the unit test bundle only, skips the UI test target, and collects no coverage. `Purrtine` (plan `Purrtine.xctestplan`) is the full run with UI tests and coverage, and the only scheme that archives. CI (`.github/workflows/ci.yml`) runs this scheme without the UI tests in the `app` job (the `ui-tests` job runs them) and feeds its result bundle to `Scripts/check_coverage.sh`, which fails on a unit-scheme bundle because that has no coverage; the coverage bundle therefore comes from CI, not from a local run. Both plans set `CATCARE_UNIT_TESTING=1` — keep it when you edit either plan.
 - When work is split across subagents: only one of them may build, run, or test on a simulator at a time, and xcodebuildmcp session defaults do not reach subagents — pass `simulatorId` and `bundleId` in the prompt. `Localizable.xcstrings`, `project.pbxproj`, `Theme.swift`, `CatCardStyle.swift`, and `NavigationRouter.swift` are single-owner files: subagents report the changes they need, and the coordinating agent applies them (then runs `LocalizationParityTests` after catalog edits).
 
 ## Architecture
 
 ### App entry & shared state
-- `CatCareCalendar/CatCareCalendarApp.swift` is the app entry point. On launch it: builds the `ModelContainer` via `AppLaunchBootstrapper`, ensures a default `Caregiver` exists synchronously (`CaregiverBootstrapper`) to avoid race conditions on first task creation, seeds initial data if needed, and wires a `NotificationActionCoordinator` into `NotificationManager.shared`.
+- `Purrtine/PurrtineApp.swift` is the app entry point. On launch it: builds the `ModelContainer` via `AppLaunchBootstrapper`, ensures a default `Caregiver` exists synchronously (`CaregiverBootstrapper`) to avoid race conditions on first task creation, seeds initial data if needed, and wires a `NotificationActionCoordinator` into `NotificationManager.shared`.
 - Environment-based DI: `NavigationRouter.shared`, a `HapticsService`, and the SwiftData `modelContainer` are injected via `.environment(\.navigationRouter, ...)` / `.environment(\.haptics, ...)` using `@Entry`-style environment values — not `EnvironmentObject`.
 - `NavigationRouter` (`Utilities/NavigationRouter.swift`) is an `@Observable` singleton owning `NavigationPath`, selected tab, and one-shot navigation flags (`shouldNavigateToMyCats`, `shouldNavigateToHistory`, `shouldTriggerAddTask`) consumed and then reset by the receiving view — this is the single entry point for cross-tab/deep-link navigation (see `AppRoute`/`handle(_:)`). `AppTab` (`ContentView.swift`) has four cases: `home`, `tasks`, `assistant`, `settings`.
 
@@ -86,12 +113,12 @@ Scripts/slim-sim.sh slots
 
 The app is local-first, and everything above works with no network. One feature reaches a server: the task assistant's fallback interpreter.
 
-- `Utilities/FirebaseBootstrapper.swift` (`@MainActor enum`) configures the SDK after the first frame (the root `.task` in `CatCareCalendarApp.swift`) and signs in anonymously. It reads `GoogleService-Info.plist` itself rather than calling a bare `FirebaseApp.configure()`, because that plist is gitignored and a bare configure hard-aborts the app when the file is absent. A checkout without the plist therefore launches normally with the cloud tier disabled.
-- `Utilities/TaskAssistantCloudInterpreter.swift` declares the `@MainActor protocol TaskAssistantCloudInterpreting` and the `FirebaseTaskAssistantCloudInterpreter` adapter that calls the `interpretTaskAssistantRequest` Cloud Function. `TaskAssistantViewModel` takes it as an optional injected dependency; tests inject `FakeTaskAssistantCloudInterpreter` from `CatCareCalendarTests/TestSupport/`.
+- `Utilities/FirebaseBootstrapper.swift` (`@MainActor enum`) does nothing at launch: the throwing `ensureSignedInAnonymously()` configures the SDK (App Check starts then and contacts Apple and Google) and signs in anonymously, on the first cloud interpreter call after consent, through the adapter's `signIn` closure (#12). It throws `cloudServicesDisabled` under UI tests, unit tests and previews. It reads `GoogleService-Info.plist` itself rather than calling a bare `FirebaseApp.configure()`, because that plist is gitignored and a bare configure hard-aborts the app when the file is absent. A checkout without the plist therefore launches normally with the cloud tier disabled.
+- `Utilities/TaskAssistantCloudInterpreter.swift` declares the `@MainActor protocol TaskAssistantCloudInterpreting` and the `FirebaseTaskAssistantCloudInterpreter` adapter that calls the `interpretTaskAssistantRequest` Cloud Function. `TaskAssistantViewModel` takes it as an optional injected dependency; tests inject `FakeTaskAssistantCloudInterpreter` from `PurrtineTests/TestSupport/`.
 - The protocol is main-actor isolated on purpose: its methods take `[CareTask]`, which are SwiftData models. Do not make it `nonisolated`.
 
 ### Feature organization
-- `Models/`: the five SwiftData `@Model` types — `Cat`, `CareTask`, `CareTaskSchedule`, `CareTaskCompletion`, `Caregiver` (verified 2026-09-08; recount with `grep -rn -A2 '^@Model' --include='*.swift' CatCareCalendar`). Only `Cat` sits in its own file: the other four are declared in `Models/CareTask.swift`, which is a known exception to the one-type-per-file convention below. `CareTaskTemplate` and `RepeatConfiguration` are **not** persistent models — both are plain `struct`s, so `swiftdata-pro` rules do not govern them. The folder also holds `@Observable` view models (`TaskManagementViewModel`, `TaskAssistantViewModel`) and pure "presentation" structs that derive display-ready data from models (`TaskListPresentation`, `HistoryPresentation`, `HomeRoutineStatusPresentation`, `TaskCalendarPresentation`, `NotificationSettingsPresentation`). These presentation types are the seam most business-logic tests target directly (see the parallel files in `CatCareCalendarTests/Models/`).
+- `Models/`: the five SwiftData `@Model` types — `Cat`, `CareTask`, `CareTaskSchedule`, `CareTaskCompletion`, `Caregiver` (verified 2026-09-08; recount with `grep -rn -A2 '^@Model' --include='*.swift' Purrtine`). Only `Cat` sits in its own file: the other four are declared in `Models/CareTask.swift`, which is a known exception to the one-type-per-file convention below. `CareTaskTemplate` and `RepeatConfiguration` are **not** persistent models — both are plain `struct`s, so `swiftdata-pro` rules do not govern them. The folder also holds `@Observable` view models (`TaskManagementViewModel`, `TaskAssistantViewModel`) and pure "presentation" structs that derive display-ready data from models (`TaskListPresentation`, `HistoryPresentation`, `HomeRoutineStatusPresentation`, `TaskCalendarPresentation`, `NotificationSettingsPresentation`). These presentation types are the seam most business-logic tests target directly (see the parallel files in `PurrtineTests/Models/`).
 - Views stay thin; they read `@Query`/`ModelContext` and delegate to models/services.
 - **Bulk task edit is not a feature of this app.** There is no multi-select mode and no production entry point that presents one. This is a product decision, recorded in `docs/adr/0001-no-bulk-task-edit.md` — do not propose the feature. Older documents in `docs/` that describe bulk editing as live describe orphaned code, not a screen a user can reach.
 - `Style/Theme.swift` and `Style/CatCardStyle.swift` hold shared visual constants — use these instead of hardcoded colors/fonts.
@@ -100,16 +127,16 @@ The app is local-first, and everything above works with no network. One feature 
 
 ### Notifications
 - Route all local notification scheduling through `NotificationManager` — do not schedule/cancel `UNNotificationRequest`s directly from views or other services. Re-sync notifications whenever a task or its schedule changes.
-- Treat any direct `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified 2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes `.current()` as a default argument). The DEBUG Notification History screen in `Views/Settings/SettingsDebugViews.swift` reads delivered and pending test notifications through `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and `pendingTestNotificationRequests()` (#8). `NotificationPermissionView` asks for permission through `NotificationManager.requestPermission()`, so an onboarding grant calls `requestFullReminderResync()` like any other. The same method is the named way to ask for one full reminder resync for a non-settings reason; `OnboardingTaskSetupModel` calls it when onboarding saves with stale reminders.
-- Care-task writes from views, view models, and services go through `CareTaskWriting` (`Utilities/CareTaskWriting.swift`, implemented by `CareTaskWriter`): `save`, `delete`, `complete`, `snooze`, and `refreshReminders(for:in:)` for a change outside the task, such as a cat rename or delete. Each verb commits, then awaits one full capped resync of every care-task reminder (`TaskNotificationScheduling.resyncAllCareTaskReminders()` → `NotificationResyncCoordinator.resync()`) before it returns; there is no per-task scheduling entry point, because only a pass over every task can keep the pending total at 59 reminders plus one nudge of iOS's 64 slots (#80, `CareTaskReminderSelection`). App activation tops the set up through `NotificationManager.handleAppActivation()`. A failure after the commit throws `CareTaskRemindersOutOfSyncError` ("saved, reminders stale"); callers catch `CancellationError` first, then that error, then everything else ("not saved") — sort the error with `CareTaskWriteFailure` (`Utilities/CareTaskWriteFailure.swift`) instead of writing a new copy of this catch order. One exception (#7): a failed `delete` commit stays staged, because it cannot be undone; the writer drops the task's snoozes at once and watches `ModelContext.didSave`, so the later save that commits the delete runs one full resync. Do not add a `modelContext.save()` or a `TaskNotificationScheduling` call for a care task outside the writer — `TaskFormPersistence` and `TaskActionService` change models without committing, on purpose. Seeding paths, verified 2026-09-23: `OnboardingDataBuilder` inserts the cat and its starter tasks, then saves each task through the writer, so the first `save` commits them all together; `DebugDataService` commits, then calls `refreshReminders`. Two still commit tasks directly and schedule nothing, on purpose: `PreviewData` (previews must not schedule) and `AppLaunchBootstrapper.seedInitialDataIfNeeded` (runs only under `-ui-testing`, where real notifications are off, from the synchronous `App.init`). Views read the writer from `@Environment(\.careTaskWriter)`, which `CatCareCalendarApp` injects; view models and services take it in `init`. Verified 2026-09-23: `git grep -n 'NotificationManager.shared' -- CatCareCalendar/Views` prints nothing.
-- `UserNotificationCenterClient` is the injectable protocol wrapping `UNUserNotificationCenter`; tests use `FakeUserNotificationCenterClient` / `NotificationSchedulerSpy` from `CatCareCalendarTests/TestSupport/` instead of hitting the real notification center.
+- Treat any direct `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified 2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- Purrtine`, which prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes `.current()` as a default argument). The DEBUG Notification History screen in `Views/Settings/SettingsDebugViews.swift` reads delivered and pending test notifications through `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and `pendingTestNotificationRequests()` (#8). `NotificationPermissionView` asks for permission through `NotificationManager.requestPermission()`, so an onboarding grant calls `requestFullReminderResync()` like any other. The same method is the named way to ask for one full reminder resync for a non-settings reason; `OnboardingTaskSetupModel` calls it when onboarding saves with stale reminders.
+- Care-task writes from views, view models, and services go through `CareTaskWriting` (`Utilities/CareTaskWriting.swift`, implemented by `CareTaskWriter`): `save`, `delete`, `complete`, `snooze`, and `refreshReminders(for:in:)` for a change outside the task, such as a cat rename or delete. Each verb commits, then awaits one full capped resync of every care-task reminder (`TaskNotificationScheduling.resyncAllCareTaskReminders()` → `NotificationResyncCoordinator.resync()`) before it returns; there is no per-task scheduling entry point, because only a pass over every task can keep the pending total at 59 reminders plus one nudge of iOS's 64 slots (#80, `CareTaskReminderSelection`). App activation tops the set up through `NotificationManager.handleAppActivation()`. A failure after the commit throws `CareTaskRemindersOutOfSyncError` ("saved, reminders stale"); callers catch `CancellationError` first, then that error, then everything else ("not saved") — sort the error with `CareTaskWriteFailure` (`Utilities/CareTaskWriteFailure.swift`) instead of writing a new copy of this catch order. One exception (#7): a failed `delete` commit stays staged, because it cannot be undone; the writer drops the task's snoozes at once and watches `ModelContext.didSave`, so the later save that commits the delete runs one full resync. Do not add a `modelContext.save()` or a `TaskNotificationScheduling` call for a care task outside the writer — `TaskFormPersistence` and `TaskActionService` change models without committing, on purpose. Seeding paths, verified 2026-09-23: `OnboardingDataBuilder` inserts the cat and its starter tasks, then saves each task through the writer, so the first `save` commits them all together; `DebugDataService` commits, then calls `refreshReminders`. Two still commit tasks directly and schedule nothing, on purpose: `PreviewData` (previews must not schedule) and `AppLaunchBootstrapper.seedInitialDataIfNeeded` (runs only under `-ui-testing`, where real notifications are off, from the synchronous `App.init`). Views read the writer from `@Environment(\.careTaskWriter)`, which `PurrtineApp` injects; view models and services take it in `init`. Verified 2026-09-23: `git grep -n 'NotificationManager.shared' -- Purrtine/Views` prints nothing.
+- `UserNotificationCenterClient` is the injectable protocol wrapping `UNUserNotificationCenter`; tests use `FakeUserNotificationCenterClient` / `NotificationSchedulerSpy` from `PurrtineTests/TestSupport/` instead of hitting the real notification center.
 
 ### SwiftData conventions
 - `@Query` is used only inside SwiftUI views; non-view code (services, view models) fetches via `ModelContext` + `FetchDescriptor`.
 - Relationships use explicit delete rules (`.cascade`/`.nullify`) and explicit `inverse:` keys — check existing model definitions before adding new relationships.
-- The store layout is versioned. `Models/CatCareSchemaV1.swift` (`VersionedSchema`) pins today's five model types and owns the single shared `Schema` instance; `Models/CatCareMigrationPlan.swift` is the `SchemaMigrationPlan`. `AppLaunchBootstrapper`, `PreviewData` and `TestModelContainerFactory` all build their container from `CatCareSchemaV1`. Add a model type only together with a new schema version — never edit V1.
+- The store layout is versioned. `Models/CatCareSchemaV1.swift` (`VersionedSchema`) pins the first layout through frozen model copies in `Models/CatCareSchemaV1Models.swift`; `Models/CatCareSchemaV2.swift` is the current version and uses the live model types; `Models/CatCareMigrationPlan.swift` is the `SchemaMigrationPlan` (V1 to V2 is lightweight, proved by `CatCareMigrationTests`). `AppLaunchBootstrapper`, `PreviewData` and `TestModelContainerFactory` build their container from `CatCareSchemaV2`. Add or change a model type only together with a new schema version (freeze the old live models as nested copies first) — never edit an old version.
 - Filter and sort as close to the query boundary as possible. Prefer explicit saves when correctness matters instead of relying on autosave timing.
-- `CatCareCalendarTests/Models/SchemaBaselineTests.swift` pins the V1 store layout with a recorded fingerprint. If a model change makes it fail, that is the point: add a schema version, do not re-record the fingerprint to make the test pass.
+- `PurrtineTests/Models/SchemaBaselineTests.swift` pins the V1 store layout with a recorded fingerprint. If a model change makes it fail, that is the point: add a schema version, do not re-record the fingerprint to make the test pass.
 
 ## Coding Conventions
 
@@ -136,14 +163,14 @@ These conventions are binding for this repo.
 - Access strings via the generated symbols: `Text(.homeCurrentTasks)` in SwiftUI, `String(localized: .tasksTitle)` elsewhere. Parameterized keys generate typed functions — `String(localized: .taskAssistantOpenSuccess(task.title))`; `%d` placeholders take `Int32`, so cast with `Int32(...)`.
 - Never call `String(format:)` or `NSLocalizedString` directly for compile-time-known strings. The one sanctioned exception is `String.localizedDataKey` (`Utilities/LocalizationExtensions.swift`) for keys stored as *data* — currently only the persisted `Caregiver.localizationKey` (canonical key constant: `CaregiverBootstrapper.defaultCaregiverLocalizationKey`).
 - New keys: add to `Localizable.xcstrings` with translated values for **both** en and tr (state `"translated"`), then use the generated symbol. Plural-sensitive keys use the catalog's `variations.plural` mechanism (see `home.routine_status.days_ago`).
-- `LocalizationParityTests` in `CatCareCalendarTests/Utilities/` validates the catalog (every key translated in every locale, plural categories consistent) — run it after touching the catalog.
+- `LocalizationParityTests` in `PurrtineTests/Utilities/` validates the catalog (every key translated in every locale, plural categories consistent) — run it after touching the catalog.
 - Key naming caution: symbol generation camelCases keys, so two keys that differ only in separators (e.g. `foo.some_key` vs `foo.someKey`) collide and break the build — check before adding.
 - Spot-check affected UI in both English and Turkish.
 - Guard invalid state before formatting user-visible text; return a safe fallback for `nil`, zero, negative, or otherwise invalid values when that's the intended UX. Update formatting tests (ages, weights, counts, dates, reminder copy) when that logic changes.
 
 ## Accessibility and testing
 
-Accessibility rules load from `.claude/rules/accessibility.md` when you work in `CatCareCalendar/Views/` or the UI tests. Testing rules load from `.claude/rules/testing.md` when you work in `CatCareCalendarTests/` or `CatCareCalendarUITests/`. Read them before you write a view or a test.
+Accessibility rules load from `.claude/rules/accessibility.md` when you work in `Purrtine/Views/` or the UI tests. Testing rules load from `.claude/rules/testing.md` when you work in `PurrtineTests/` or `PurrtineUITests/`. Read them before you write a view or a test.
 
 ---
 
@@ -169,7 +196,7 @@ This repository contains an Xcode project written with Swift and SwiftUI. The fu
 
 Measure the running app with
 `vmmap --summary <pid> | grep "Physical footprint"` (find the pid via
-`pgrep -f "CatCareCalendar.app/CatCareCalendar"`).
+`pgrep -f "Purrtine.app/Purrtine"`).
 
 ---
 

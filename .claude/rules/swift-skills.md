@@ -1,8 +1,8 @@
 ---
 paths:
-  - "CatCareCalendar/**/*.swift"
-  - "CatCareCalendarTests/**/*.swift"
-  - "CatCareCalendarUITests/**/*.swift"
+  - "Purrtine/**/*.swift"
+  - "PurrtineTests/**/*.swift"
+  - "PurrtineUITests/**/*.swift"
 ---
 
 # Swift work requires a Swift skill
@@ -23,6 +23,23 @@ skills catch problems.
 | Navigation titles, toolbars, `ToolbarSpacer`                        | `ios-navigation-chrome` |
 | Anything perf-shaped: scroll, memory, launch, image decode          | `ios-memory-perf`       |
 | Any Swift file — modern-API choice over legacy, naming, structure   | `swift-style-guide`     |
+| Any SwiftUI view — Apple's own SwiftUI guidance (with `swiftui-pro`) | `swiftui-specialist`    |
+| iOS 27 SwiftUI API: `reorderable`, swipe actions outside `List`, toolbar overflow, `@State` macro errors | `swiftui-whats-new-27`  |
+| An XCTest file, or moving a test to Swift Testing (with `swift-testing-pro`) | `modernize-tests`       |
+| Profiling with Instruments or `xctrace` (with `ios-memory-perf`)    | `xctrace`               |
+| App Intents, Shortcuts, Siri, widget configuration intents          | `app-intents-specialist`, `app-intents-whats-new-27` |
+
+The five rows above under the style-guide row are Apple's own skills, exported from Xcode 27 with
+`xcrun mcpbridge run-agent skills export` into `~/.claude/skills/` (2026-11-11). Their text says it supersedes
+older training; when one disagrees with a community skill above, follow Apple's. Re-export after each Xcode update
+(`--replace-existing`).
+
+**Newer-iOS APIs go through `Backport`.** The deployment target is iOS 18.4, and `swiftui-whats-new-27`,
+`app-intents-whats-new-27` and the Liquid Glass skills teach iOS 26/27-only API. Wrap each such API in the
+existing backport system: `Purrtine/Utilities/Backport.swift` (`view.backport.<name>(…)`, or `Backport.<Name>` for
+toolbar content), one `Purrtine/Utilities/Backport+<Feature>.swift` per API, with `if #available(iOS 26.0, *)` (or
+27.0) inside it and a fallback for older iOS (the old look, or nothing when the feature is cosmetic). Do
+not add a new `#available` check in a view; reuse or add a `Backport+` file. Example: `Backport+ToolbarSpacer.swift`.
 
 More than one row can apply — invoke each that does, and `swift-style-guide` applies to every Swift
 edit here. `ios-memory-perf` is the one exception to "load it before you edit": it is measure-first,
@@ -57,8 +74,8 @@ A count below that carries its own date was measured on that date; the others we
   `FirebaseAuth` target when tried, and no config in `project.pbxproj` sets it now (verified
   2026-09-24).
 - Swift Testing is the default for unit and integration suites. XCTest is reserved for
-  `CatCareCalendarUITests`, where one file uses it. Match the file you are editing.
-- `CatCareCalendarTests/TestSupport/` provides `TestModelContainerFactory`,
+  `PurrtineUITests`, where one file uses it. Match the file you are editing.
+- `PurrtineTests/TestSupport/` provides `TestModelContainerFactory`,
   `FakeUserNotificationCenterClient`, `NotificationSchedulerSpy`, `FakeTaskAssistantCloudInterpreter`
   and `SchemaBaselineHarness`. Use these instead of real persistence, notification or network state.
 - The store layout is versioned in `Models/CatCareSchemaV1.swift`. Adding or changing a `@Model`
@@ -70,7 +87,7 @@ A count below that carries its own date was measured on that date; the others we
   Read the source before you assume otherwise.
 - Route all local notification scheduling through `NotificationManager`. Treat any direct
   `UNUserNotificationCenter.current()` call outside `Utilities/` as a defect. None remain, verified
-  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- CatCareCalendar`, which
+  2026-10-08 with `git grep -n 'UNUserNotificationCenter.current()' -- Purrtine`, which
   prints nothing (the one wrapper, `SystemUserNotificationCenterClient` in `Utilities/`, takes
   `.current()` as a default argument). The DEBUG Notification History screen reads through
   `NotificationManager`'s DEBUG-only `deliveredNotificationsForHistory()` and

@@ -1,5 +1,5 @@
 # Product Requirements Document
-## CatCareCalendar
+## Purrtine
 
 **Version:** 1.1  
 **Date:** March 2026  
@@ -10,7 +10,7 @@
 
 ## 1. Summary
 
-CatCareCalendar is a local-first iOS app for cat owners who need reliable reminders, fast daily task completion, and trustworthy care history. The product should feel native, calm, and highly glanceable while still supporting multi-cat households and shared-care workflows over time.
+Purrtine is a local-first iOS app for cat owners who need reliable reminders, fast daily task completion, and trustworthy care history. The product should feel native, calm, and highly glanceable while still supporting multi-cat households and shared-care workflows over time.
 
 ### Product Vision
 Provide a modern, accessible cat-care planner that helps users remember what needs to be done, complete tasks quickly, and review past care with confidence.

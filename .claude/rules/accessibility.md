@@ -1,7 +1,7 @@
 ---
 paths:
-  - "CatCareCalendar/Views/**"
-  - "CatCareCalendarUITests/**"
+  - "Purrtine/Views/**"
+  - "PurrtineUITests/**"
 ---
 
 # Accessibility

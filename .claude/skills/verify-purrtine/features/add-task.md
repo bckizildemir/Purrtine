@@ -67,3 +67,7 @@ Preconditions:
   element type, and read `vp ui` after each tap.
 - With more than one cat selected, completing the task later opens a sheet to pick which cat; with
   one cat it completes at once.
+- Measured 2026-11-07: after typing the title the keyboard covers the Cats row and the first
+  `taskAdd.catsButton` tap is lost. Dismiss the keyboard with its Done key (no id, about (336,492)), then tap the
+  Cats row. The cats sheet can appear 2 s or more after the tap: poll `vp ui` for `taskCatsSelection.*`.
+- `taskAdd.saveButton` is not disabled with an empty title; do not use that as an assertion.

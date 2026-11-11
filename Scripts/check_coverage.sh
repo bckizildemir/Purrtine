@@ -4,7 +4,7 @@ set -euo pipefail
 
 result_bundle_path="${1:?Usage: check_coverage.sh RESULT_BUNDLE [MINIMUM_PERCENT]}"
 minimum_coverage="${2:-17.5}"
-target_name="CatCareCalendar.app"
+target_name="Purrtine.app"
 
 coverage_report="$(xcrun xccov view --report --only-targets "${result_bundle_path}")"
 printf '%s\n' "${coverage_report}"

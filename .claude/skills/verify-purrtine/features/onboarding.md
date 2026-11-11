@@ -19,7 +19,7 @@ English; the last in the maintenance pass), the Turkish welcome screen on the sa
 - `onb-tasks` creates one task per ticked row: Daily Feeding | Günlük Besleme (daily 08:00), Refresh
   Water | Su Tazeleme (daily 10:00), Litter Box Cleaning | Kum Kabı Temizliği (every 2 days, 18:00),
   each with a reminder 15 minutes before.
-- `onb-finish` "Start Tracking | Takibi Başlat" lands on Home with the new tasks under "Today & Overdue".
+- `onb-finish` "Start Tracking | Takibi Başlat" lands on Home with the new tasks under "Today & Overdue" (below Routine Status since #105).
 
 ## How to get to it (user POV)
 
@@ -38,7 +38,7 @@ Preconditions:
   and `onboarding.notification.skipButton`.
 - **Permission.** `vp shot onboarding-notifications`, then
   `vp tap --id onboarding.notification.enableButton`. The tree now holds the SpringBoard alert: a
-  `Sheet` labelled `“CatCareCalendar” Would Like to Send You Notifications` with buttons `Allow` and
+  `Sheet` labelled `“Purrtine” Would Like to Send You Notifications` with buttons `Allow` and
   `Don’t Allow` (curly apostrophe). `vp shot notification-alert`, then
   `vp tap --label Allow --element-type Button` (Turkish: `İzin Ver`). The step `Your First Cat` at `75%` shows.
 - **First cat.** `vp shot first-cat-empty`; `onboarding.firstCat.continueButton` is `[disabled]`.
@@ -77,3 +77,10 @@ Preconditions:
 - "Add Photo" (`catForm.photoMenu`) opens the system photo picker out of process; axe sees none of its
   cells. Leave the photo empty and say so.
 - With a tr device, the welcome progress value reads `%25`, not `25%`.
+- Turkish strings since #107 ("sen" form): step names "Hoş Geldin" and "İlk Kedin", heading "Kedini tanıyalım",
+  starter descriptions "Kedini düzenli olarak besle" and "Kum kabını temizle ve gerekirse kumunu değiştir".
+- Turkish pass 2026-11-07: after the first starter-row tap, the second `vp tap --once` on
+  `onboarding.taskDemo.water` was lost, so only Günlük Besleme was created. Read `vp ui` after the first tap and
+  tap the second row again if it is still listed. Typing "Miso" on a Turkish device is fine; "Milo" saved as
+  "Mılo" (keyboard, not an app bug).
+- The notification alert is titled with the app name; since #104 it reads "Purrtine", not "CatCareCalendar".

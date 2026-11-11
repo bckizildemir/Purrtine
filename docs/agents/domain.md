@@ -19,9 +19,9 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 ├── docs/adr/
 │   ├── 0001-....md
 │   └── 0002-....md
-├── CatCareCalendar/          ← app sources
-├── CatCareCalendarTests/
-└── CatCareCalendarUITests/
+├── Purrtine/          ← app sources
+├── PurrtineTests/
+└── PurrtineUITests/
 ```
 
 If this repo ever splits into multiple bounded contexts, switch to a root `GLOSSARY-MAP.md` pointing at per-context `GLOSSARY.md` files, with context-scoped `docs/adr/` alongside each — and update the layout line at the top of this file.

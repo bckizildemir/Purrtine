@@ -1,6 +1,6 @@
 # Swift review skill triggers — the setup, and how to port it
 
-**Written:** 2026-08-14 · **Updated:** 2026-08-26 · **Status:** installed in CatCareCalendar; pipe-tested, live fire still unverified (see §5)
+**Written:** 2026-08-14 · **Updated:** 2026-08-26 · **Status:** installed in Purrtine; pipe-tested, live fire still unverified (see §5)
 
 This document has two jobs. It records what was installed in this repo and why, and it gives another project everything needed to reproduce it. It is written to be readable by someone — or some agent — who cannot see this repo.
 
@@ -179,7 +179,7 @@ again on 2026-08-17 after `swiftdata-pro` became additive:
 | `Models/CareTask.swift` | `swiftdata-pro` |
 | `Models/TaskAssistantViewModel.swift` | `swiftdata-pro, swift-concurrency-pro` |
 | `Utilities/NotificationManager.swift` | `swift-concurrency-pro` |
-| `CatCareCalendarUITests/CriticalFlowsUITests.swift` | `swift-testing-pro` |
+| `PurrtineUITests/CriticalFlowsUITests.swift` | `swift-testing-pro` |
 | `Style/Theme.swift` | *(silent, rc=0)* |
 | `CLAUDE.md` | *(silent, rc=0)* |
 
@@ -250,7 +250,7 @@ in `~/.claude.json` rather than in a tracked `.mcp.json`.
 
 **Three deliberate differences remain.** Each is a fact about the repo, not drift:
 
-| | CatCareCalendar | TTB |
+| | Purrtine | TTB |
 | --- | --- | --- |
 | Persistence skill | `swiftdata-pro` routed as an additive grep — 42 app-target files import SwiftData (2026-09-08) | dropped — persists through Firestore, zero `import SwiftData`, so the script has no such line |
 | Test path arm | `*Tests/*`, `*Tests.swift`, `*UITests*` | `*/Tests/*`, `*Tests.swift`, `*TTBUITests*` |
@@ -258,7 +258,7 @@ in `~/.claude.json` rather than in a tracked `.mcp.json`.
 
 A fourth difference was closed on 2026-08-16: TTB grepped file contents for `XCTestCase` and this
 repo did not. Both do now. Swift Testing is the default here (38 files) and XCTest is reserved for
-`CatCareCalendarUITests`, where one file uses it — the path arm already caught that file, so the
+`PurrtineUITests`, where one file uses it — the path arm already caught that file, so the
 grep is defensive rather than load-bearing, and it keeps the two scripts closer.
 
 Deployment targets differ too (18.4 here, 18.2 in TTB), which is why each repo carries its own
@@ -267,7 +267,7 @@ repo: perf work is not detectable from the shape of a diff, so the `CLAUDE.md` t
 route.
 
 **The two repos cannot contaminate each other.** A repo's `.claude/skills/` loads only for that
-repo, so CatCareCalendar never sees TTB's project skills and TTB never sees `testflight-release`.
+repo, so Purrtine never sees TTB's project skills and TTB never sees `testflight-release`.
 The only shared tree is `~/.claude/skills`, the 21 personal skills (`swift-style-guide` among them) both repos are meant to use. A `.agents/skills/` directory inside a repo is never
 read by Claude Code at all; TTB carried an empty `.agents/` as a leftover until 2026-08-16.
 
