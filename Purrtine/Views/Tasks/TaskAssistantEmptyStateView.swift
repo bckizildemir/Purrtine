@@ -17,8 +17,12 @@ struct TaskAssistantEmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            #if DEBUG
+            WhiskersCatPrototypeView(height: 120) // PROTOTYPE
+            #else
             TaskAssistantMascotView(expression: .idle, diameter: 64)
                 .accessibilityHidden(true)
+            #endif
 
             VStack(spacing: 4) {
                 Text(.taskAssistantEmptyStateTitle)

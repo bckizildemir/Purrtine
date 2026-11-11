@@ -16,6 +16,12 @@ struct TaskCalendarView: View {
     // Computed once per body render (below) and threaded into the grid/panel, instead of being
     // recomputed inside every calendar cell and each panel access.
     private var currentTasksByDate: [Date: [CareTask]] {
+        #if DEBUG
+        // PROTOTYPE: variants A/B only need the selected day for the panel.
+        if PrototypeCalendarVariantModel.shared.variant != .current {
+            return TaskCalendarDerivation.tasksByDate(from: tasks, in: [selectedDate], calendar: calendar)
+        }
+        #endif
         let relevantDates = showingWeekView ? weekDates : monthDates
         return TaskCalendarDerivation.tasksByDate(from: tasks, in: relevantDates, calendar: calendar)
     }
@@ -28,13 +34,19 @@ struct TaskCalendarView: View {
     var body: some View {
         let tasksByDate = currentTasksByDate
         return VStack(spacing: 0) {
-            calendarHeader
-
-            if showingWeekView {
-                weekView(tasksByDate: tasksByDate)
-            } else {
-                monthView(tasksByDate: tasksByDate)
+            #if DEBUG
+            switch PrototypeCalendarVariantModel.shared.variant {
+            case .uiCalendar:
+                PrototypeUICalendarView(tasks: tasks, selectedDate: $selectedDate)
+                    .padding(.horizontal)
+            case .calendarApp:
+                PrototypeMonthPagerCalendarView(tasks: tasks, selectedDate: $selectedDate)
+            case .current:
+                originalCalendar(tasksByDate: tasksByDate)
             }
+            #else
+            originalCalendar(tasksByDate: tasksByDate)
+            #endif
             Spacer()
             Divider()
                 .background(Color(.systemFill))
@@ -48,6 +60,17 @@ struct TaskCalendarView: View {
         }
     }
     
+    @ViewBuilder
+    private func originalCalendar(tasksByDate: [Date: [CareTask]]) -> some View {
+        calendarHeader
+
+        if showingWeekView {
+            weekView(tasksByDate: tasksByDate)
+        } else {
+            monthView(tasksByDate: tasksByDate)
+        }
+    }
+
     // MARK: - Calendar Header
     @ViewBuilder
     private var calendarHeader: some View {
@@ -267,9 +290,13 @@ struct TaskCalendarView: View {
                     .padding(.horizontal)
             } else {
                 VStack(spacing: 16) {
+                    #if DEBUG
+                    WhiskersCatPrototypeView(height: 110) // PROTOTYPE
+                    #else
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 32))
                         .foregroundStyle(.secondary)
+                    #endif
 
                     Text(.taskCalendarNoTasksDate)
                         .font(.subheadline)

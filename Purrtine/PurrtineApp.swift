@@ -31,6 +31,7 @@ struct PurrtineApp: App {
             AppLaunchBootstrapper.seedInitialDataIfNeeded(in: container.mainContext, using: configuration)
 
             #if DEBUG
+            PrototypeSeed.seedIfRequested(in: container.mainContext, configuration: configuration)
             Self.sanitizeInvalidCatAges(in: container.mainContext)
             #endif
 

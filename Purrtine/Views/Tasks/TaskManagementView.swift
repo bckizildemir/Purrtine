@@ -272,6 +272,12 @@ struct TaskManagementView: View {
       calendarViewportHeight = height
     }
     .accessibilityIdentifier("taskManagement.calendar")
+    #if DEBUG
+    .overlay(alignment: .bottom) {
+      PrototypeCalendarSwitcherPill() // PROTOTYPE
+        .padding(.bottom, 100)
+    }
+    #endif
   }
 
   @ViewBuilder
