@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Read `STATUS.md` (open PRs, next step, what waits for the owner) at session start; update it before the final report.
 
+**Safe merges.** The owner (2026-11-11) keeps routine PRs off their list. Once CI is green and GitHub
+shows the PR `MERGEABLE`, an agent squash-merges these itself and deletes the branch: docs-only PRs
+(Markdown and `docs/` only), including `STATUS.md` updates, and Dependabot patch and minor bumps. App
+code, config, a major bump and every Cloud Function change still wait for the owner. A merged bump in
+the functions folder still needs a deploy, and the deploy needs the owner's yes: ask once, in the same
+message that reports the merges. Record each merge in `STATUS.md` in the same session.
+
 ## Swift skills are mandatory
 
 Before you write or edit a Swift file under `Purrtine/`, `PurrtineTests/`, or
