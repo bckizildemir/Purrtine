@@ -1,0 +1,46 @@
+---
+title: "One daily care task as caregivers complete it"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: open
+    lg1: closed
+    lg2: gone
+  }
+  class lg0 blue
+  class lg1 teal
+  class lg2 tan
+  s0: Due day 0, today is day 0 (nothing done yet)
+  s1: Task deleted
+  s2: Due day 0, today is day 1 (nothing done yet)
+  s3: Due day 0, today is day 2 (nothing done yet)
+  s4: Due day 1, today is day 0 (done: day 0)
+  s5: Due day 1, today is day 1 (done: day 0)
+  s6: Task closed (done: day 0, day 1)
+  s7: Due day 1, today is day 2 (done: day 0)
+  [*] --> s0
+  s0 --> s1: a caregiver deletes the task (or its only cat)
+  s0 --> s2: a new day begins
+  s2 --> s1: a caregiver deletes the task (or its only cat)
+  s2 --> s3: a new day begins
+  s0 --> s4: the task list's Complete (row or sheet) saves a completion for day 0
+  s3 --> s1: a caregiver deletes the task (or its only cat)
+  s2 --> s5: the task list's Complete (row or sheet) saves a completion for day 0
+  s4 --> s1: a caregiver deletes the task (or its only cat)
+  s4 --> s5: a new day begins
+  s3 --> s7: the task list's Complete (row or sheet) saves a completion for day 0
+  s5 --> s1: a caregiver deletes the task (or its only cat)
+  s5 --> s7: a new day begins
+  s4 --> s6: the task list's Complete (row or sheet) saves a completion for day 1
+  s6 --> s1: a caregiver deletes the task (or its only cat)
+  s7 --> s1: a caregiver deletes the task (or its only cat)
+  s5 --> s6: the task list's Complete (row or sheet) saves a completion for day 1
+  s7 --> s6: the task list's Complete (row or sheet) saves a completion for day 1
+  class s0 blue
+  class s1 tan
+  class s2 blue
+  class s3 blue
+  class s4 blue
+  class s5 blue
+  class s6 teal
+  class s7 blue
