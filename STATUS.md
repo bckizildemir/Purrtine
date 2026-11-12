@@ -16,17 +16,17 @@ Last session:
 - #137 (AI notice on every AI result, for #135): on the simulator, rule-based answers correctly show no
   notice (run `2026-11-12-150536-6c78`). The cloud path is blocked: App Check and sign-in pass, then HTTP
   401, so the `GROQ_API_KEY` secret is invalid. Its UI test `testCatCardContextMenuAddTaskOpensFormWithCatPreselected`
-  failed twice on CI; the PR does not touch cat cards.
+  failed twice on the old branch and passed after updating it with `main`: CI is green now.
 
 ## Open PRs
 
 | PR | What it does | Waits for |
 |---|---|---|
-| #137 | Show an "AI can make mistakes" notice on every AI result (#135) | Green UI tests (cat card → Add Task test failed twice); the owner fixes `GROQ_API_KEY`, then a cloud proof (2 calls) |
+| #137 | Show an "AI can make mistakes" notice on every AI result (#135) | CI green. The owner's merge; a cloud proof (2 calls) after the owner fixes `GROQ_API_KEY` |
 
 ## Next step
 
-1. Get #137 green: find why the cat-card Add Task UI test fails on its branch.
+1. After `GROQ_API_KEY` is fixed: rerun the #137 cloud proof (2 calls).
 2. Fix #140, #141 and #142 (the formal-check bugs).
 3. Stage 2 polish: #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
    and #127 (onboarding fades) depend on it. #126, #128, #129 and #130 name no such dependency.
