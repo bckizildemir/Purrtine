@@ -28,8 +28,8 @@ V=.claude/skills/verify-purrtine/scripts/vp.sh
 - Data only through user screens: the onboarding, then Add Cat and Add Task. Never More →
   Developer Tools (Create Sample Data and the rest): the owner keeps it for manual catch-up.
 - Not a harness: the XCUITest suite `PurrtineUITests` and the `-ui-testing` mode.
-- Drive with `axe` (or xcodebuildmcp `snapshot_ui`/`tap`/`type_text`/`screenshot` with this run's
-  `simulatorId`) and `xcrun simctl`. Never osascript, never scripted mouse clicks: the owner works on
+- Drive with `axe` (through `$V`) and `xcrun simctl` only: axe is the one driver for Purrtine and
+  TriQ (owner, 2026-11-12). XcodeBuildMCP is only for `open_sim` on an empty tree. Never osascript, never scripted mouse clicks: the owner works on
   the same Mac.
 - One fresh slim simulator per run, one driver (owner, 2026-10-27). `$V start` clones the
   project's pristine SimSlim template `iPhone 12 slim tmpl (Purrtine)` (profile
@@ -126,9 +126,6 @@ axe tap -x 195 -y 420 --tap-style physical --udid $UDID   # only when an element
   and a second tap would then save twice or untick a row. On its WARN, read `$V ui` before any retap.
 - System alerts show in `$V ui` as SpringBoard elements: the notification prompt is a `Sheet` with
   buttons `Allow` and `Don’t Allow` (curly apostrophe; Turkish `İzin Ver`).
-- xcodebuildmcp works too: pass `simulatorId=$UDID` to `snapshot_ui`, `tap` (element refs from
-  `snapshot_ui` only), `type_text` and `screenshot`. Never call its `boot_sim`, `build_run_sim` or
-  `session_set_defaults` with another device.
 
 The recipes are in `features/` — read `features/README.md`, then the feature's file. Data comes only
 from the journeys there: [Onboarding](features/onboarding.md) first, then Add Cat and Add Task.
@@ -276,7 +273,7 @@ and the same screen size as the recorded runs. Measure again before you change t
   worked. After any tap on a system sheet, read `$V ui` and check the sheet is gone before the next step.
 - **A screenshot with no device names the wrong one.** With several simulators booted (2026-10-27),
   xcodebuildmcp `screenshot` with no `simulatorId` captured another simulator. Take evidence with
-  `$V shot`, or pass `simulatorId=$UDID` (the clone's UDID) to every xcodebuildmcp call.
+  `$V shot` only.
 - **`$V reminders` reads the first pending store on the device.** On a fresh device only this app
   schedules notifications, so that store is the app's.
 
