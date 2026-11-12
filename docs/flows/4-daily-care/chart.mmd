@@ -1,0 +1,58 @@
+---
+title: "Purrtine: daily care of one task"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Waiting
+    lg1: Due
+    lg2: Done
+  }
+  class lg0 blue
+  class lg1 orange
+  class lg2 teal
+  s0: Home, task not due yet
+  s1: Reminder banner on screen
+  s2: Home, done today, due tomorrow
+  s3: Tasks tab with Edit Task sheet
+  s4: Home, task due
+  s5: Home, task due, reminder snoozed
+  s6: Tasks list, task under Tomorrow
+  s7: Whiskers, no chip
+  s8: Tasks list, task due
+  s9: Whiskers, with the task chip
+  s10: Whiskers chat, Confirm Completion card
+  s11: Whiskers chat, task is complete
+  s12: Whiskers chat
+  [*] --> s0
+  s0 --> s1: the due time comes, a reminder shows
+  s1 --> s2: you hold it and tap Complete
+  s1 --> s3: you tap the reminder
+  s1 --> s4: you ignore it
+  s1 --> s5: you hold it and tap Remind in 10/30/60 min
+  s2 --> s0: the next day comes
+  s3 --> s8: you tap Cancel
+  s4 --> s8: you open the Tasks tab
+  s4 --> s9: you open Whiskers
+  s5 --> s1: the snooze time comes
+  s5 --> s8: you open the Tasks tab
+  s6 --> s2: you open the Home tab
+  s8 --> s6: you tap the circle (or swipe right, Complete)
+  s9 --> s10: you tap the task chip
+  s10 --> s11: you tap Confirm
+  s10 --> s12: you tap Cancel
+  s11 --> s2: you tap X, then Home
+  s12 --> s4: you tap X, then Home
+  s12 --> s5: you tap X, then Home
+  class s0 blue
+  class s1 orange
+  class s2 teal
+  class s3 orange
+  class s4 orange
+  class s5 orange
+  class s6 teal
+  class s7 teal
+  class s8 orange
+  class s9 orange
+  class s10 orange
+  class s11 teal
+  class s12 orange

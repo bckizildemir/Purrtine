@@ -231,3 +231,27 @@ test("task list is capped and unknown categories fall back to general", async ()
 
   assert.equal(result.taskId, "task-0");
 });
+
+test("Groq default model is a live gpt-oss model with low reasoning effort", async () => {
+  // llama-3.3-70b-versatile was decommissioned by Groq on 2026-08-16; calls to it failed (2026-11-12).
+  await interpretTaskAssistantRequest({
+    ...baseOptions,
+    model: undefined,
+    data: { text: "I fed Luna", referenceDate: "2026-07-17T10:00:00Z", tasks: [feedLuna] },
+    fetchImpl: successFetch(JSON.stringify({ match: "none" }), (url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, "openai/gpt-oss-120b");
+      assert.equal(body.reasoning_effort, "low");
+    }),
+  });
+});
+
+test("a non-gpt-oss model gets no reasoning_effort field", async () => {
+  await interpretTaskAssistantRequest({
+    ...baseOptions,
+    data: { text: "I fed Luna", referenceDate: "2026-07-17T10:00:00Z", tasks: [feedLuna] },
+    fetchImpl: successFetch(JSON.stringify({ match: "none" }), (url, options) => {
+      assert.equal(JSON.parse(options.body).reasoning_effort, undefined);
+    }),
+  });
+});

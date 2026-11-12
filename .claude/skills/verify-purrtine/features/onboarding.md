@@ -14,6 +14,9 @@ English; the last in the maintenance pass), the Turkish welcome screen on the sa
   "Enable Notifications | Bildirimleri Etkinleştir".
 - `onb-notify-skip` skips the alert with "Skip for now | Şimdilik geç"; the task step then shows "These
   tasks can't remind you yet. | Bu görevler seni henüz hatırlatamaz." with "Allow Notifications | Bildirimlere İzin Ver".
+- `onb-back` the Back button (`chevron.left`, label `Back`) shows from the notification step on and returns one step (measured 2026-11-12: Back from Notifications shows Welcome at 25%).
+- `onb-reminder-row` on the task step, once a starter task is ticked and notifications are not authorised, a row "These tasks can't remind you yet." with the button "Allow Notifications" (no id; match by label) shows above Start Tracking. Tapping it raises the system alert; after Allow the row is gone (measured 2026-11-12). After a deny the button reads "Open Settings" (source `TaskSetupView.swift:224`, not driven: it would leave the run without permission).
+- `onb-save-failure` alert "Your cat wasn't saved" (Try Again / Continue Without Saving, `OnboardingTaskSetupStep.swift:27-38`): source only, no user path triggers a save failure.
 - `onb-cat` saves the first cat's name; "Continue | Devam Et" stays disabled while the name is empty.
 - `onb-cat-skip` "I'll add details later | Detayları sonra eklerim" creates no cat.
 - `onb-tasks` creates one task per ticked row: Daily Feeding | Günlük Besleme (daily 08:00), Refresh
@@ -84,3 +87,4 @@ Preconditions:
   tap the second row again if it is still listed. Typing "Miso" on a Turkish device is fine; "Milo" saved as
   "Mılo" (keyboard, not an app bug).
 - The notification alert is titled with the app name; since #104 it reads "Purrtine", not "CatCareCalendar".
+- Measured 2026-11-12 (iOS 27.0, English, run `2026-11-12-181821-0f93`): skipping the alert, then ticking Daily Feeding shows the reminder row; its "Allow Notifications" button opens the system alert and Allow removes the row. Reminders afterwards: 60 requests, Daily Feeding 30, Refresh Water 29, app_open_nudge 1.

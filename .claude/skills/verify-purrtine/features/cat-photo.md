@@ -11,8 +11,9 @@ screenshot, and taps it by coordinates. Not yet proved (written from source 2026
 - `photo-add-pick` Add New Cat with a picked photo (a new cat with a photo from the first save).
 - `photo-change` pick a second picture over the first.
 - `photo-remove` "Remove Photo | Fotoğrafı Kaldır" → Save: the photo is gone.
-- `photo-camera` "Camera | Kamera" shows only when a camera exists; the simulator has none, so the item
-  is absent. Report it as not available.
+- `photo-camera` "Camera | Kamera" is gated by `CameraPermissionHelper.isCameraAvailable`, which is true on the simulator: the item IS listed (measured 2026-11-12). Tapping it raises the camera permission alert; no camera is usable. Report the camera capture as not coverable.
+- `photo-viewer` tapping the avatar on the cat screen (label "Tap to view photo") should open the photo viewer (`PhotoSheetView`); the tap was not seen to open it on 2026-11-12 (tree and screenshot stayed on the cat screen): not proved.
+- `photo-save-failure` alert "Photo not saved": source only.
 
 ## How to get to it (user POV)
 
@@ -84,8 +85,7 @@ Steps:
 - **Save and prove from a second view.** `vp tap --once --id catForm.saveButton`. The sheet closes. On the
   cat screen the avatar label is now "Tap to view photo | Fotoğrafı görüntülemek için dokunun" (was "No
   photo"), and the avatar shows red: `vp shot cat-after`, `vp tree cat-after`. Second and third views:
-  back to My Cats, the `cats.card.Miso` card shows a red circle (`vp shot cats-list`); Home's cat card shows
-  it too (`vp shot home-after`). Reopen Edit Cat: the photo circle reads "Edit Photo" and holds the red
+  back to My Cats, the `cats.card.Miso` card shows a red circle (`vp shot cats-list`). Home shows no cat photo (no cat card there; measured 2026-11-12, only the text "Miso" in task rows). Reopen Edit Cat: the photo circle reads "Edit Photo" and holds the red
   photo, loaded from the saved file (this is the proof the photo persisted, not only the form state).
 - **Change.** In the sheet, `vp tap --id catForm.photoMenu`, "Photo Library", read the picker shot, tap the
   blue cell, Save with `vp tap --once`. The avatar turns blue in `cat-after-change`.
@@ -116,3 +116,5 @@ Steps:
   that cannot be used shows "This photo can't be used. | Bu fotoğraf kullanılamıyor."
 - Autocorrect applies to the Add-cat name field too; type a real word.
 - Measured 2026-11-07: while the picker is up, `vp ui` shows the edit form's tree behind it, not the picker's cells.
+- Measured 2026-11-12 (iOS 27.0): the pick worked end to end for the edit path: the picker listed blue then red; after the pick the form's menu read "Edit Photo" and showed a red circle; Save made the cat screen avatar "Tap to view photo" and red (`81-photo-viewer.png`, `74-photo-picked5.png`). Change, Remove and the Add-cat variant were not run.
+- The picker needed several seconds to load ("Loading..."), and the first two coordinate taps showed no result in the next screenshots; the third tap with `--pre-delay 1 --post-delay 3` ended with the pick done. Wait 5 s and re-read `vp ui` before you tap again: the tree and screenshots lag after the picker closes. The Edit form also has `catForm.deleteButton` ("Delete Cat").
