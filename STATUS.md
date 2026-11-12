@@ -19,6 +19,9 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-13
 
 Last session:
+- 2026-11-13 (later): build number 14 (#149). The `## Open PRs` section left this file: GitHub is the only
+  list of open PRs (`gh pr list`, or `/where`), so the file cannot go stale on it. TestFlight: the build 14
+  upload hit an Apple App Store Connect outage (error 500); check `asc builds list --app 6761329008 --limit 2`.
 - 2026-11-13: `CLAUDE.md` trimmed from 270 to 148 lines (docs only). Coding conventions, notifications,
   SwiftData and localization rules moved to path rules in `.claude/rules/`; the Swift skill routing table and the
   version reconciliation now live only in `.claude/rules/swift-skills.md`. `CLAUDE.md` has a "Path rules" table
@@ -36,10 +39,6 @@ Last session:
 - The formal checks found bugs, now issues: #140 (a kill after Start makes a second first cat), #141
   (completing a repeating task: 4 wrong-day paths), #142 (reminder snoozes: land after completion, outlive
   deletes, ignore Reminders off, no cap).
-
-## Open PRs
-
-None.
 
 ## Next step
 
