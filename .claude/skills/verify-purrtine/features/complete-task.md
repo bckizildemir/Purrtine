@@ -11,6 +11,7 @@ Home → Routine Status. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) and
 - `complete-tap` ticks the row's circle button ("Complete task | Görevi tamamla").
 - `complete-swipe` uses the row's leading swipe action "Complete | Tamamla" (swipe right; a left swipe
   shows Delete). It shows only while the task can be completed. Proved 2026-10-14 (second pass).
+- `complete-multi` with more than one cat on the task the circle opens the sheet "Complete Task": "Which cats is this task completed for?" with a row per cat and "Select All" (`taskCompletionSelectAllButton`), "Who completed the task?" (Myself), optional notes and photos (`taskCompletionAddPhotoButton`); `taskCompletion.confirmButton` (Done) is disabled until a cat is selected (measured 2026-11-12: selecting Miso only enabled it; History then held one row for Miso).
 - `complete-history` shows the completion as a History row with date, time and cat.
 - `complete-home` shows it in Home → Routine Status ("Last done today, Due tomorrow").
 
@@ -57,8 +58,7 @@ Preconditions:
 
 ## Gotchas
 
-- The button value does not turn "Completed | Tamamlandı" for a recurring task; only a `Once` task ends as
-  completed. Assert on the row's date text, History and Routine Status, not on the value.
+- The button value does not turn "Completed | Tamamlandı" for a recurring task that has a next occurrence; a `Once` task, or a recurring one with no next occurrence, ends as completed (`TaskActionService.swift:150-157`). Assert on the row's date text, History and Routine Status, not on the value.
 - The row identifier holds the task title as the user sees it, so it changes with the language and
   with any rename.
 - A tab keeps its navigation stack: the More tab reopens on the last screen pushed in it. Go back with
@@ -70,3 +70,6 @@ Preconditions:
   positions shift; read `vp ui` each time. In Turkish the swipe button label is "Tamamla" (id `checkmark.circle.fill`).
 - Home now lists Routine Status before Today & Overdue (PR #105); Routine Status stays first after a completion
   and reads "Last done today, Due tomorrow".
+- Measured 2026-11-12: in calendar mode (Tasks tab, View button) the rows list below the month grid with the same circle; a tap on a Tomorrow row's circle in calendar mode left the History count unchanged, so calendar-mode completion is not proved.
+- Swipe: the revealed button was `Complete` with id `checkmark.circle.fill`; the task row also gets `taskRow.delete.<title>` on a left swipe (deletes with no confirm).
+- The History icon is the task category's icon in green (on time). The orange late variant was not reached (no overdue task on a fresh run).

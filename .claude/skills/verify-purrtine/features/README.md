@@ -132,3 +132,9 @@ The other recipes follow when time allows; a Turkish pass of add-cat, add-task a
 passed in part on 2026-10-14 (welcome screen only). Cloud requests of a Turkish pass count against the
 same 10-request budget only if the pass runs in the same session; a separate pass has its own budget, and
 the owner's yes is needed again.
+
+## Screens with no feature file (gaps, 2026-11-12)
+
+Seen in the live pass but not covered by a recipe: caregivers (Settings → Caregivers, `settings.caregivers.row`), cat detail / edit / delete (`catDetail.editButton`, `catForm.deleteButton`), task edit save (Edit Task opens from a reminder tap, see `notification-tap.md`; Save not driven), Tasks calendar mode and filter chips, Advanced Notification Settings, and camera capture (not coverable on the simulator: the Camera item is listed and asks for permission, no camera exists). The cat card context menu is described in `add-cat.md`.
+
+Maintenance pass 2026-11-12 (iOS 27.0, English, evidence `~/verify-evidence/purrtine/2026-11-12-181821-0f93/`): every feature file was driven except where its file says "not proved"; the Whiskers cloud step and its consent Allow branch were not run (no cloud).

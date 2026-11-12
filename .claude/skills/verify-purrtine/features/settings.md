@@ -52,13 +52,13 @@ Steps:
   The service, Groq, may keep a request for up to 30 days to fix errors or stop abuse, and does not use it to
   train AI models." (PR #107 replaced "never stored") Second view: reopen the Whiskers tab chat (see `whiskers.md`): the consent sheet shows
   only while no answer exists; a toggled answer counts as answered.
-- **Support screen.** Back out, `vp tap --id settings.support.row`. The tree holds the About card
+- **Support screen.** Back out, `vp tap --id settings.support.row`. The tree holds the About card, a second heading "Developer" with a text block at the bottom (`SettingsDetailViews.swift:146-151`; "Purrtine is developed by cat lovers for cat lovers…"),
   ("Purrtine", "App Version <v> (<build>)", the description) and four link rows with ids:
   `settings.rateApp` ("Rate App | Uygulamayı Değerlendir"), `settings.giveFeedback` ("Give Feedback | Geri
   Bildirim Ver"), `settings.privacyPolicy` ("Privacy Policy | Gizlilik Politikası"),
   `settings.termsOfService` ("Terms of Service | Kullanım Koşulları"). Assert Rate App is present (PR #101:
   it always shows; before, an unset App Store id hid it). `vp shot support`, `vp tree support`.
-- **Link targets.** The URLs are fixed in `SettingsSupportConfiguration`:
+- **Link targets.** The URLs are built in `SettingsSupportConfiguration` (Turkish devices get the `-tr` pages, `privacy-tr/` and `terms-tr/`; `SettingsSupportConfiguration.swift:29-33`):
   - Privacy: `https://bckizildemir.github.io/catcarecalendar-legal/privacy/`
   - Terms: `https://bckizildemir.github.io/catcarecalendar-legal/terms/`
   - Rate App: `https://apps.apple.com/app/id6761329008?action=write-review`
@@ -102,8 +102,7 @@ Steps:
   What worked about every second try: `axe tap --label "<name>" --element-type CheckBox --pre-delay 0.8
   --post-delay 2`, or `axe tap -x 328 -y <row y>`. Read the value after every tap and retry; see
   `reminder-nudge.md` for the fallback of writing the defaults.
-- The Task & Display row label is "Task & Display, List". Theme is three `RadioButton` elements (System, Light,
-  Dark) inside a TabGroup with id `settings.appearance.picker`, not a segmented control.
+- The Task & Display row label is "Task & Display, List". Default Task View (List, Calendar) and Theme (System, Light, Dark) are both segmented controls that axe reads as `RadioButton` elements; only Theme's TabGroup carries an id (`settings.appearance.picker`). Measured 2026-11-12: tapping Dark sets its value 1 and System restores it. Changing Default Task View does not switch an open Tasks tab; the toolbar View button (`taskManagement.viewModeButton`) toggles list and calendar (`taskManagement.calendar`, month/week, Today).
 - The Support links are `Link` elements, not Buttons. The version line reads "App Version | Uygulama Sürümü 1.0 (13)".
 - Rate App opened Safari with a blank address on the slim device; Give Feedback left the app on screen and opened
   no Mail; Safari's address field shows only the host. Report these as "link tapped", not as verified targets.
@@ -111,3 +110,5 @@ Steps:
   … dilediğin zaman gizleyebilirsin", and the About description ends "…kedilerinin bakım rutinini düzenli tutmana
   yardımcı olur" (it no longer promises health and happiness; the English one ends "helps you keep your cats' care
   routine on track").
+- Measured 2026-11-12: the More metric cards read "<n>, My Cats" (cat count) and "<n>, History" (this week's completions). The Whiskers row (`settings.taskAssistant.row`) shows the footer; its CheckBox "AI-Assisted Understanding" read 0 on a fresh device (left off). The Support link Privacy Policy left the app and Safari came up with a loaded page; `simctl terminate com.apple.mobilesafari` plus `simctl launch` brought the app back on Support.
+- Advanced Notification Settings (Settings → Notifications → `notificationSettings.advanced`, `advancedNotificationSettings.view`): Overdue Reminder menu (`.overdueReminder`, "1 hour after due"), `.soundToggle`, "Show badge count", "Show task details" (this is the "preview" toggle; the source key is `showPreview`), and category toggles `advancedNotificationSettings.category.<feeding|water|medication|grooming|health|exercise…>`. Seen, not toggled.

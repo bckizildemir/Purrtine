@@ -9,6 +9,8 @@ task's cat. Proved on 2026-10-14 (iPhone 12, iOS 26.5, English) and again on 202
 - `cat-add-home` opens the Add New Cat sheet from the Home tab "+" menu.
 - `cat-add-cats` opens it from More → My Cats → "+".
 - `cat-save` saves a named cat; Save stays disabled while the name is empty (after trimming spaces).
+- `cat-optional` the Add form has Age with a Months/Years control, Gender, and a collapsed "Additional Info" row that opens Breed, Weight, Medical Notes, Medical Conditions (measured 2026-11-12; type in Name first, press the keyboard's `return` key to close it, then tap Additional Info). The photo menu (`catForm.photoMenu`) lists Camera and Photo Library.
+- `cat-context-menu` long-press a card on My Cats: Edit, Add Task (the cat is preselected: Cats row reads "Miso"), Duplicate ("<name> (Copy)", no photo; source `EnhancedCatCardView.swift:165-189`, not driven), Delete (with confirm; not driven).
 - `cat-cancel` closes the sheet without a new cat; with a changed field it asks to discard first.
 
 ## How to get to it (user POV)
@@ -59,3 +61,5 @@ Preconditions:
   of its cells. Do not try to pick a photo; say in the report that the photo path was not checked.
   (`-inject-test-photo`, #52, is for the UI-test harness only, not for this skill.)
 - The camera choice asks for camera permission; the simulator has no camera. Skip it.
+- Context menu (measured 2026-11-12): `axe touch -x 285 -y 230 --down --up --delay 1.2 --udid $UDID` on a card opens it (a `Preview` group plus Buttons Edit, Add Task, Duplicate, Delete). A physical-style tap on its items did nothing; `axe tap -x X -y Y --tap-style simulator` on the item's centre worked and opened Add Task with `taskAdd.catsButton` = Miso.
+- Camera (measured 2026-11-12): the Add form's photo menu does list Camera on the simulator (`UIImagePickerController.isSourceTypeAvailable(.camera)` is true there). Tapping it raises the system alert "Allow “Purrtine” to access your camera?"; Don't Allow then shows the app sheet "Camera Permission Required" with Cancel and Settings.

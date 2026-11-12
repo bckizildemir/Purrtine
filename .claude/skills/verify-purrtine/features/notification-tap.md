@@ -81,3 +81,5 @@ Steps:
   that holds the title) before you push.
 - `/tmp/vp-dump.py`-style decoding: the request's `TriggerDateComponents` holds `NS.year`, `NS.month`, `NS.day`,
   `NS.hour`, `NS.minute`.
+- Proved 2026-11-12: `simctl push` with `taskId` of Refresh Water (found by reading the title next to the id in the copied store: ids in the plist belong to the next strings, e.g. 8AB54682… was Daily Feeding) while on Home; the banner was not in the tree; `axe tap -x 140 -y 72 --tap-style physical` within 1.2 s opened Tasks with `taskEdit.titleField` = Refresh Water (`taskEdit.notesField`, `taskEdit.caregiverButton` also present). The pending store also holds `<taskId>_<scheduleId>_overdue_<ts>` requests (overdue reminders).
+- Source, not driven: the Snooze action schedules `snooze_<taskId>_<unix ts>` (`NotificationManager.swift:761`); Complete drops that task's snoozes (:554-568). With "Show task details" off in Advanced Notification Settings (`AdvancedNotificationSettingsView.swift:55`) reminders use generic texts. The label in the app reads "Show task details", not "Show Preview".
