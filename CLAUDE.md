@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is a copy of this file for Codex. Edit `CLAUDE.md`, then copy it to `AGENTS.md`.
 
-Read `STATUS.md` (open PRs, next step, what waits for the owner) at session start; update it before the final report.
+Read `STATUS.md` (focus, next step, what waits for the owner) at session start; update it before the final report.
+Open PRs are not in it: read them from GitHub (`gh pr list`).
 
 **Safe merges.** The owner (2026-11-11) keeps routine PRs off their list. Once CI is green and GitHub
 shows the PR `MERGEABLE`, an agent squash-merges these itself and deletes the branch (main requires an up-to-date branch: when
