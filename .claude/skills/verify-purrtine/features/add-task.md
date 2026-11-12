@@ -13,6 +13,9 @@ daily task: the list shows it, and its reminders share the app's 60-reminder cap
 - `task-reminder` sets the reminder ("Notifications | Bildirimler" menu: On time, 15 minutes before,
   30 minutes before, 1 hour before, 1 day before; Turkish "Görev zamanında", "15 dakika önce", …) and
   schedules real local notifications.
+- `task-fields` the form also has a notes field (no id, placeholder "Add notes"), Caregiver (`taskAdd.caregiverButton`, a menu: only "Myself" until caregivers exist), the reminder toggle `reminderRow.notificationsToggle` (CheckBox, value 1 by default) beside `reminderRow.notificationsMenu`, Priority (Low, Medium, High, Urgent; default Medium) and Category (Feeding, Water, Medication, Grooming, Health, Exercise, Litter, Vet, General). Measured 2026-11-12.
+- `task-custom-repeat` Repeat → Custom opens a sheet "Custom" with Frequency (day), Every (1 day) and the line "Event will occur Every day." (no ids). Its toolbar Done did not close it in 3 taps on 2026-11-12; Close (X) did, and Repeat stayed Once.
+- `task-no-cats` with zero cats the Tasks "+" menu is hidden (source; a run always has a cat, not driven).
 - `task-required` refuses to save without a title ("Task title is required | Görev başlığı zorunludur").
 
 ## How to get to it (user POV)
@@ -70,4 +73,6 @@ Preconditions:
 - Measured 2026-11-07: after typing the title the keyboard covers the Cats row and the first
   `taskAdd.catsButton` tap is lost. Dismiss the keyboard with its Done key (no id, about (336,492)), then tap the
   Cats row. The cats sheet can appear 2 s or more after the tap: poll `vp ui` for `taskCatsSelection.*`.
-- `taskAdd.saveButton` is not disabled with an empty title; do not use that as an assertion.
+- `taskAdd.saveButton` is not disabled with an empty title; do not use that as an assertion. Tapping it with an empty title shows the inline text "Task title is required" under the title field (measured 2026-11-12), and the form stays open.
+- A cat-card context menu "Add Task" opens the form with the Cats row already "Miso" (see `add-cat.md`). With both cats picked the row reads "All cats".
+- After typing the title, a `return` key moves focus to Notes and the next typing lands in the title again; close the keyboard with its Done key (about (336,492)) and tap the notes field by coordinates (no label match: its value is the placeholder).

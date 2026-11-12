@@ -17,6 +17,7 @@ Not yet proved (written from source 2026-11-07).
 - `whiskers-accept` "Allow | İzin Ver": unresolved sentences may go to the cloud.
 - `whiskers-revoke` More → Settings → Whiskers toggle "AI-Assisted Understanding | Yapay Zeka Destekli
   Anlama" turns the consent off again (or on without the sheet).
+- `whiskers-create` the in-chat task creation flow (`taskAssistant.createTaskButton`, "Create a task"): title question, cat chips (`taskAssistant.create.cat.<name>`, `.create.allCats`, `.create.catsContinue`), category chips (`.create.category.<raw>`), frequency chips (`.create.frequency.once|daily|weekly|monthly`), time chips (Morning (08:00), Noon (12:00), Evening (18:00), No specific time), then "Create this task?" with `.create.cancelButton` and `.create.confirmButton` (source `TaskAssistantChatView.swift:305-801`). On-device, no cloud.
 - `whiskers-cloud` one cloud request: a sentence the heuristic cannot match, answered by the cloud.
 
 ## How to get to it (user POV)
@@ -142,7 +143,7 @@ Steps:
   (two elements share that id), wait 2 s and check the keyboard shows (the first tap is often lost), then
   `axe type 'Complete Refresh Water' --udid $UDID`, then
   `vp tap --once --label "Send task message" --element-type Button` (Turkish label `Görev mesajını gönder`;
-  the button's id is also `taskAssistant.input`, there is no `taskAssistant.sendButton`). Turkish request:
+  the button's id reads `taskAssistant.input` in the tree, although the source sets `taskAssistant.sendButton` at `TaskAssistantChatView.swift:376`: measured 2026-11-12, tap it by label). Turkish request:
   `Su Tazeleme tamamla`. Expected: a user bubble with the text and an assistant bubble
   `Complete "Refresh Water" for Miso today?` (Turkish `"Su Tazeleme" görevini Miso için bugün
   tamamlayayım mı?`), plus the card "Confirm Completion | Tamamlamayı Onayla" with
@@ -195,3 +196,6 @@ Steps:
 - The Settings footer (More → Settings → Whiskers) no longer says "never stored" since #107: it says Purrtine
   keeps no copy and Groq may keep a request up to 30 days, matching the consent sheet.
 - Dismissing the consent sheet: only the buttons close it; a swipe down does not.
+- Measured 2026-11-12 (consent declined, no cloud request made; the consent buttons: `--label "Don't Allow"` with a straight apostrophe matched on this build, and `axe tap --label "Don't Allow" --tap-style physical` declined the sheet). Create flow driven end to end: title "Nail trim" → Miso → Grooming → Weekly → Morning (08:00) → "Here's what I'll create: "Nail trim" for Miso · Grooming · Weekly · 8:00 AM." → Create → "Added "Nail trim" to your tasks."; Tasks tab then holds `taskRow.Nail trim` ("Nail trim, Miso, 8:00 AM"). The chat's other ids from source (not driven): `taskAssistant.jumpToLatestButton`, `.intent.open|complete|postpone`, `.cancelIntentButton`, `.stopButton`, `.micButton`, `.cancelClarificationButton`, `.emptyState` (seen).
+- Re-measured the which-task recheck: with Refresh Water already done today (due Tomorrow), `Complete Refresh Water` gave the confirmation card straight away ("Complete "Refresh Water" for Miso today?", Cancel/Confirm), no "What would you like to do" question; the gotcha above about completing an already-done task is outdated for this case (PR #119). The welcome screen showed no quick-action chips because both starter tasks were done today.
+- PR #137 (AI notice) is not on main yet: pending, not described here.
