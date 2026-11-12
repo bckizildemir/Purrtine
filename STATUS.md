@@ -4,32 +4,37 @@ Hand-off file: where the work stands. Read it at session start; update it before
 
 ## Last updated
 
-2026-11-11
+2026-11-12
 
 Last session:
-- The owner merged #118 (category icon on each Tasks row), #119 (Whiskers skips tasks done today) and
-  #120 (this file); #116 and #117 closed. #123 (route Apple's Xcode 27 skills) merged too.
-- New rule "Safe merges" in CLAUDE.md: agents merge green docs-only PRs and Dependabot patch/minor bumps
-  themselves. Under it, #131 (stage 2 polish decisions, animation audit, ideas file) was updated to `main`
-  and merged once its CI went green.
-- A grilling round on stage 2 polish opened #124-#130 (Polish 1-7), all `ready-for-agent`.
+- Merged: #99 (CI prints which UI tests passed only on retry; #97 closed), #133 (verify-purrtine: axe is the
+  only driver), #139 (user-flow statecharts in `docs/flows/`), and three formal checks: #134 (onboarding
+  finish), #136 (completing a repeating task), #138 (reminder resync).
+- The formal checks found bugs, now issues: #140 (a kill after Start makes a second first cat), #141
+  (completing a repeating task: 4 wrong-day paths), #142 (reminder snoozes: land after completion, outlive
+  deletes, ignore Reminders off, no cap).
+- #137 (AI notice on every AI result, for #135): on the simulator, rule-based answers correctly show no
+  notice (run `2026-11-12-150536-6c78`). The cloud path is blocked: App Check and sign-in pass, then HTTP
+  401, so the `GROQ_API_KEY` secret is invalid. Its UI test `testCatCardContextMenuAddTaskOpensFormWithCatPreselected`
+  failed twice on the old branch and passed after updating it with `main`: CI is green now.
 
 ## Open PRs
 
 | PR | What it does | Waits for |
 |---|---|---|
-| #99 | CI: print UI-test retry results in the ui-tests job (#97) | Rebase on `main` to fix the `ci.yml` conflict, green CI, then the owner's merge; then close #97 |
+| #137 | Show an "AI can make mistakes" notice on every AI result (#135) | CI green. The owner's merge; a cloud proof (2 calls) after the owner fixes `GROQ_API_KEY` |
 
 ## Next step
 
-1. Fix the #99 conflict in a separate session (not the one that merges it), wait for CI, merge, close #97.
-2. Stage 2 polish: #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
-   and #127 (onboarding fades) depend on it. #126 (Apple calendar view), #128 (line-art Whiskers cat),
-   #129 (Whiskers chat motion) and #130 (Reduce Motion and haptics) name no such dependency in their issue text.
+1. After `GROQ_API_KEY` is fixed: rerun the #137 cloud proof (2 calls).
+2. Fix #140, #141 and #142 (the formal-check bugs).
+3. Stage 2 polish: #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
+   and #127 (onboarding fades) depend on it. #126, #128, #129 and #130 name no such dependency.
    The plan is in `docs/stage2-polish-decisions.md`.
-3. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
+4. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
 
 ## Waits for the owner
 
+- Fix the `GROQ_API_KEY` secret (Whiskers cloud calls get HTTP 401).
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
