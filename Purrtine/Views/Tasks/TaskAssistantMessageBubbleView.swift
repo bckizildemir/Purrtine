@@ -51,6 +51,10 @@ struct TaskAssistantMessageBubbleView: View {
                         .controlSize(.large)
                         .accessibilityHint(Text(.taskAssistantOpenSettingsHint))
                 }
+
+                if message.isAIGenerated {
+                    AIGeneratedNotice(surface: "task-assistant-message")
+                }
             }
         }
         .padding(.horizontal, 14)

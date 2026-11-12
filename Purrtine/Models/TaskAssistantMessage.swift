@@ -18,6 +18,9 @@ struct TaskAssistantMessage: Identifiable {
     /// The failure has a fix in the Settings app (notifications are off), so the bubble shows an
     /// "Open Settings" button. The view model sets it; the bubble only reads it.
     let offersOpenSettings: Bool
+    /// The text comes from the cloud AI, so the bubble shows the "AI can make mistakes" notice.
+    /// Rule-based replies and the user's own messages leave it false.
+    let isAIGenerated: Bool
     let createdAt: Date
 
     init(
@@ -25,12 +28,14 @@ struct TaskAssistantMessage: Identifiable {
         text: String,
         style: Style = .normal,
         offersOpenSettings: Bool = false,
+        isAIGenerated: Bool = false,
         createdAt: Date = Date()
     ) {
         self.role = role
         self.text = text
         self.style = style
         self.offersOpenSettings = offersOpenSettings
+        self.isAIGenerated = isAIGenerated
         self.createdAt = createdAt
     }
 }
