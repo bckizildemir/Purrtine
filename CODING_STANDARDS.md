@@ -1,15 +1,16 @@
 # Coding standards
 
 This file exists for review tools that look for `CODING_STANDARDS.md` (for example the
-`code-review` standards agent). The standards themselves live in `CLAUDE.md`;
-do not copy them here.
+`code-review` standards agent). The standards themselves live in `CLAUDE.md`
+and `.claude/rules/`; do not copy them here.
 
 Review a change against:
 
-1. `CLAUDE.md` → "Coding Conventions", "SwiftData conventions", "Notifications", and "Localization".
+1. `.claude/rules/swift-conventions.md`, `swiftdata.md`, `notifications.md` and `localization.md` (the
+   "Path rules" table in `CLAUDE.md` says what each holds).
 2. `.claude/rules/accessibility.md` for views and `.claude/rules/testing.md` for tests.
 3. The Swift skills. For each changed `.swift` file, load the matching skill from the routing table
-   at the top of `CLAUDE.md` with the Skill tool (`swiftui-pro`, `swiftui-ui-patterns`, `swiftdata-pro`,
+   in `.claude/rules/swift-skills.md` with the Skill tool (`swiftui-pro`, `swiftui-ui-patterns`, `swiftdata-pro`,
    `swift-concurrency-pro`, `swift-testing-pro`, `swiftui-liquid-glass`, `ios-navigation-chrome`,
    `swift-style-guide`) and review the file against it.
 

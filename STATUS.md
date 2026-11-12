@@ -16,9 +16,13 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 
 ## Last updated
 
-2026-11-12
+2026-11-13
 
 Last session:
+- 2026-11-13: `CLAUDE.md` trimmed from 270 to 148 lines (docs only). Coding conventions, notifications,
+  SwiftData and localization rules moved to path rules in `.claude/rules/`; the Swift skill routing table and the
+  version reconciliation now live only in `.claude/rules/swift-skills.md`. `CLAUDE.md` has a "Path rules" table
+  that names each file, for agents that do not load `.claude/rules/` (Codex).
 - Late 2026-11-12: #144 merged and `interpretTaskAssistantRequest` deployed (revision 00005, `openai/gpt-oss-120b`);
   #137 proved on the simulator (run `2026-11-12-205439-4e30`: a cloud confirmation card shows "AI-generated. AI can
   make mistakes; check important info.") and merged; #135 closed. Not proved: the notice on the "Which one did you

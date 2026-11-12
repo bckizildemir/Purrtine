@@ -71,8 +71,10 @@ Also rejected earlier in the same thread — do not re-propose these:
 
 Two blocks landed in `CLAUDE.md`. **`CLAUDE.md` is the source of truth for both — read the wording there, not from a copy here.** An earlier draft of this section pasted the block verbatim, and the copy went stale the moment the table changed.
 
-- **`## Swift skills are mandatory`**, at the top of the file: the routing table, plus the rule to load the skill before the edit and run it again over the finished change.
+- **`## Swift skills are mandatory`**, at the top of the file: the rule to load the skill before the edit and run it again over the finished change.
 - **`### Swift review skills`**, under `## Agent skills`: where the table still applies when the hook cannot fire, and why `ios-memory-perf` sits outside the hook.
+
+**Update 2026-11-13.** `CLAUDE.md` was trimmed from 270 to 148 lines. The routing table now lives only in `.claude/rules/swift-skills.md`, and the `### Swift review skills` text moved there as "The hook and the review pass". `CLAUDE.md` keeps the `## Swift skills are mandatory` rule and points at that file. The version reconciliation notes moved to the same rule file.
 
 `.claude/rules/swift-skills.md` carries the same table for the read moment, and it is piece three — see §8 for its frontmatter key.
 
@@ -214,7 +216,7 @@ Re-measured on 2026-08-17 after `swiftdata-pro` became additive, which is what a
 2. **The primary path rules.** `*/Views/*` and `*View.swift` encode *this* repo's layout. A project that groups by feature (`Features/Foo/FooView.swift`), or uses `Presentation/` or `Screens/`, needs that `case` arm rewritten. The content-based fallbacks (`some View`, `@Model`, `@Test`) are portable as-is and are the safer default when the layout is unknown.
 3. **Every measured count.** This doc and `CLAUDE.md` quote numbers for this repo. Re-measured 2026-09-08: **42** app-target files import SwiftData (was 57), **40** test files use Swift Testing (was 38), **9** use Liquid Glass, **1** uses XCTest, **167** app files in all (was 144). Every count except Liquid Glass and XCTest had drifted in about six weeks — that is the rate to expect. Re-measure each one, or drop the sentence that carries it. Do not copy a false statistic into another project's `CLAUDE.md`. Measure against the source directories only; a glob that reaches `.claude/worktrees` multiplies every count.
 4. **Which skills exist, and which are actually used.** `~/.claude/skills` holds 19 skills, 9 of them Swift/iOS. Eight of those 9 are routed here — `swiftui-ui-patterns` joined on 2026-10-03, after its view-model conflict with `swift-style-guide` was resolved (TTB `docs/agents/swift-skill-conflicts.md`). `swiftui-performance-audit` stays unrouted: its description now limits it to a code-review audit without measurements, and `ios-memory-perf` owns every reported symptom. Add the personal `swift-style-guide` skill (shared with TTB) for nine rows in all. The hook names six of the nine. Also, `swiftui-liquid-glass` and `ios-navigation-chrome` were included only because usage was counted first: Liquid Glass in 9 files, `navigationTitle` in 21, `.toolbar` in 17, `ToolbarSpacer` in 2 (re-measured 2026-09-08). A project with zero `glassEffect` usage should drop that `grep` line — a rule that never fires is noise.
-5. **Version reconciliation.** This repo builds against iOS 18.4 with `SWIFT_VERSION = 6.0`, while the skills and the `swift-style-guide` skill target iOS 26 / Swift 6.2. `CLAUDE.md` carries explicit reconciliation notes so agents don't report unreachable iOS 26 APIs as fixes. Keep the three limits separate when you port this: the language-mode setting, the host toolchain (Swift 6.4 here, which accepts Swift 6.2 syntax), and API availability from the minimum-OS setting. Only the last one blocks an API. Another project needs its own version, with its own numbers.
+5. **Version reconciliation.** This repo builds against iOS 18.4 with `SWIFT_VERSION = 6.0`, while the skills and the `swift-style-guide` skill target iOS 26 / Swift 6.2. `.claude/rules/swift-skills.md` carries explicit reconciliation notes (moved from `CLAUDE.md` on 2026-11-13) so agents don't report unreachable iOS 26 APIs as fixes. Keep the three limits separate when you port this: the language-mode setting, the host toolchain (Swift 6.4 here, which accepts Swift 6.2 syntax), and API availability from the minimum-OS setting. Only the last one blocks an API. Another project needs its own version, with its own numbers.
 
 ### Portable as-is
 
@@ -242,6 +244,9 @@ the differences below, and a
 `.claude/rules/swift-skills.md` that mirrors that same table, minus the same differences, and
 fires that routing when an agent *reads* a Swift file. The hook covers the write moment; the rules
 file covers the read moment. Neither repo relies on the skill descriptions firing on their own.
+
+Since 2026-11-13 this repo keeps the routing table only in `.claude/rules/swift-skills.md`; its `CLAUDE.md`
+section holds the rule and a pointer. TTB still carries the table in both places.
 
 A fourth file joined that list on 2026-08-25: `.claude/settings.json`. Its `permissions.allow` block
 carries the same six `mcp__xcodebuildmcp__*` entries in both repos, so diff it alongside the hook
