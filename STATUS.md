@@ -19,6 +19,10 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-12
 
 Last session:
+- Late 2026-11-12: #144 merged and `interpretTaskAssistantRequest` deployed (revision 00005, `openai/gpt-oss-120b`);
+  #137 proved on the simulator (run `2026-11-12-205439-4e30`: a cloud confirmation card shows "AI-generated. AI can
+  make mistakes; check important info.") and merged; #135 closed. Not proved: the notice on the "Which one did you
+  mean?" card, and Turkish.
 - Later on 2026-11-12: new Groq key set and the Whiskers function redeployed; calls then got HTTP 400 from the
   retired model, fixed in #144. verify-purrtine maintenance pass merged (#145, run `2026-11-12-181821-0f93`).
   Formal checks re-run: all in sync, still failing on #140-#142.
@@ -28,29 +32,20 @@ Last session:
 - The formal checks found bugs, now issues: #140 (a kill after Start makes a second first cat), #141
   (completing a repeating task: 4 wrong-day paths), #142 (reminder snoozes: land after completion, outlive
   deletes, ignore Reminders off, no cap).
-- #137 (AI notice on every AI result, for #135): on the simulator, rule-based answers correctly show no
-  notice (run `2026-11-12-150536-6c78`). The cloud path is blocked: App Check and sign-in pass, then HTTP
-  401, so the `GROQ_API_KEY` secret is invalid. Its UI test `testCatCardContextMenuAddTaskOpensFormWithCatPreselected`
-  failed twice on the old branch and passed after updating it with `main`: CI is green now.
 
 ## Open PRs
 
-| PR | What it does | Waits for |
-|---|---|---|
-| #137 | Show an "AI can make mistakes" notice on every AI result (#135) | CI green. Cloud proof after #144 deploys; then the owner's merge |
-| #144 | Whiskers uses `openai/gpt-oss-120b`: Groq retired `llama-3.3-70b-versatile` (cloud calls got HTTP 400) | The owner's merge, then a deploy of `interpretTaskAssistantRequest` |
+None.
 
 ## Next step
 
-1. After #144 merges and deploys: rerun the #137 cloud proof (2 calls). The new `GROQ_API_KEY` (version 2) is live.
-2. Fix #140, #141 and #142 (the formal-check bugs).
-3. Stage 2 polish: #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
+1. Stage 2 polish (the Focus): #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
    and #127 (onboarding fades) depend on it. #126, #128, #129 and #130 name no such dependency.
    The plan is in `docs/stage2-polish-decisions.md`.
-4. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
+2. Fix #140, #141 and #142 (the formal-check bugs).
+3. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
 
 ## Waits for the owner
 
-- #144 merge and its deploy (Whiskers cloud calls fail until then).
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
