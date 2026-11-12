@@ -16,7 +16,8 @@ const logger = require("firebase-functions/logger");
 const PROVIDERS = {
   groq: {
     url: "https://api.groq.com/openai/v1/chat/completions",
-    defaultModel: "llama-3.3-70b-versatile",
+    // llama-3.3-70b-versatile was decommissioned by Groq on 2026-08-16 (calls failed; Purrtine, 2026-11-12).
+    defaultModel: "openai/gpt-oss-120b",
     secretName: "GROQ_API_KEY",
     supportsJSONMode: true,
     headers(apiKey) {
@@ -71,8 +72,9 @@ async function makeProviderCall({
   const providerName = normalizedProvider(provider);
   const config = PROVIDERS[providerName];
   const apiKey = normalizedApiKey(groqApiKey, config.secretName);
+  const resolvedModel = normalizedModel(model, config.defaultModel);
   const body = {
-    model: normalizedModel(model, config.defaultModel),
+    model: resolvedModel,
     messages: [
       { role: "system", content: prompt.system },
       { role: "user", content: prompt.user },
@@ -84,6 +86,10 @@ async function makeProviderCall({
   };
   if (config.supportsJSONMode) {
     body.response_format = { type: "json_object" };
+  }
+  // gpt-oss models spend max_tokens on reasoning first; keep it low so the 300-token limit leaves room for the answer.
+  if (resolvedModel.startsWith("openai/gpt-oss")) {
+    body.reasoning_effort = "low";
   }
 
   let response;
