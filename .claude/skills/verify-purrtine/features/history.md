@@ -15,6 +15,7 @@ proved 2026-10-14 inside `complete-task.md`.
   `history.state.searchEmpty` ("No Tasks Found | Görev Bulunamadı").
 - `history-scope` Home → Routine Status row opens History for that task: a header with the title,
   "N completions | N tamamlanma" and "Show All | Tümünü Göster".
+- Deleting a task removes its completions: `CareTask.completions` has `deleteRule: .cascade` (`Models/CareTask.swift:20`), so a History row of a deleted task cannot exist and the `unknown` id fallback (`HistoryView.swift:252`) is unreachable. Measured 2026-11-12: after deleting Brush coat in Tasks (left swipe, `taskRow.delete.Brush coat`, no confirm) the More History card went from 3 to 2.
 - There is no undo: a completion is removed only by deleting the task (the writer's "undo" is an internal
   rollback for failed saves).
 
@@ -77,3 +78,4 @@ Steps:
 - Since PR #106 (schema V2) a History row keeps its cat even when the cat's task is gone; before it, a row could
   show no cat. A run on a build older than #106 may show a row with no cat.
 - Turkish: the search placeholder reads "Geçmişte ara"; on 2026-11-07 the Turkish pass saw the older "Arayın".
+- Row icon: the category's icon in green when the completion was on time (green seen 2026-11-12); orange late not reached. `history.createFirstTaskButton` is shown only with no tasks at all: not driven, source only.

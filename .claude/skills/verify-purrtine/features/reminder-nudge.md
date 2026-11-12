@@ -1,6 +1,6 @@
 # Reminder nudge
 
-The app keeps at most 59 care-task reminders pending (iOS allows 64) and rebuilds them on every change.
+The app keeps at most 59 care-task reminders pending (iOS allows 64: 59 + 1 nudge + 4 snooze slots; the 4 snooze slots are from source, unmeasured) and rebuilds them on every change.
 When something cuts the reminders short, it also schedules one "open the app" notification, "Reminders
 are running low | Hatırlatmalar azalıyor", so the user comes back before reminders run out. PR #100
 (fix for #93) changed two things: the nudge never fires sooner than one hour from now, and a series
@@ -109,3 +109,4 @@ saves the new value; the taps did not land (test tool). So:
 Other measurements from the same run: totals (60; nudge 1; 19/20/20 per title) are right. The nudge fires at the
 last selected reminder minus 24 h (2026-11-25 09:45 against 2026-11-26 09:45), not at "the cut by the daily cap
 of 30": the daily series were selected 19 to 20 each.
+- Measured 2026-11-12 after onboarding (Daily Feeding, Refresh Water): 60 requests, 30 + 29 per title, `app_open_nudge` 1. After adding a daily task "Brush coat" for both cats: 60 requests, 19 + 20 + 20, nudge 1. The per-series cap numbers (daily 30, weekly 12, monthly 6, custom 20) and the 64 ceiling were not measured. Overdue reminder requests (`_overdue_`) exist in the same store. Off/on, no-nudge and horizon cases not run.
