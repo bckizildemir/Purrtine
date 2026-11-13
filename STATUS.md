@@ -20,8 +20,10 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 
 Last session:
 - 2026-11-13 (later): build number 14 (#149). The `## Open PRs` section left this file: GitHub is the only
-  list of open PRs (`gh pr list`, or `/where`), so the file cannot go stale on it. TestFlight: build 14 is uploaded
-  and `VALID` (internal testers get it; not sent to external testers).
+  list of open PRs (`gh pr list`, or `/where`), so the file cannot go stale on it. TestFlight: build 14 is uploaded,
+  `VALID`, and sent to the External Testers group and Apple's beta review (waits for Apple). The release skill
+  moved to `~/.claude/skills/testflight-release` (both apps, #151). #152 opened (CI UI tests are flaky: 3 of 4
+  runs on #149 failed, each on a different test).
 - 2026-11-13: `CLAUDE.md` trimmed from 270 to 148 lines (docs only). Coding conventions, notifications,
   SwiftData and localization rules moved to path rules in `.claude/rules/`; the Swift skill routing table and the
   version reconciliation now live only in `.claude/rules/swift-skills.md`. `CLAUDE.md` has a "Path rules" table
