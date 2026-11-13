@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Foundation
 
 /// Owns the onboarding flow's state. Every member is read or written from a
@@ -39,6 +40,18 @@ final class OnboardingManager {
         tempCatData.photo = nil
     }
     
+    /// Launch-time repair for a kill between onboarding's first commit and `completeOnboarding()`
+    /// (#140): the store holds a cat but the flag is still false, and showing onboarding again would
+    /// save a second cat. The store is the truth, so the flag follows it. Call once at process launch,
+    /// never during a session, so the DEBUG "reset onboarding" keeps working.
+    func completeIfStoreHoldsCat(in context: ModelContext) {
+        guard hasCompletedOnboarding == false else { return }
+        var descriptor = FetchDescriptor<Cat>()
+        descriptor.fetchLimit = 1
+        guard let cats = try? context.fetch(descriptor), cats.isEmpty == false else { return }
+        completeOnboarding()
+    }
+
     func resetOnboarding() {
         hasCompletedOnboarding = false
         currentStep = .welcome

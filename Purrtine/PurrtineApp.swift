@@ -26,6 +26,10 @@ struct PurrtineApp: App {
             // This prevents race conditions when creating tasks
             CaregiverBootstrapper.ensureDefaultCaregiverExists(in: container.mainContext)
 
+            // A kill after onboarding's first commit left a cat but no flag (#140): the store wins.
+            // Runs before the UI-test seed, so seeded cats never override a requested onboarding.
+            OnboardingManager.shared.completeIfStoreHoldsCat(in: container.mainContext)
+
             // First launch of a build with schema V2: History's old-row cat fallback ends here.
             HistoryCatFallbackCutoff().recordIfNeeded()
             AppLaunchBootstrapper.seedInitialDataIfNeeded(in: container.mainContext, using: configuration)
