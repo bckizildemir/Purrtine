@@ -174,6 +174,11 @@ final class NotificationManager:
     private let notificationCenter: any UserNotificationCenterClient
     private let settingsStore: NotificationSettingsStore
     private var badgeSyncToken = UUID()
+    /// Bumped per task each time its snoozes are cancelled, so a snooze add already in flight can
+    /// tell its occurrence was finished or its task deleted. See `cancelSnoozedNotifications`.
+    private var snoozeGenerations: [UUID: Int] = [:]
+    /// The newest snooze add or cancel; the next one waits for it. See `inSnoozeQueue`.
+    private var snoozeQueueTail: Task<Void, Never>?
     /// The hook that `requestFullReminderResync()` calls. `PurrtineApp` points it at
     /// `NotificationResyncCoordinator.scheduleResync()`, which rebuilds every care-task reminder from
     /// the store. Call `requestFullReminderResync()` rather than this directly.
@@ -346,17 +351,36 @@ final class NotificationManager:
     /// Removes the pending snoozes of `taskId`. The writer calls it when the task is completed or
     /// deleted: a snooze belongs to an occurrence, and the full resync leaves snoozes alone, so a
     /// snooze for a finished occurrence would otherwise still fire and invite a second completion.
+    ///
+    /// A snooze whose add is still in flight (it awaits the permission check) belongs to the same
+    /// finished occurrence: the cancel bumps the task's generation at once, so that add sees it and
+    /// stands down, and it waits its turn in the snooze queue behind any add already past its checks.
     func cancelSnoozedNotifications(forTaskId taskId: UUID) async {
+        snoozeGenerations[taskId, default: 0] += 1
         if AppLaunchConfiguration.current.disablesRealNotifications {
             await NotificationDebugStore.shared.removePendingNotifications(forTaskId: taskId)
             return
         }
 
-        let snoozeIds = await notificationCenter.pendingNotificationRequests()
-            .filter { Self.isSnooze($0) && $0.content.userInfo["taskId"] as? String == taskId.uuidString }
-            .map(\.identifier)
-        guard snoozeIds.isEmpty == false else { return }
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: snoozeIds)
+        try? await inSnoozeQueue { [notificationCenter] in
+            let snoozeIds = await notificationCenter.pendingNotificationRequests()
+                .filter { Self.isSnooze($0) && $0.content.userInfo["taskId"] as? String == taskId.uuidString }
+                .map(\.identifier)
+            guard snoozeIds.isEmpty == false else { return }
+            notificationCenter.removePendingNotificationRequests(withIdentifiers: snoozeIds)
+        }
+    }
+
+    /// Runs `work` after every earlier snooze add or cancel has finished, so a cancel can never run
+    /// between another snooze's pending read and its add.
+    private func inSnoozeQueue(_ work: @escaping @MainActor () async throws -> Void) async throws {
+        let previous = snoozeQueueTail
+        let task = Task { @MainActor in
+            await previous?.value
+            try await work()
+        }
+        snoozeQueueTail = Task { @MainActor in _ = await task.result }
+        try await task.value
     }
 
     /// Makes the pending care-task reminders match `infos`: every active schedule in the store.
@@ -364,9 +388,10 @@ final class NotificationManager:
     /// It builds every candidate reminder, keeps the `CareTaskReminderSelection.limit` soonest, and
     /// applies the result as a diff: it removes the care-task requests that are no longer selected and
     /// adds the selected ones that are missing or changed. Debug test requests are never touched, and
-    /// snoozes only when reminders are off. With reminders turned off (settings or permission)
-    /// nothing is selected, so the diff removes every care-task reminder and every snooze — that wipe
-    /// is intended: the caregiver asked for silence.
+    /// snoozes only when reminders are off or their task has no active schedule in `infos` any more.
+    /// With reminders turned off (settings or permission) nothing is selected, so the diff removes
+    /// every care-task reminder and every snooze — that wipe is intended: the caregiver asked for
+    /// silence.
     ///
     /// The "open the app" nudge rides the same diff: when the 59 limit, a series' own cap, or the
     /// scheduling horizon cut any reminders short, one nudge request is wanted (see
@@ -392,9 +417,16 @@ final class NotificationManager:
         try Task.checkCancellation()
 
         let areRemindersOn = settings.isEnabled && authorizationStatus.allowsReminderConfiguration
+        // A snooze is kept only while reminders are on and its task still has an active schedule in
+        // the store. Every delete path ends in a full resync, so this is what removes the snooze of
+        // a deleted task, including a delete that lands later (#142).
+        let liveTaskIds = Set(infos.map { $0.taskId.uuidString })
         let pendingCareTaskRequests = await notificationCenter.pendingNotificationRequests()
             .filter {
-                Self.isCareTaskReminder($0) || Self.isNudge($0) || (areRemindersOn == false && Self.isSnooze($0))
+                Self.isCareTaskReminder($0) || Self.isNudge($0)
+                    || (Self.isSnooze($0)
+                        && (areRemindersOn == false
+                            || liveTaskIds.contains($0.content.userInfo["taskId"] as? String ?? "") == false))
             }
         try Task.checkCancellation()
 
@@ -750,21 +782,47 @@ final class NotificationManager:
             return
         }
 
+        // Read before the first await: a completion or delete that cancels this task's snoozes while
+        // the permission check is open bumps it, and this snooze then belongs to a finished occurrence.
+        let generation = snoozeGenerations[info.taskId, default: 0]
+
         let refreshedStatus = await refreshAuthorizationStatusFromSystem()
         guard refreshedStatus == .authorized || refreshedStatus == .provisional || refreshedStatus == .ephemeral else {
             throw NotificationSchedulingError.unauthorized
         }
+        // Reminders off in the app's settings means silence, snoozes included.
+        guard settings.isEnabled, snoozeGenerations[info.taskId, default: 0] == generation else { return }
 
         let content = createNotificationContent(for: info)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delayInterval, repeats: false)
         let request = UNNotificationRequest(
-            identifier: "snooze_\(info.taskId.uuidString)_\(Int(Date().timeIntervalSince1970))",
+            identifier: "snooze_\(info.taskId.uuidString)_\(Int(Date().timeIntervalSince1970 * 1_000))",
             content: content,
             trigger: trigger
         )
 
-        try await notificationCenter.add(request)
+        try await inSnoozeQueue { [notificationCenter, taskId = info.taskId] in
+            guard self.snoozeGenerations[taskId, default: 0] == generation, self.settings.isEnabled else { return }
+            // Four snoozes fit beside 59 reminders and the nudge in iOS's 64 slots; a fifth replaces
+            // the oldest, because iOS would otherwise drop the furthest reminder.
+            let pendingSnoozes = await notificationCenter.pendingNotificationRequests()
+                .filter { Self.isSnooze($0) && $0.identifier != request.identifier }
+                .sorted { Self.snoozeCreationStamp($0) < Self.snoozeCreationStamp($1) }
+            let overflow = pendingSnoozes.count - (CareTaskReminderSelection.snoozeSlots - 1)
+            if overflow > 0 {
+                notificationCenter.removePendingNotificationRequests(
+                    withIdentifiers: pendingSnoozes.prefix(overflow).map(\.identifier)
+                )
+            }
+            guard self.snoozeGenerations[taskId, default: 0] == generation else { return }
+            try await notificationCenter.add(request)
+        }
         debugLog("🛌 Snoozed notification for task \(info.taskTitle) by \(delayMinutes) minutes")
+    }
+
+    /// The creation stamp at the end of a snooze identifier, `snooze_<taskId>_<stamp>`.
+    private static func snoozeCreationStamp(_ request: UNNotificationRequest) -> Int {
+        request.identifier.split(separator: "_").last.flatMap { Int($0) } ?? 0
     }
 
     // MARK: - Cancel Notifications
