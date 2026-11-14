@@ -13,7 +13,9 @@ mkdir -p "$out"
 
 model="$repo/Purrtine/Models/OnboardingTaskSetupModel.swift"
 builder="$repo/Purrtine/Utilities/OnboardingDataBuilder.swift"
-for f in "$model" "$builder"; do
+app="$repo/Purrtine/PurrtineApp.swift"
+manager="$repo/Purrtine/Utilities/OnboardingManager.swift"
+for f in "$model" "$builder" "$app" "$manager"; do
   [ -f "$f" ] || { echo "missing $f: the covered code moved, update the skill" >&2; exit 2; }
 done
 
@@ -42,10 +44,16 @@ if awk '
   END { exit (ok && !bad) ? 0 : 1 }
 ' "$model"; then flag_only=TRUE; fi
 
+# LaunchRepair: at launch, a store that holds a cat sets hasCompletedOnboarding (#140).
+r1=$(anchor "$app" 'OnboardingManager.shared.completeIfStoreHoldsCat(in: container.mainContext)')
+r2=$(anchor "$manager" 'guard let cats = try? context.fetch(descriptor), cats.isEmpty == false else { return }')
+if [ "$r1" = TRUE ] && [ "$r2" = TRUE ]; then launch_repair=TRUE; else launch_repair=FALSE; fi
+
 echo "Guards read from the code:"
 echo "  FinishGuard       = $finish_guard  (double-tap guard in finish())"
 echo "  UnstageOnFail     = $unstage  (failed first commit unstages the cat)"
 echo "  FlagOnlyAfterSave = $flag_only  (hasCompletedOnboarding only after a save)"
+echo "  LaunchRepair      = $launch_repair  (a saved cat completes onboarding at launch)"
 
 cp "$here/OnboardingFinish.tla" "$here/view.mjs" "$out/"
 cat > "$out/OnboardingFinish.cfg" <<EOF
@@ -55,6 +63,7 @@ CONSTANTS
   FinishGuard = $finish_guard
   UnstageOnFail = $unstage
   FlagOnlyAfterSave = $flag_only
+  LaunchRepair = $launch_repair
 CONSTRAINT Bound
 VIEW FlowView
 INVARIANTS
