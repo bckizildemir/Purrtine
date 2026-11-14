@@ -106,8 +106,8 @@ refused rather than mapped to the open one, which would break `CompletesTheOccur
 
 `run.sh` lists the exact anchor lines per file.
 
-**Sync commit:** `SYNC141` (the #141 fix, 2026-11-14). Before you trust a result, run
-`git log --oneline SYNC141..HEAD -- Purrtine/Utilities/TaskActionService.swift Purrtine/Models/CareTask.swift Purrtine/Utilities/CareTaskWriter.swift Purrtine/Utilities/NotificationActionCoordinator.swift Purrtine/Views/Tasks/TaskCalendarView.swift Purrtine/Models/TaskCalendarPresentation.swift Purrtine/Models/TaskFormPersistence.swift Purrtine/Models/TaskManagementViewModel.swift Purrtine/Models/TaskAssistantViewModel.swift Purrtine/Utilities/TaskAssistantInterpreter.swift Purrtine/Utilities/CatDeletionService.swift Purrtine/Utilities/NotificationManager.swift`.
+**Sync commit:** `6ea0d67` (the #141 fix, 2026-11-14). Before you trust a result, run
+`git log --oneline 6ea0d67..HEAD -- Purrtine/Utilities/TaskActionService.swift Purrtine/Models/CareTask.swift Purrtine/Utilities/CareTaskWriter.swift Purrtine/Utilities/NotificationActionCoordinator.swift Purrtine/Views/Tasks/TaskCalendarView.swift Purrtine/Models/TaskCalendarPresentation.swift Purrtine/Models/TaskFormPersistence.swift Purrtine/Models/TaskManagementViewModel.swift Purrtine/Models/TaskAssistantViewModel.swift Purrtine/Utilities/TaskAssistantInterpreter.swift Purrtine/Utilities/CatDeletionService.swift Purrtine/Utilities/NotificationManager.swift`.
 Any commit listed may have changed what the model describes, even when the anchors still match. Move the
 sync commit forward only after you re-read those changes and confirm the model still describes them.
 
