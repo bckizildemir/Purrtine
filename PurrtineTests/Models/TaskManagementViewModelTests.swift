@@ -725,6 +725,96 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingReminderWarning)
     }
 
+    /// The sheet opened while today was due, and the task was completed elsewhere (a reminder, the
+    /// list) before Complete was tapped. Tomorrow is due now and must not be completed.
+    @Test
+    func sheetSubmitAfterTheTaskWasCompletedElsewhereRecordsNothingAndShowsTheError() async throws {
+        let fixture = try makeRecurringFixture()
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let today = Calendar.current.startOfDay(for: fixture.schedule.scheduledDate)
+        sut.presentTaskCompletion(fixture.task, completedForDate: nil)
+        let request = try #require(sut.taskCompletionRequest)
+        #expect(request.expectedOccurrence == today)
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let tomorrowsSchedule = try #require(fixture.task.activeSchedule)
+
+        let submission = TaskCompletionSubmission()
+        await submission.submit {
+            try await sut.submitCompletion(
+                of: request.task,
+                by: nil,
+                completedForDate: request.completedForDate,
+                expectedOccurrence: request.expectedOccurrence
+            )
+        }
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(fixture.task.activeSchedule?.id == tomorrowsSchedule.id)
+        #expect(submission.isShowingFailure)
+        #expect(submission.failureMessage == TaskActionError.occurrenceNotOpen.localizedDescription)
+        #expect(sut.taskCompletionRequest != nil)
+    }
+
+    /// Calendar path with a one-tap row: a later selected day is refused, and the refusal shows.
+    @Test
+    func completingALaterSelectedDayRecordsNothingAndShowsTheRefusal() async throws {
+        let fixture = try makeRecurringFixture()
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
+
+        await sut.completeCareTask(fixture.task, by: nil, completedForDate: tomorrow).value
+
+        #expect(fixture.task.completions.isEmpty)
+        #expect(fixture.task.activeSchedule?.id == fixture.schedule.id)
+        #expect(sut.actionFailure == .occurrenceNotOpen)
+        #expect(sut.isShowingActionFailure)
+        #expect(sut.isShowingReminderWarning == false)
+    }
+
+    /// The row passes the day that was due at the tap, so the writer can refuse a stale one.
+    @Test
+    func rowCompletionPassesTheOpenOccurrenceAtTapTime() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let expected = Calendar.current.startOfDay(for: try #require(fixture.task.activeSchedule).scheduledDate)
+
+        sut.handleCompletionAction(for: fixture.task)
+        // The one-tap complete runs in a task; let it reach the writer before reading the spy.
+        for _ in 0..<20 where spy.completions.isEmpty { await Task.yield() }
+
+        #expect(spy.completions.first?.input.expectedOccurrence == expected)
+    }
+
+    private func makeRecurringFixture() throws -> (
+        container: ModelContainer,
+        context: ModelContext,
+        task: CareTask,
+        schedule: CareTaskSchedule,
+        writer: CareTaskWriter
+    ) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let caregiver = Caregiver(name: "Primary Caregiver", role: .primary)
+        let task = CareTask(title: "Feed Luna", category: .feeding)
+        let schedule = CareTaskSchedule(
+            scheduledDate: Calendar.current.startOfDay(for: Date()),
+            frequency: .daily,
+            frequencyInterval: 1
+        )
+        schedule.task = task
+        task.schedules = [schedule]
+        task.assignedCaregiver = caregiver
+        context.insert(caregiver)
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task, schedule, CareTaskWriter(scheduler: NotificationSchedulerSpy()))
+    }
+
     private func makeRemindersOutOfSyncError(for task: CareTask) -> CareTaskRemindersOutOfSyncError {
         CareTaskRemindersOutOfSyncError(taskIds: [task.id], underlyingError: CocoaError(.featureUnsupported))
     }

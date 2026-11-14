@@ -11,8 +11,17 @@ struct TaskCreationRequest: Identifiable {
 struct TaskCompletionRequest: Identifiable {
     let task: CareTask
     let completedForDate: Date?
+    /// The day the task was due when the sheet opened. Submitting completes that day or nothing, so a
+    /// task completed elsewhere while the sheet was open does not lose its next day.
+    let expectedOccurrence: Date?
 
     var id: UUID { task.id }
+
+    init(task: CareTask, completedForDate: Date?) {
+        self.task = task
+        self.completedForDate = completedForDate
+        expectedOccurrence = TaskActionService.openOccurrence(of: task)
+    }
 }
 
 @MainActor
@@ -159,6 +168,7 @@ final class TaskManagementViewModel {
         for cats: [Cat] = [],
         by caregiver: Caregiver?,
         completedForDate: Date? = nil,
+        expectedOccurrence: Date? = nil,
         with notes: String? = nil,
         photos: [UIImage]? = nil
     ) -> Task<Void, Never> {
@@ -169,6 +179,7 @@ final class TaskManagementViewModel {
                     for: cats,
                     by: caregiver,
                     completedForDate: completedForDate,
+                    expectedOccurrence: expectedOccurrence,
                     with: notes,
                     photos: photos
                 )
@@ -182,7 +193,8 @@ final class TaskManagementViewModel {
                     raiseReminderWarning()
                 case .notSaved:
                     logger.error("Failed to complete task: \(error.localizedDescription)")
-                    raiseActionFailure(.completionNotSaved)
+                    let isOccurrenceRefusal = (error as? TaskActionError) == .occurrenceNotOpen
+                    raiseActionFailure(isOccurrenceRefusal ? .occurrenceNotOpen : .completionNotSaved)
                 }
             }
         }
@@ -197,6 +209,7 @@ final class TaskManagementViewModel {
         for cats: [Cat] = [],
         by caregiver: Caregiver?,
         completedForDate: Date? = nil,
+        expectedOccurrence: Date? = nil,
         with notes: String? = nil,
         photos: [UIImage]? = nil,
         unsavedPhotos: UnsavedPhotoPolicy = .failCompletion
@@ -220,7 +233,8 @@ final class TaskManagementViewModel {
                     caregiver: caregiver,
                     completedForDate: completedForDate,
                     notes: notes,
-                    photoURLs: savedPhotos.fileNames
+                    photoURLs: savedPhotos.fileNames,
+                    expectedOccurrence: expectedOccurrence
                 ),
                 in: modelContext
             )
@@ -246,6 +260,7 @@ final class TaskManagementViewModel {
         for cats: [Cat] = [],
         by caregiver: Caregiver?,
         completedForDate: Date? = nil,
+        expectedOccurrence: Date? = nil,
         with notes: String? = nil,
         photos: [UIImage]? = nil,
         unsavedPhotos: UnsavedPhotoPolicy = .failCompletion
@@ -259,6 +274,7 @@ final class TaskManagementViewModel {
                 for: cats,
                 by: caregiver,
                 completedForDate: completedForDate,
+                expectedOccurrence: expectedOccurrence,
                 with: notes,
                 photos: photos,
                 unsavedPhotos: unsavedPhotos
@@ -450,7 +466,14 @@ final class TaskManagementViewModel {
         }
 
         let cats = task.assignedCats.isEmpty ? [] : [task.assignedCats.first!]
-        completeCareTask(task, for: cats, by: nil, completedForDate: completedForDate)
+        // The day due at the tap: a list that is out of date completes nothing instead of the next day.
+        completeCareTask(
+            task,
+            for: cats,
+            by: nil,
+            completedForDate: completedForDate,
+            expectedOccurrence: TaskActionService.openOccurrence(of: task)
+        )
         return true
     }
     

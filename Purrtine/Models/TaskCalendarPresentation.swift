@@ -59,18 +59,6 @@ enum TaskCalendarDerivation {
         }
     }
 
-    /// The day a Complete tap on `task` in the calendar acts on: the occurrence that is open, which is
-    /// the one the task's row shows, whichever day the caregiver has selected. Completing a later
-    /// selected day would move the task past the open one and drop it.
-    static func occurrenceToComplete(
-        for task: CareTask,
-        selectedDate: Date,
-        calendar: Calendar = .current
-    ) -> Date {
-        let openDate = task.activeSchedule?.scheduledDate ?? selectedDate
-        return calendar.startOfDay(for: openDate)
-    }
-
     private static func append(
         _ task: CareTask,
         on date: Date,

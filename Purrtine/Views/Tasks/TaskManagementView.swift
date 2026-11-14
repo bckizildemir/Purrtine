@@ -112,6 +112,7 @@ struct TaskManagementView: View {
           for: selectedCats,
           by: selectedCaregiver,
           completedForDate: completedForDate,
+          expectedOccurrence: request.expectedOccurrence,
           with: notes,
           photos: photos,
           unsavedPhotos: unsavedPhotos

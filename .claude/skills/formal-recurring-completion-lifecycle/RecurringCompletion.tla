@@ -35,7 +35,9 @@ None == -1
 \*  "notification" the "Complete" action on a delivered reminder ->
 \*                 NotificationActionCoordinator.handle(.complete) in its own ModelContext
 AllSources == {"sheet", "calendar", "assistant", "notification"}
-NoReq == [seen |-> None, forDate |-> None]
+\* seen: the occurrence the caregiver saw; forDate: CareTaskCompletionInput.completedForDate;
+\* expect: CareTaskCompletionInput.expectedOccurrence (#141), the day the caller was shown.
+NoReq == [seen |-> None, forDate |-> None, expect |-> None]
 
 VARIABLES
     today,          \* the current day
@@ -49,7 +51,8 @@ VARIABLES
                     \* scheduler.removeDeliveredCareTaskNotifications
     form,           \* the edit form is open with this draft scheduledDate, None if closed
     start,          \* ghost: the first day the user asked for (create or edit)
-    moved,          \* ghost: a day the user moved the schedule to in the edit form
+    moved,          \* ghost: the days the user reopened in the edit form: the day moved to, and every
+                    \* completed day on or after it
     undoOK          \* ghost: every failed commit left the task exactly as before
 
 vars == <<today, exists, cats, status, scheds, done, req, removePending, form,
@@ -78,6 +81,15 @@ CompletionDate(r) ==
     IF r.forDate /= None THEN r.forDate
     ELSE IF HasActive THEN ActiveDay
     ELSE today
+
+(* TaskActionService.validateOccurrence (#141), run by recordCompletion before *)
+(* anything is recorded: a named expected occurrence must be the open one; an  *)
+(* explicit completedForDate must not be after the open day nor already done.  *)
+Valid(r) ==
+    /\ (r.expect /= None => (HasActive /\ ActiveDay = r.expect))
+    /\ (r.forDate /= None =>
+          /\ (HasActive => r.forDate <= ActiveDay)
+          /\ r.forDate \notin DoneDays)
 
 (* TaskActionService.recordCompletion + handleRecurringCompletion            *)
 (* (TaskActionService.swift:34, :128). Returns the task after the change.    *)
@@ -123,7 +135,7 @@ Init ==
     /\ removePending = FALSE
     /\ form = None
     /\ start = 0
-    /\ moved = None
+    /\ moved = {}
     /\ undoOK = TRUE
 
 \* A new day begins.
@@ -139,7 +151,8 @@ DayPasses ==
 TapCompleteInList ==
     /\ "sheet" \in Sources /\ form = None /\ exists /\ status = "pending" /\ req["sheet"] = NoReq
     /\ req["calendar"] = NoReq   \* one taskCompletionRequest at a time
-    /\ req' = [req EXCEPT !["sheet"] = [seen |-> ActiveDay, forDate |-> None]]
+    \* TaskCompletionRequest.expectedOccurrence (#141): the open day when the row or sheet was used
+    /\ req' = [req EXCEPT !["sheet"] = [seen |-> ActiveDay, forDate |-> None, expect |-> ActiveDay]]
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
                    start, moved, undoOK>>
 
@@ -152,7 +165,7 @@ TapCompleteInCalendar ==
     /\ \E d \in ActiveDay..EndDay :
           /\ d <= MaxDay
           /\ d \notin DoneDays
-          /\ req' = [req EXCEPT !["calendar"] = [seen |-> d, forDate |-> d]]
+          /\ req' = [req EXCEPT !["calendar"] = [seen |-> d, forDate |-> d, expect |-> None]]
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
                    start, moved, undoOK>>
 
@@ -162,18 +175,21 @@ AskWhiskersToComplete ==
     /\ "assistant" \in Sources /\ exists /\ status = "pending" /\ req["assistant"] = NoReq
     /\ \E f \in {None, today} \cup (IF today >= 1 THEN {today - 1} ELSE {}) :
           req' = [req EXCEPT !["assistant"] =
-                    [seen |-> IF f = None THEN ActiveDay ELSE f, forDate |-> f]]
+                    [seen |-> IF f = None THEN ActiveDay ELSE f, forDate |-> f,
+                     \* TaskAssistantConfirmation.openOccurrence: the open day when the card was made
+                     expect |-> ActiveDay]]
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
                    start, moved, undoOK>>
 
 \* The reminder for occurrence d fires. NotificationManager schedules the next
 \* occurrences ahead (up to 30 for daily), so an unfinished earlier occurrence
-\* does not stop a later reminder. Its userInfo carries only the taskId.
+\* does not stop a later reminder. Its userInfo carries the taskId and, since #141,
+\* the occurrence date (NotificationManager.occurrenceDateKey), passed as expectedOccurrence.
 ReminderFires ==
     /\ "notification" \in Sources /\ exists /\ HasActive
     /\ \E d \in ActiveDay..today :
           /\ d <= EndDay
-          /\ req' = [req EXCEPT !["notification"] = [seen |-> d, forDate |-> None]]
+          /\ req' = [req EXCEPT !["notification"] = [seen |-> d, forDate |-> None, expect |-> d]]
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
                    start, moved, undoOK>>
 
@@ -186,7 +202,7 @@ OnScreen(s) == form = None \/ s = "notification"
 \* CareTaskWriter.complete: commit { recordCompletion } succeeds. Read against the
 \* store as it is now (see SKILL.md: shared-store assumption).
 CompletionSaved(s) ==
-    /\ exists /\ req[s] /= NoReq /\ OnScreen(s)
+    /\ exists /\ req[s] /= NoReq /\ OnScreen(s) /\ Valid(req[s])
     /\ LET r == Recorded(req[s], s) IN
          /\ scheds' = r.scheds /\ status' = r.status /\ done' = r.done
     /\ req' = [req EXCEPT ![s] = NoReq]
@@ -196,12 +212,20 @@ CompletionSaved(s) ==
 \* save() throws: CompletionUndo.restore runs. The sheet stays open for a retry;
 \* the other sources report the failure and drop the request.
 CompletionSaveFails(s) ==
-    /\ exists /\ req[s] /= NoReq /\ OnScreen(s)
+    /\ exists /\ req[s] /= NoReq /\ OnScreen(s) /\ Valid(req[s])
     /\ LET back == Restored(Recorded(req[s], s)) IN
          /\ scheds' = back.scheds /\ status' = back.status /\ done' = back.done
          /\ undoOK' = (undoOK /\ back = [scheds |-> scheds, status |-> status, done |-> done])
     /\ req' = IF s = "sheet" THEN req ELSE [req EXCEPT ![s] = NoReq]
     /\ UNCHANGED <<today, exists, cats, removePending, form, start, moved>>
+
+\* validateOccurrence throws TaskActionError.occurrenceNotOpen: nothing is recorded or staged.
+\* Every source reports the failure and drops the request (the sheet shows the error too).
+CompletionRefused(s) ==
+    /\ exists /\ req[s] /= NoReq /\ OnScreen(s) /\ ~Valid(req[s])
+    /\ req' = [req EXCEPT ![s] = NoReq]
+    /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
+                   start, moved, undoOK>>
 
 \* The request reaches a task that was deleted: fetchTask returns nil
 \* (taskNotFound), or the stale main-context object no longer saves. Nothing is written.
@@ -231,14 +255,16 @@ OpenEditForm ==
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, req, removePending,
                    start, moved, undoOK>>
 
-\* Saves the form: the draft's scheduledDate is written onto the schedule that is
-\* active at save time. The user keeps the shown date or picks today or later.
+\* Saves the form. The user keeps the shown date or picks today or later. Since #141 the
+\* draft's scheduledDate is written onto the schedule active at save time only when the
+\* user changed it (openedScheduledDate /= draft.scheduledDate); a kept date writes nothing.
 SaveEditForm ==
     /\ exists /\ form /= None
     /\ \E nd \in ({form} \cup (today..EndDay)) :
-          /\ scheds' = [scheds EXCEPT ![TargetI].day = nd]
-          /\ start' = IF scheds[TargetI].active THEN nd ELSE start
-          /\ moved' = IF nd /= form THEN nd ELSE moved
+          /\ scheds' = IF nd = form THEN scheds ELSE [scheds EXCEPT ![TargetI].day = nd]
+          /\ start' = IF nd /= form /\ scheds[TargetI].active THEN nd ELSE start
+          \* a move back onto or before a completed day reopens that day and every later one
+          /\ moved' = IF nd /= form THEN moved \cup {d \in DoneDays \cup {nd} : d >= nd} ELSE moved
     /\ form' = None
     /\ UNCHANGED <<today, exists, cats, status, done, req, removePending, undoOK>>
 
@@ -273,7 +299,8 @@ Gone ==
 Next ==
     \/ DayPasses
     \/ TapCompleteInList \/ TapCompleteInCalendar \/ AskWhiskersToComplete \/ ReminderFires
-    \/ \E s \in Sources : CompletionSaved(s) \/ CompletionSaveFails(s) \/ CompletionFindsNoTask(s)
+    \/ \E s \in Sources : CompletionSaved(s) \/ CompletionSaveFails(s) \/ CompletionRefused(s)
+                          \/ CompletionFindsNoTask(s)
     \/ DeliveredRemindersRemoved
     \/ OpenEditForm \/ SaveEditForm \/ CloseEditForm
     \/ DeleteTask \/ DeleteCat
@@ -302,12 +329,12 @@ NextIsStrictlyLater ==
 \* The day the task is due again is never a day already completed
 \* (unless the user moved it there in the edit form).
 CompletedNeverReappears ==
-    (exists /\ status = "pending" /\ ActiveDay /= moved) =>
+    (exists /\ status = "pending" /\ ActiveDay \notin moved) =>
         \A i \in DOMAIN done : done[i].for < ActiveDay
 
 \* No occurrence carries two completions (unless the user moved the task back onto it).
 NeverCompletedTwice ==
-    \A i, j \in DOMAIN done : i < j => (done[i].for /= done[j].for \/ done[j].for = moved)
+    \A i, j \in DOMAIN done : i < j => (done[i].for /= done[j].for \/ done[j].for \in moved)
 
 \* The completion is recorded for the occurrence the caregiver saw and confirmed.
 CompletesTheOccurrenceShown ==
@@ -328,4 +355,5 @@ TypeOK ==
     /\ status \in {"pending", "completed"}
     /\ Sources \subseteq AllSources
     /\ \A s \in AllSources : req[s].seen \in (0..MaxDay) \cup {None}
+    /\ \A s \in AllSources : req[s].expect \in (0..MaxDay) \cup {None}
 =============================================================================
