@@ -36,7 +36,7 @@ Files: `Purrtine/Utilities/NotificationResyncCoordinator.swift`, `NotificationMa
 `CareTaskReminderSelection.swift`, `CareTaskWriter.swift`, `NotificationActionCoordinator.swift`,
 `CatDeletionService.swift`, `StagedDeleteWatch.swift`, `Purrtine/PurrtineApp.swift`.
 
-Sync commit: `SYNC_PLACEHOLDER` (2026-11-14, #142). The model was last confirmed
+Sync commit: `46783348c1595d8333aeb3bd7428074621e0010a` (2026-11-14, #142). The model was last confirmed
 to describe the code at this commit. `run.sh` lists the covered files that changed since then.
 Move the sync commit forward only after you re-read the changed functions and confirmed (or fixed)
 the model at the new commit.
