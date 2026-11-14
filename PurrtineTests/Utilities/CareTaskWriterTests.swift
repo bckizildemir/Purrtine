@@ -392,6 +392,21 @@ struct CareTaskWriterTests {
         await writer.pendingFollowUp?.value
     }
 
+    /// A "Remind me" for a task whose delete already landed has nothing to remind of.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func snoozingATaskThatWasDeletedAndSavedIsRefused() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        try await sut.save(task, in: context)
+        context.delete(task)
+        try context.save()
+
+        await #expect(throws: TaskActionError.taskNotFound) {
+            try await sut.snooze(task, minutes: 10)
+        }
+
+        #expect(spy.snoozedRequests.isEmpty)
+    }
+
     @Test(arguments: [-1, 0, Int.max])
     func snoozingRejectsInvalidDurationsWithoutSideEffects(minutes: Int) async throws {
         let (task, _) = makeTask(title: "Feed Mochi")

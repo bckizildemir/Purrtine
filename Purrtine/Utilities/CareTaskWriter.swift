@@ -112,11 +112,15 @@ final class CareTaskWriter: CareTaskWriting {
 
     func snooze(_ task: CareTask, minutes: Int) async throws {
         try TaskActionService.validatePostponeMinutes(minutes)
-        // A caller's fresh context still holds a task whose delete failed to commit (#142). Every delete
-        // is staged in the main context, whichever writer made it, so that is where to look.
+        // A task whose delete already landed is gone (#142), and so is one whose delete is staged: a
+        // caller's fresh context still holds it. Assumes every delete is staged in `container.mainContext`,
+        // whichever writer made it, so that is where to look.
+        guard let taskContext = task.modelContext, task.isDeleted == false else {
+            throw TaskActionError.taskNotFound
+        }
         let modelId = task.persistentModelID
-        let isDeleteStaged = task.modelContext?.container.mainContext.deletedModelsArray
-            .contains { $0.persistentModelID == modelId } ?? false
+        let isDeleteStaged = taskContext.container.mainContext.deletedModelsArray
+            .contains { $0.persistentModelID == modelId }
         guard isDeleteStaged == false else { throw TaskActionError.taskNotFound }
 
         let info = NotificationScheduleInfo(

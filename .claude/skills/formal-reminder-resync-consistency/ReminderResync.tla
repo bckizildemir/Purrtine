@@ -300,26 +300,18 @@ RefreshPerm ==
     /\ perm' = sysPerm
     /\ IF (perm = "on") # (sysPerm = "on") THEN Request ELSE NoRequest
 
-\* A "Remind me" button on a delivered reminder: handle(.snooze) awaits the permission refresh
-\* (NotificationActionCoordinator.swift:65).
+\* A "Remind me" button on a delivered reminder: NotificationActionCoordinator.handle(.snooze) fetches
+\* the task in a fresh context (committed store) with no await before it (#142 dropped the
+\* coordinator's own permission await), then CareTaskWriter.snooze refuses a task whose delete is
+\* staged in the main context, and scheduleSnoozedNotification reads the task's snooze generation
+\* before its first await. A tap for a task the store no longer holds, or a staged delete, does nothing.
+\* `occ` is a ghost: the occurrence the tapped reminder is for.
 SnoozeTap(t) ==
-    /\ CanAct("notif") /\ snoozeSeq < MaxSnoozes 
-    /\ act' = [act EXCEPT !["notif"] = [Idle EXCEPT !.pc = "sz_fetch", !.task = t]]
+    /\ CanAct("notif") /\ snoozeSeq < MaxSnoozes
+    /\ alive[t] /\ ~staged[t]
+    /\ act' = [act EXCEPT !["notif"] = [Idle EXCEPT !.pc = "sz_add", !.task = t, !.occ = occ[t], !.gen = gen[t]]]
     /\ events' = events + 1
     /\ UNCHANGED <<StoreVars, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, queued, cancelled, PassVars>>
-
-\* Resume: the permission guard, fetchTask in a fresh context (committed store), then
-\* CareTaskWriter.snooze (refuses a task whose delete is staged in the main context, #142) ->
-\* scheduleSnoozedNotification reads the task's snooze generation before its first await
-\* (NotificationActionCoordinator.handle(.snooze); no await between fetch and read).
-SnoozeFetch ==
-    /\ act["notif"].pc = "sz_fetch"
-    /\ RefreshPerm
-    /\ LET t == act["notif"].task IN
-       act' = IF sysPerm = "on" /\ alive[t] /\ ~staged[t]
-              THEN [act EXCEPT !["notif"].pc = "sz_add", !["notif"].occ = occ[t], !["notif"].gen = gen[t]]
-              ELSE [act EXCEPT !["notif"] = Idle]
-    /\ UNCHANGED <<StoreVars, settingsOn, sysPerm, launched, pending, snoozeSeq, PassVars, events>>
 
 \* scheduleSnoozedNotification: `await refreshAuthorizationStatusFromSystem()`, then
 \* `guard settings.isEnabled, snoozeGenerations[...] == generation` (#142), then it waits for its turn.
@@ -374,7 +366,6 @@ Next ==
     \/ LaunchPermissionCheck
     \/ AppActivation
     \/ \E t \in Tasks : SnoozeTap(t)
-    \/ SnoozeFetch
     \/ SnoozeAdd
     \/ SnoozeRead
     \/ SnoozeCommit

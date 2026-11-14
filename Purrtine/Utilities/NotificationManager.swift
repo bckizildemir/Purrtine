@@ -156,7 +156,6 @@ enum NotificationSchedulingEligibility {
 final class NotificationManager:
     NSObject,
     TaskNotificationScheduling,
-    NotificationAuthorizationChecking,
     NotificationResyncing
 {
     nonisolated static let shared: NotificationManager = MainActor.assumeIsolated {
@@ -178,7 +177,7 @@ final class NotificationManager:
     /// tell its occurrence was finished or its task deleted. See `cancelSnoozedNotifications`.
     private var snoozeGenerations: [UUID: Int] = [:]
     /// The newest snooze add or cancel; the next one waits for it. See `inSnoozeQueue`.
-    private var snoozeQueueTail: Task<Void, Never>?
+    private var snoozeQueueTail: Task<Void, any Error>?
     /// The one test a resync and a snooze add both use: the app's switch is on and iOS allows reminders.
     private var areRemindersOn: Bool {
         settings.isEnabled && authorizationStatus.allowsReminderConfiguration
@@ -380,10 +379,10 @@ final class NotificationManager:
     private func inSnoozeQueue(_ work: @escaping @MainActor () async throws -> Void) async throws {
         let previous = snoozeQueueTail
         let task = Task { @MainActor in
-            await previous?.value
+            _ = await previous?.result
             try await work()
         }
-        snoozeQueueTail = Task { @MainActor in _ = await task.result }
+        snoozeQueueTail = task
         try await task.value
     }
 
@@ -794,8 +793,10 @@ final class NotificationManager:
         guard refreshedStatus == .authorized || refreshedStatus == .provisional || refreshedStatus == .ephemeral else {
             throw NotificationSchedulingError.unauthorized
         }
-        // Reminders off in the app's settings means silence, snoozes included.
-        guard settings.isEnabled, snoozeGenerations[info.taskId, default: 0] == generation else { return }
+        // A finished occurrence stands down silently. Reminders off means silence too, but the caller
+        // is told, so the assistant does not report a postponement that was never scheduled.
+        guard snoozeGenerations[info.taskId, default: 0] == generation else { return }
+        guard areRemindersOn else { throw NotificationSchedulingError.remindersOff }
 
         let content = createNotificationContent(for: info)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delayInterval, repeats: false)
@@ -805,8 +806,10 @@ final class NotificationManager:
             trigger: trigger
         )
 
-        try await inSnoozeQueue { [notificationCenter, taskId = info.taskId] in
-            guard self.snoozeGenerations[taskId, default: 0] == generation, self.areRemindersOn else { return }
+        try await inSnoozeQueue { [notificationCenter, taskId = info.taskId, taskTitle = info.taskTitle] in
+            let isCurrent = { self.snoozeGenerations[taskId, default: 0] == generation }
+            guard isCurrent() else { return }
+            guard self.areRemindersOn else { throw NotificationSchedulingError.remindersOff }
             // Four snoozes fit beside 59 reminders and the nudge in iOS's 64 slots; a fifth replaces
             // the oldest, because iOS would otherwise drop the furthest reminder.
             let pendingSnoozes = await notificationCenter.pendingNotificationRequests()
@@ -818,10 +821,18 @@ final class NotificationManager:
                     withIdentifiers: pendingSnoozes.prefix(overflow).map(\.identifier)
                 )
             }
-            guard self.snoozeGenerations[taskId, default: 0] == generation, self.areRemindersOn else { return }
+            guard isCurrent() else { return }
+            guard self.areRemindersOn else { throw NotificationSchedulingError.remindersOff }
             try await notificationCenter.add(request)
+            // The add may have been slow: if the occurrence finished or reminders went off meanwhile,
+            // take the request back out.
+            if isCurrent() == false || self.areRemindersOn == false {
+                notificationCenter.removePendingNotificationRequests(withIdentifiers: [request.identifier])
+                guard isCurrent() else { return }
+                throw NotificationSchedulingError.remindersOff
+            }
+            self.debugLog("🛌 Snoozed notification for task \(taskTitle) by \(delayMinutes) minutes")
         }
-        debugLog("🛌 Snoozed notification for task \(info.taskTitle) by \(delayMinutes) minutes")
     }
 
     /// The creation stamp at the end of a snooze identifier, `snooze_<taskId>_<stamp>`.

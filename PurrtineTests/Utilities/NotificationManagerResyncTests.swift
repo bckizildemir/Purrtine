@@ -44,7 +44,8 @@ struct NotificationManagerResyncTests {
         let sut = try await makeManager(notificationCenter: fakeCenter)
 
         try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: taskId)])
-        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: taskId, scheduledDate: Date().addingTimeInterval(2 * 86_400))])
+        let later = Date().addingTimeInterval(2 * 86_400)
+        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: taskId, scheduledDate: later)])
 
         // The task is still in the store, so its snooze stays; one whose task is gone does not
         // (`ReminderSnoozeTests`).

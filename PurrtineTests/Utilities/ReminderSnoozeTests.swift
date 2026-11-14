@@ -75,7 +75,7 @@ struct ReminderSnoozeTests {
 
         try await sut.delete(cat, from: context)
 
-        #expect(fakeCenter.pendingRequests.contains { $0.content.userInfo["taskId"] as? String == taskId.uuidString } == false)
+        #expect(snoozedTaskIds(in: fakeCenter).contains(taskId.uuidString) == false)
     }
 
     @Test
@@ -104,7 +104,9 @@ struct ReminderSnoozeTests {
         settings.isEnabled = false
         let sut = try await makeManager(notificationCenter: fakeCenter, settings: settings)
 
-        try await sut.scheduleSnoozedNotification(for: info(for: makeTask()), delayMinutes: 10)
+        await #expect(throws: NotificationSchedulingError.remindersOff) {
+            try await sut.scheduleSnoozedNotification(for: info(for: makeTask()), delayMinutes: 10)
+        }
 
         #expect(fakeCenter.addedRequests.isEmpty)
         #expect(fakeCenter.pendingRequests.isEmpty)
@@ -122,7 +124,9 @@ struct ReminderSnoozeTests {
         try await sut.resyncCareTaskNotifications(with: [reminderInfo(taskId: task.id)])
         try #require(fakeCenter.pendingRequests.isEmpty)
 
-        try await sut.scheduleSnoozedNotification(for: info(for: task), delayMinutes: 10)
+        await #expect(throws: NotificationSchedulingError.remindersOff) {
+            try await sut.scheduleSnoozedNotification(for: info(for: task), delayMinutes: 10)
+        }
 
         #expect(fakeCenter.pendingRequests.isEmpty)
     }
@@ -136,7 +140,13 @@ struct ReminderSnoozeTests {
         let first = makeTask()
         let second = makeTask()
         let gate = PermissionGate()
+        let secondPermissionRead = Signal()
+        var permissionReadCount = 0
         fakeCenter.addHandler = { await gate.hold() }
+        fakeCenter.authorizationStatusHandler = {
+            permissionReadCount += 1
+            if permissionReadCount == 2 { secondPermissionRead.fire() }
+        }
 
         let firstSnooze = Task {
             try await sut.scheduleSnoozedNotification(for: info(for: first), delayMinutes: 10)
@@ -145,16 +155,18 @@ struct ReminderSnoozeTests {
         let secondSnooze = Task {
             try await sut.scheduleSnoozedNotification(for: info(for: second), delayMinutes: 10)
         }
-        // The second snooze has passed its checks and waits in the queue behind the held add.
-        for _ in 0..<20 { await Task.yield() }
+        // Past its permission read the second snooze runs on to the queue, with no suspension between,
+        // and waits there behind the held add.
+        await secondPermissionRead.wait()
         fakeCenter.authorizationStatusValue = .denied
         await sut.checkAuthorizationStatus()
         try await sut.resyncCareTaskNotifications(with: [])
         gate.release()
-        try await firstSnooze.value
-        try await secondSnooze.value
+        // Each add re-checks after it lands, so the first goes too: reminders are off for both.
+        await #expect(throws: NotificationSchedulingError.remindersOff) { try await firstSnooze.value }
+        await #expect(throws: NotificationSchedulingError.remindersOff) { try await secondSnooze.value }
 
-        #expect(snoozedTaskIds(in: fakeCenter).contains(second.id.uuidString) == false)
+        #expect(snoozedTaskIds(in: fakeCenter).isEmpty)
     }
 
     @Test(.timeLimit(.minutes(1)))
@@ -173,7 +185,7 @@ struct ReminderSnoozeTests {
         await sut.checkAuthorizationStatus()
         try await sut.resyncCareTaskNotifications(with: [])
         gate.release()
-        try await snooze.value
+        await #expect(throws: NotificationSchedulingError.remindersOff) { try await snooze.value }
 
         #expect(fakeCenter.addedRequests.isEmpty)
         #expect(fakeCenter.pendingRequests.isEmpty)
@@ -196,10 +208,39 @@ struct ReminderSnoozeTests {
         sut.applySettings(settings)
         try await sut.resyncCareTaskNotifications(with: [])
         gate.release()
-        try await snooze.value
+        await #expect(throws: NotificationSchedulingError.remindersOff) { try await snooze.value }
 
         #expect(fakeCenter.addedRequests.isEmpty)
         #expect(fakeCenter.pendingRequests.isEmpty)
+    }
+
+    // MARK: - Notification action
+
+    /// "Remind me" on a delivered reminder: the coordinator's own permission check used to run before
+    /// the task was fetched and its snooze generation read, so a completion landing meanwhile was missed.
+    @Test(.timeLimit(.minutes(1)), .bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func aRemindMeWhosePermissionCheckIsOpenWhenTheTaskIsCompletedNeverLands() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let manager = try await makeManager(notificationCenter: fakeCenter)
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let resyncCoordinator = NotificationResyncCoordinator(modelContainer: container, notificationManager: manager)
+        manager.onFullResyncAwaited = { try await resyncCoordinator.resync() }
+        let task = try insertStoredTask(in: container.mainContext)
+        let coordinator = NotificationActionCoordinator(
+            modelContainer: container,
+            taskWriter: CareTaskWriter(scheduler: manager)
+        )
+        let gate = PermissionGate()
+        fakeCenter.authorizationStatusHandler = { await gate.hold() }
+
+        let remindMe = Task { await coordinator.handle(.snooze(minutes: 10), taskId: task.id) }
+        await gate.waitUntilHeld()
+        let completion = await coordinator.handle(.complete, taskId: task.id)
+        gate.release()
+        _ = await remindMe.value
+
+        try #require(completion.didPerformAction)
+        #expect(snoozedTaskIds(in: fakeCenter).isEmpty)
     }
 
     // MARK: - Cap
@@ -249,6 +290,29 @@ struct ReminderSnoozeTests {
         fakeCenter.pendingRequests
             .filter { $0.identifier.hasPrefix("snooze_") }
             .compactMap { $0.content.userInfo["taskId"] as? String }
+    }
+
+    /// A saved one-time task with a cat, a caregiver and an active schedule, as a notification action finds it.
+    private func insertStoredTask(in context: ModelContext) throws -> CareTask {
+        let cat = Cat(name: "Mochi")
+        let caregiver = Caregiver(name: "Primary Caregiver", role: .primary)
+        let task = makeTask()
+        task.assignedCats = [cat]
+        task.assignedCaregiver = caregiver
+        let schedule = CareTaskSchedule(
+            scheduledDate: Date().addingTimeInterval(3_600),
+            frequency: .once,
+            frequencyInterval: 1,
+            reminderMinutes: 15
+        )
+        schedule.task = task
+        task.schedules = [schedule]
+        context.insert(cat)
+        context.insert(caregiver)
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return task
     }
 
     private func makeTask() -> CareTask {
@@ -308,6 +372,24 @@ struct ReminderSnoozeTests {
         let content = UNMutableNotificationContent()
         content.userInfo = ["taskId": taskId.uuidString]
         return UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+    }
+}
+
+/// A one-shot signal: `wait()` returns once `fire()` has run, in either order.
+@MainActor
+private final class Signal {
+    private var hasFired = false
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func fire() {
+        hasFired = true
+        waiter?.resume()
+        waiter = nil
+    }
+
+    func wait() async {
+        if hasFired { return }
+        await withCheckedContinuation { waiter = $0 }
     }
 }
 

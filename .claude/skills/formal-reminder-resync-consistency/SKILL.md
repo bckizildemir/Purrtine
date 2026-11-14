@@ -29,7 +29,7 @@ Yes when you change any of these (the coverage record):
 | `DeleteTask` | `CareTaskWriter.delete`, including the failed-commit path and `watchForStagedDelete` (`StagedDeleteWatch`) |
 | `EditSchedule` | `CareTaskWriter.save` (and the staged-delete watch it fires) |
 | `DeleteCat` | `CatDeletionService.delete` (cascade, then `refreshReminders`, which cancels the snoozes of touched tasks the store no longer holds, then resyncs) |
-| `SnoozeTap`, `SnoozeFetch`, `SnoozeAdd`, `SnoozeRead`, `SnoozeCommit` | `NotificationActionCoordinator.handle(.snooze)`, `CareTaskWriter.snooze` (refuses a staged delete), `NotificationManager.scheduleSnoozedNotification` (generation, reminders-on guards, `inSnoozeQueue`, the snooze cap) |
+| `SnoozeTap`, `SnoozeAdd`, `SnoozeRead`, `SnoozeCommit` | `NotificationActionCoordinator.handle(.snooze)` (no await before the fetch), `CareTaskWriter.snooze` (refuses a staged delete), `NotificationManager.scheduleSnoozedNotification` (generation, reminders-on guards, `inSnoozeQueue`, the snooze cap) |
 | `ToggleSettings`, `AppActivation`, `LaunchPermissionCheck`, `RefreshPerm` | `NotificationManager.applySettings`, `handleAppActivation`, `checkAuthorizationStatus`, `refreshAuthorizationStatusFromSystem`; wiring in `PurrtineApp.init` |
 
 Files: `Purrtine/Utilities/NotificationResyncCoordinator.swift`, `NotificationManager.swift`,
@@ -96,7 +96,9 @@ the code):
 1. **A snooze outlived a completion** (`NoSnoozeAfterCompletion`): the snooze's add awaited the
    permission check while the occurrence was completed. Now `cancelSnoozedNotifications` bumps a
    per-task generation at once, and the snooze stands down when it sees the bump; adds and cancels
-   run one at a time in `inSnoozeQueue`.
+   run one at a time in `inSnoozeQueue`. The coordinator's own permission await before the fetch
+   is gone: the model, with the ghost occurrence taken at the tap, showed a completion during it
+   tagged the snooze to the next occurrence (found by the review of the first draft).
 2. **A snooze outlived a deleted task** (`NoSnoozeForDeletedTask`): cat delete never cancelled
    snoozes, and a snooze tapped while a failed task delete was staged still landed. Now the resync
    drops snoozes of tasks with no active schedule, `refreshReminders` cancels the snoozes of touched

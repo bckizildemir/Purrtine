@@ -2,11 +2,16 @@ import Foundation
 
 enum NotificationSchedulingError: LocalizedError {
     case unauthorized
+    /// Reminders are switched off in the app's settings, or the permission was lost while the snooze
+    /// waited. Settings cannot fix it from the chat, so it reads as the generic "could not set up".
+    case remindersOff
 
     var errorDescription: String? {
         switch self {
         case .unauthorized:
             String(localized: .errorNotificationSchedulingUnauthorized)
+        case .remindersOff:
+            String(localized: .errorReminderSchedule)
         }
     }
 }
