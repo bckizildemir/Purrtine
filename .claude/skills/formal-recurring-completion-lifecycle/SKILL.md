@@ -29,19 +29,18 @@ It does three things, in order:
 
 1. **Anchors.** Greps the covered Swift for the exact lines the model relies on. A missing line means the
    code moved away from the model: exit 3.
-2. **Gate** (`promise.cfg`): `OneActiveScheduleOrClosed`, `NextIsStrictlyLater`, `FailedSaveChangesNothing`
-   (plus `TypeOK` and deadlock) over every completion path. Must pass. A break is a regression: exit 1.
-3. **Known findings** (`findings.cfg`): each rule below must still break. One that now holds prints
-   `FINDING GONE` (exit 2): if the code was fixed on purpose, move the rule into `promise.cfg`, remove it
-   from `KNOWN_FINDINGS` in `run.sh` and from "Known findings" here.
+2. **Gate** (`promise.cfg`): every rule below (plus `TypeOK` and deadlock) over every completion path.
+   Must pass. A break is a regression: exit 1.
+3. **Known findings** (`findings.cfg`): each rule in `KNOWN_FINDINGS` must still break. The list is empty
+   since #141. Add a rule there only for a new finding that waits for a product decision.
 
-Exit 0 means: code matches the anchors, the gate holds, and the four findings are still the only breaks.
+Exit 0 means: code matches the anchors and every rule holds (about 319,000 states).
 
 **Read every TLC result with the `/statechart` skill**, with `RecurringCompletion.tla`, the config in
 question and `view.js` as the view (`--view`). It turns a violation into the shortest path in a caregiver's
 words and draws the chart. Use `chart.cfg` for a readable chart of the normal lifecycle (72 states);
-`findings.cfg` shows the four bug paths; `promise.cfg` is too large for a chart (about 740,000 states), so
-for a gate break read its path in the report. Saved outputs are in `charts/` (`lifecycle/`, `findings/`). `/statechart` writes only to a new or empty folder: write to a fresh `--out` folder, then copy `chart.mmd` and `report.md` over.
+`promise.cfg` is too large for a chart (about 319,000 states), so for a gate break read its path in the
+report. The saved output is in `charts/lifecycle/`. `/statechart` writes only to a new or empty folder: write to a fresh `--out` folder, then copy `chart.mmd` and `report.md` over.
 
 ## The rules
 
@@ -50,42 +49,38 @@ for a gate break read its path in the report. Saved outputs are in `charts/` (`l
 | `OneActiveScheduleOrClosed` | An open task has exactly one active schedule; a closed one has none. | holds |
 | `NextIsStrictlyLater` | A completion that keeps the task open moves it to a later day than the one completed. | holds |
 | `FailedSaveChangesNothing` | When `save()` throws, `CompletionUndo` puts the task back exactly as it was. | holds |
-| `CompletedNeverReappears` | The day the task is due again is never a day already completed (unless the caregiver moved it there in Edit Task). | **breaks** |
-| `NeverCompletedTwice` | No day carries two completions (same exception). | **breaks** |
-| `CompletesTheOccurrenceShown` | The completion is recorded for the day the caregiver saw and confirmed. | **breaks** |
-| `NoOccurrenceSkipped` | No day between the start date and the due day (or the end date, once closed) disappears without a completion. | **breaks** |
+| `CompletedNeverReappears` | The day the task is due again is never a day already completed (unless the caregiver reopened it in Edit Task: moved the date onto or before it). | holds (#141) |
+| `NeverCompletedTwice` | No day carries two completions (same exception). | holds (#141) |
+| `CompletesTheOccurrenceShown` | The completion is recorded for the day the caregiver saw and confirmed. | holds (#141) |
+| `NoOccurrenceSkipped` | No day between the start date and the due day (or the end date, once closed) disappears without a completion. | holds (#141) |
 
-## Known findings (at the sync commit)
+## Fixed findings (#141)
 
-Days are whole days; "day 0" is the first due day of a daily task at, say, 08:00.
+The four paths below broke the rules until #141. The fix is one check every completion path shares,
+`TaskActionService.validateOccurrence`, run before anything is recorded (`Valid` in the model):
 
-1. **`NoOccurrenceSkipped` — completing a later day in the calendar drops today's.** Today is day 0 and the
-   feeding is due today. A caregiver taps tomorrow (day 1) in the calendar and taps Complete.
-   `TaskCalendarView.handleTaskCompletion` passes `completedForDate: selectedDate`, `completionDate` keeps it,
-   and `handleRecurringCompletion` asks `nextOccurrence(from: day 2)`. The task is now due day 2. Day 0 was
-   never done and is gone from the list, the calendar and the reminders. Harm: a missed dose or feeding.
-   The same happens with Whiskers "I did it today" on a task that is several days overdue.
-2. **`CompletesTheOccurrenceShown` — the reminder's Complete credits the oldest open day, not the reminded one.**
-   Day 0 is overdue. Day 1's reminder fires (resync schedules the next 30 daily reminders whether or not day 0
-   was done). The caregiver gives today's dose and taps Complete on that reminder.
-   `NotificationActionCoordinator.handle` completes with `.init()` (no date; the reminder's `userInfo` holds
-   only `taskId`), so `completionDate` takes the active schedule's day 0. Day 1 still shows as due now.
-   Harm: another caregiver sees today's dose as not given and gives it again. The same mismatch happens when
-   two completions for one day race: Whiskers waits for "Confirm" while the caregiver completes the task in
-   the list; the confirmation then completes day 1, which nobody did.
-3. **`CompletedNeverReappears` — saving Edit Task after a reminder completion moves the task back.**
-   Day 0's reminder is on screen. The caregiver opens Edit Task (the form's date shows day 0), pulls down
-   the reminder and taps Complete (day 0 done, a new active schedule for day 1), then taps Save without
-   touching the date. `TaskFormPersistence.updateTask` writes `draft.scheduledDate` (day 0) onto the schedule
-   that is active now. Day 0 is due again although it is done. Harm: a second dose.
-   Assumes the main context sees the reminder action's save before Save (see "Assumptions").
-4. **`NeverCompletedTwice` — Whiskers can record a day that already has a completion.** The caregiver tells
-   Whiskers "I fed her today"; while the confirmation waits, the same day is completed in the task list. The
-   confirmation then records day 0 a second time (the calendar checks `hasCompletionForDate`; Whiskers does
-   not). Sequentially: day 0 done in the list, next day "I fed her yesterday" in Whiskers. Harm: history shows
-   two feedings; nothing is due twice.
+- a caller that showed the caregiver a day passes it as `expectedOccurrence`, and it must be the open
+  day: the reminder (its `userInfo` carries `occurrenceDate`), the Whiskers card (`openOccurrence` when the
+  card was made), the task-list row (at the tap) and the completion sheet (when it opened);
+- an explicit `completedForDate` (calendar, Whiskers "today"/"yesterday") must not be after the open day
+  and must not already have a completion.
 
-Fixing any of these is a product decision; this skill does not change product code.
+A refused completion records nothing and shows "That day is not the one due now" (`CompletionRefused`).
+
+1. **`NoOccurrenceSkipped`**: completing a later day in the calendar (or Whiskers "today" on an overdue
+   task) moved the task past today. Now refused.
+2. **`CompletesTheOccurrenceShown`**: a reminder's Complete, or a Whiskers card / sheet confirmed after the
+   task was completed elsewhere, credited a different day. Now they name their day and are refused when it
+   is no longer open.
+3. **`CompletedNeverReappears`**: Edit Task saved its opened date over a schedule a reminder had moved.
+   Now Save writes the date only when the caregiver changed it (`TaskFormPersistence.updateTask`,
+   `openedScheduledDate`).
+4. **`NeverCompletedTwice`**: Whiskers recorded the same day twice. Now refused.
+
+Model notes from the fix: the ghost `moved` became a set of reopened days (a move onto or before a
+completed day reopens it and every later one), because a single "last move" ghost flagged the
+caregiver's own deliberate re-dos. The calendar keeps completing the selected day; a later day is
+refused rather than mapped to the open one, which would break `CompletesTheOccurrenceShown`.
 
 ## What the model covers
 
@@ -101,16 +96,18 @@ Fixing any of these is a product decision; this skill does not change product co
 | `TapCompleteInList` | `TaskManagementView` row → `TaskManagementViewModel.handleCompletionAction` / `submitCompletion` |
 | `TapCompleteInCalendar` | `TaskCalendarView.handleTaskCompletion`, `TaskCalendarDerivation.tasksByDate` |
 | `AskWhiskersToComplete` | `TaskAssistantViewModel.confirmPendingAction` / `completeDetailedTask`, `TaskAssistantInterpreter.detectCompletionDate`, cloud `"yesterday"` |
-| `ReminderFires` | `NotificationManager` reminder series (`followingOccurrence`), `userInfo` with `taskId` only |
+| `ReminderFires` | `NotificationManager` reminder series (`followingOccurrence`), `userInfo` with `taskId` and `occurrenceDate` |
 | `CompletionSaved("notification")` | `NotificationActionCoordinator.handle(.complete)`: new `ModelContext`, `fetchTask`, `complete` |
-| `OpenEditForm` / `SaveEditForm` | `TaskFormPersistence.updateTask` (`schedules.first(where: isActive) ?? schedules.first`, `apply`) |
+| `OpenEditForm` / `SaveEditForm` | `TaskFormPersistence.updateTask` (`schedules.first(where: isActive) ?? schedules.first`, `apply`, date written only when changed) |
 | `DeleteTask` / `DeleteCat` | `CareTaskWriter.delete` (cascade); `CatDeletionService.delete` (`assignedCats.count <= 1` deleted, shared kept) |
 | `CompletionFindsNoTask` | `fetchTask` → `taskNotFound` |
+| `Valid` / `CompletionRefused` | `TaskActionService.validateOccurrence` / `canComplete` (shared `isOccurrenceAccepted`) → `TaskActionError.occurrenceNotOpen` |
+| `expect` in a request | `CareTaskCompletionInput.expectedOccurrence`: `TaskCompletionRequest`, `handleCompletionAction`, `TaskAssistantConfirmation.openOccurrence`, `NotificationManager.occurrenceDateKey` |
 
 `run.sh` lists the exact anchor lines per file.
 
-**Sync commit:** `424ad3c` (origin/main, 2026-11-12). Before you trust a result, run
-`git log --oneline 424ad3c..HEAD -- Purrtine/Utilities/TaskActionService.swift Purrtine/Models/CareTask.swift Purrtine/Utilities/CareTaskWriter.swift Purrtine/Utilities/NotificationActionCoordinator.swift Purrtine/Views/Tasks/TaskCalendarView.swift Purrtine/Models/TaskCalendarPresentation.swift Purrtine/Models/TaskFormPersistence.swift Purrtine/Models/TaskManagementViewModel.swift Purrtine/Models/TaskAssistantViewModel.swift Purrtine/Utilities/TaskAssistantInterpreter.swift Purrtine/Utilities/CatDeletionService.swift Purrtine/Utilities/NotificationManager.swift`.
+**Sync commit:** `6ea0d67` (the #141 fix, 2026-11-14). Before you trust a result, run
+`git log --oneline 6ea0d67..HEAD -- Purrtine/Utilities/TaskActionService.swift Purrtine/Models/CareTask.swift Purrtine/Utilities/CareTaskWriter.swift Purrtine/Utilities/NotificationActionCoordinator.swift Purrtine/Views/Tasks/TaskCalendarView.swift Purrtine/Models/TaskCalendarPresentation.swift Purrtine/Models/TaskFormPersistence.swift Purrtine/Models/TaskManagementViewModel.swift Purrtine/Models/TaskAssistantViewModel.swift Purrtine/Utilities/TaskAssistantInterpreter.swift Purrtine/Utilities/CatDeletionService.swift Purrtine/Utilities/NotificationManager.swift`.
 Any commit listed may have changed what the model describes, even when the anchors still match. Move the
 sync commit forward only after you re-read those changes and confirm the model still describes them.
 
@@ -121,9 +118,12 @@ sync commit forward only after you re-read those changes and confirm the model s
   lifecycle only needs `nextOccurrence` to be monotone and never earlier than the anchor, which they share.
 - **One commit is one step.** `recordCompletion` and `save()` run on the main actor with no `await` between them
   (`CareTaskWriter.commit`), and the reminder path fetches and commits in the same step.
-- **Shared-store assumption.** Every commit reads the store as it is now: the main context sees a save made
-  by `NotificationActionCoordinator`'s own context. If SwiftData did not merge it, the in-app paths would act on
-  a stale task, which the model does not explore (finding 3 depends on the merge).
+- **Shared-store assumption.** Every commit reads the store as it is now. Measured in #141: the main context
+  does NOT refresh objects it already holds after another context saves (a held task kept its old schedule
+  active). `CareTaskWriter.complete` therefore runs `TaskActionService.refreshFromStore` (re-fetches this
+  task and its schedules) before its undo snapshot and the occurrence check; tests pin it
+  (`NotificationActionCoordinatorTests`). `TaskFormPersistence` (Edit Task) has no such refresh; its
+  unchanged-date rule covers the date.
 - Edit Task is modal: while it is open only a reminder action can complete (`OnScreen`). The list sheet and the
   calendar share one `taskCompletionRequest`. The caregiver picks a new date from today on, or keeps the shown one.
 - A completion reaching a deleted task writes nothing. For the reminder path this is `taskNotFound`; for a stale
@@ -142,7 +142,7 @@ sync commit forward only after you re-read those changes and confirm the model s
 3. Exit 1: read the path with `/statechart` (`promise.cfg`). Replay it against the code one action per step.
    If the code really does that, it is a regression. If it does not, the model is wrong: fix the model and say so.
 4. Never weaken a rule or remove a source to make the gate pass.
-5. Re-save `charts/` with `/statechart` (`chart.cfg` → `charts/lifecycle/`, `findings.cfg` → `charts/findings/`)
+5. Re-save `charts/lifecycle/` with `/statechart` (`chart.cfg`)
    and move the sync commit forward.
 
 ## How it was proven able to fail (2026-11-12)

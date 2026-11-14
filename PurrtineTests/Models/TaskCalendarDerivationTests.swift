@@ -25,7 +25,7 @@ struct TaskCalendarDerivationTests {
     func completedRecurringOccurrenceAppearsOnCompletedDayWithoutDuplicatingFutureDates() async throws {
         let fixture = try makeFixture(frequency: .daily, endDate: nil)
         let calendar = Calendar.current
-        let completedDate = calendar.date(byAdding: .day, value: 3, to: fixture.schedule.scheduledDate) ?? fixture.schedule.scheduledDate
+        let completedDate = fixture.schedule.scheduledDate
         let nextDate = calendar.date(byAdding: .day, value: 1, to: completedDate) ?? completedDate
 
         try await fixture.sut.complete(
@@ -46,6 +46,29 @@ struct TaskCalendarDerivationTests {
         #expect(completedDay.completed.map(\.id) == [fixture.task.id])
         #expect(nextDay.pending.map(\.id) == [fixture.task.id])
         #expect(nextDay.completed.isEmpty)
+    }
+
+    /// Today is due and the caregiver has tomorrow selected in the calendar: Complete passes the
+    /// selected day. Nothing is recorded and today stays due, so today's dose is not dropped.
+    @Test
+    func completingALaterSelectedCalendarDayRecordsNothingAndLeavesTodayDue() async throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: fixture.schedule.scheduledDate)
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+
+        await #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try await fixture.sut.complete(
+                fixture.task,
+                with: CareTaskCompletionInput(completedForDate: tomorrow),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.isEmpty)
+        #expect(fixture.task.activeSchedule?.id == fixture.schedule.id)
+        let tasksByDate = TaskCalendarDerivation.tasksByDate(from: [fixture.task], in: [today])
+        #expect(TaskCalendarDerivation.tasksForDate(today, in: tasksByDate).pending.map(\.id) == [fixture.task.id])
     }
 
     @Test

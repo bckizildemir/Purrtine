@@ -7,6 +7,8 @@ struct CareTaskReminderCandidate {
     let fireDate: Date
     let info: NotificationScheduleInfo
     let isOverdue: Bool
+    /// The due date this reminder is for, carried to its Complete action.
+    var occurrenceDate: Date?
 }
 
 /// Picks which care-task reminders get one of iOS's pending-request slots.

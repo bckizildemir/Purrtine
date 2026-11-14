@@ -15,7 +15,7 @@ REPO=$(cd "$SKILL_DIR/../../.." && pwd)
 SPEC=RecurringCompletion
 TLC_VERSION=1.7.4
 TLC_SHA256=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
-KNOWN_FINDINGS="NoOccurrenceSkipped CompletesTheOccurrenceShown CompletedNeverReappears NeverCompletedTwice"
+KNOWN_FINDINGS=""   # the four findings were fixed in #141 and joined the gate
 
 # --- 1. Is the code still the code the model describes? ------------------------------
 # Each line is: <file>|<exact text the model relies on>. See SKILL.md "Coverage".
@@ -43,7 +43,19 @@ Purrtine/Utilities/CareTaskWriter.swift|task.completions.removeAll { completionI
 Purrtine/Utilities/CareTaskWriter.swift|task.schedules.removeAll { scheduleIds.contains($0.id) == false }
 Purrtine/Utilities/CareTaskWriter.swift|activeSchedule?.isActive = wasActiveScheduleActive
 Purrtine/Utilities/CareTaskWriter.swift|await scheduler.removeDeliveredCareTaskNotifications(forTaskId: taskId)
-Purrtine/Utilities/NotificationActionCoordinator.swift|try await taskWriter.complete(try fetchTask(taskId, in: context), with: .init(), in: context)
+Purrtine/Utilities/NotificationActionCoordinator.swift|let input = CareTaskCompletionInput(expectedOccurrence: occurrence)
+Purrtine/Utilities/NotificationManager.swift|content.userInfo[Self.occurrenceDateKey] = occurrenceDate.timeIntervalSince1970
+Purrtine/Utilities/NotificationManager.swift|let occurrence = (userInfo[Self.occurrenceDateKey] as? Double).map(Date.init(timeIntervalSince1970:))
+Purrtine/Utilities/TaskActionService.swift|try validateOccurrence(of: task, for: input)
+Purrtine/Utilities/TaskActionService.swift|if let expected, openDay != calendar.startOfDay(for: expected) {
+Purrtine/Utilities/CareTaskWriter.swift|try TaskActionService.refreshFromStore(task, in: context)
+Purrtine/Utilities/TaskActionService.swift|if let openDay, day > openDay {
+Purrtine/Utilities/TaskActionService.swift|if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
+Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence = TaskActionService.openOccurrence(of: task)
+Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence: TaskActionService.openOccurrence(of: task)
+Purrtine/Models/TaskAssistantViewModel.swift|expectedOccurrence: pendingConfirmation.openOccurrence
+Purrtine/Models/TaskFormPersistence.swift|Calendar.current.isDate($0, inSameDayAs: draft.scheduledDate)
+Purrtine/Models/TaskFormPersistence.swift|if writesScheduledDate {
 Purrtine/Views/Tasks/TaskCalendarView.swift|guard hasCompletionForDate(task, date: selectedDate) == false else { return }
 Purrtine/Models/TaskCalendarPresentation.swift|calendar.isDate(occurrence, inSameDayAs: date) else {
 Purrtine/Models/TaskFormPersistence.swift|if let schedule = task.schedules.first(where: { $0.isActive }) ?? task.schedules.first {
@@ -98,7 +110,7 @@ tlc() { # $1 = config file, $2 = output file
 }
 
 # --- 3. The gate: rules the code keeps today -------------------------------------------
-echo "Gate (promise.cfg): OneActiveScheduleOrClosed, NextIsStrictlyLater, FailedSaveChangesNothing ..."
+echo "Gate (promise.cfg): every rule ..."
 tlc promise.cfg "$WORK/promise.out"
 if grep -q "No error has been found" "$WORK/promise.out"; then
   grep -E "distinct states found" "$WORK/promise.out" | tail -1

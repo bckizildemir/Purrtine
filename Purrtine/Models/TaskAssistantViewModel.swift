@@ -522,7 +522,8 @@ final class TaskAssistantViewModel {
                     task: task,
                     completedForDate: completedForDate,
                     initialNotes: notes,
-                    initialSelectedCats: selectedCats
+                    initialSelectedCats: selectedCats,
+                    expectedOccurrence: pendingConfirmation.openOccurrence
                 )
                 messages.append(
                     TaskAssistantMessage(
@@ -536,7 +537,14 @@ final class TaskAssistantViewModel {
             // A failure is already in the chat; this path has no sheet to keep open.
             try? await complete(
                 task,
-                with: CareTaskCompletionInput(cats: selectedCats, completedForDate: completedForDate, notes: notes),
+                with: CareTaskCompletionInput(
+                    cats: selectedCats,
+                    completedForDate: completedForDate,
+                    notes: notes,
+                    // The day the card was made for: a task completed elsewhere meanwhile is not
+                    // completed again for its next day.
+                    expectedOccurrence: pendingConfirmation.openOccurrence
+                ),
                 in: context
             )
             return .none
@@ -581,6 +589,7 @@ final class TaskAssistantViewModel {
         notes: String?,
         photos: [UIImage]?,
         completedForDate: Date?,
+        expectedOccurrence: Date? = nil,
         in context: ModelContext
     ) async throws {
         isProcessing = true
@@ -600,7 +609,8 @@ final class TaskAssistantViewModel {
                     caregiver: selectedCaregiver,
                     completedForDate: completedForDate,
                     notes: notes,
-                    photoURLs: savedPhotos.fileNames
+                    photoURLs: savedPhotos.fileNames,
+                    expectedOccurrence: expectedOccurrence
                 ),
                 in: context
             )

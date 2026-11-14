@@ -489,7 +489,7 @@ private final class FirstSaveRecordingWriter: CareTaskWriting {
         in context: ModelContext
     ) async throws {}
 
-    func snooze(_ task: CareTask, minutes: Int) async throws {}
+    func snooze(_ task: CareTask, minutes: Int, occurrence: Date?) async throws {}
 
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws {}
 }

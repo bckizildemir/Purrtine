@@ -84,6 +84,9 @@ final class CareTaskWriter: CareTaskWriting {
         with input: CareTaskCompletionInput,
         in context: ModelContext
     ) async throws {
+        // Another context (a reminder's Complete) may have committed since this one loaded the task;
+        // read it before the undo snapshot and before the occurrence check.
+        try TaskActionService.refreshFromStore(task, in: context)
         let undo = CompletionUndo(capturing: task)
         try commit(in: context) {
             try TaskActionService.recordCompletion(of: task, with: input, in: context)
@@ -110,12 +113,13 @@ final class CareTaskWriter: CareTaskWriting {
         }
     }
 
-    func snooze(_ task: CareTask, minutes: Int) async throws {
+    func snooze(_ task: CareTask, minutes: Int, occurrence: Date?) async throws {
         try TaskActionService.validatePostponeMinutes(minutes)
 
         let info = NotificationScheduleInfo(
             snoozing: task,
-            firingAt: Date().addingTimeInterval(TimeInterval(minutes * 60))
+            firingAt: Date().addingTimeInterval(TimeInterval(minutes * 60)),
+            occurrence: occurrence ?? TaskActionService.openOccurrence(of: task)
         )
         try await scheduler.scheduleSnoozedNotification(for: info, delayMinutes: minutes)
         await scheduler.removeDeliveredCareTaskNotifications(forTaskId: info.taskId)

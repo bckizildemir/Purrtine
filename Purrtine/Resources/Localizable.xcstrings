@@ -4693,6 +4693,23 @@
         }
       }
     },
+    "error.task_action.occurrence_not_open" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That day is not the one due now, so nothing was recorded. Check the task list."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O gün şu an beklenen gün değil, bu yüzden bir şey kaydedilmedi. Görev listesine bak."
+          }
+        }
+      }
+    },
     "error.task_action.invalid_postpone_minutes" : {
       "extractionState" : "manual",
       "localizations" : {

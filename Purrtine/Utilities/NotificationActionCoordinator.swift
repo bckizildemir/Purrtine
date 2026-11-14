@@ -54,20 +54,30 @@ final class NotificationActionCoordinator {
         self.authorizationChecker = authorizationChecker
     }
 
-    func handle(_ action: NotificationActionCommand, taskId: UUID) async -> NotificationActionResult {
+    func handle(
+        _ action: NotificationActionCommand,
+        taskId: UUID,
+        occurrence: Date? = nil
+    ) async -> NotificationActionResult {
         let context = ModelContext(modelContainer)
 
         do {
             switch action {
             case .complete:
-                try await taskWriter.complete(try fetchTask(taskId, in: context), with: .init(), in: context)
+                // A reminder names its occurrence; one without it (made before #141) completes the open one.
+                let input = CareTaskCompletionInput(expectedOccurrence: occurrence)
+                try await taskWriter.complete(try fetchTask(taskId, in: context), with: input, in: context)
             case .snooze(let minutes):
                 let authorizationStatus = await authorizationChecker.refreshAuthorizationStatusFromSystem()
                 guard authorizationStatus.allowsScheduling else {
                     return NotificationActionResult(didPerformAction: false)
                 }
 
-                try await taskWriter.snooze(try fetchTask(taskId, in: context), minutes: minutes)
+                try await taskWriter.snooze(
+                    try fetchTask(taskId, in: context),
+                    minutes: minutes,
+                    occurrence: occurrence
+                )
             }
 
             return NotificationActionResult(didPerformAction: true)

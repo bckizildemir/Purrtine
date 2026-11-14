@@ -112,6 +112,7 @@ struct TaskManagementView: View {
           for: selectedCats,
           by: selectedCaregiver,
           completedForDate: completedForDate,
+          expectedOccurrence: request.expectedOccurrence,
           with: notes,
           photos: photos,
           unsavedPhotos: unsavedPhotos
@@ -405,7 +406,7 @@ struct TaskManagementView: View {
   }
 
   private func handleTaskCompletion(_ task: CareTask, completedForDate: Date? = nil) {
-    if viewModel.handleCompletionAction(for: task, completedForDate: completedForDate) {
+    if viewModel.handleCompletionAction(for: task, completedForDate: completedForDate) != nil {
       haptics.impact(.medium)
     }
   }
