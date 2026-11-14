@@ -9,7 +9,7 @@ import UserNotifications
 struct NotificationActionCoordinatorTests {
     @Test
     func completeActionSilentlyCompletesPendingTask() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -26,7 +26,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func completeActionForRecurringTaskCreatesNextOccurrenceAndReschedules() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -49,7 +49,7 @@ struct NotificationActionCoordinatorTests {
     /// occurrence. Stale reminders are the next resync's job.
     @Test
     func completeActionWithStaleRemindersStillReportsThePerformedAction() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         fixture.spy.resyncError = .forcedFailure
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
@@ -63,7 +63,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func snoozeActionCreatesExpectedDelayedRequest() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
 
@@ -78,7 +78,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func invalidTaskIdentifierIsNoOpAndKeepsDeliveredNotification() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.complete, taskId: UUID())
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -92,39 +92,44 @@ struct NotificationActionCoordinatorTests {
         #expect(fixture.spy.syncBadgeCallCount == 0)
     }
 
+    /// The scheduler checks the permission itself and throws; the coordinator reports no action.
     @Test
-    func coldLaunchSnoozeRefreshesAuthorizationBeforeScheduling() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+    func snoozeActionWithoutPermissionReportsNoActionAndKeepsDeliveredNotification() async throws {
+        let fixture = try makeFixture(frequency: .once)
+        fixture.spy.snoozeError = NotificationSchedulingError.unauthorized
 
         let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
 
-        #expect(result.didPerformAction)
-        #expect(fixture.authorizationChecker.refreshCallCount == 1)
-        #expect(fixture.spy.snoozedRequests.first?.delayMinutes == 10)
-        #expect(fixture.spy.removedDeliveredTaskIds == [fixture.task.id])
-        #expect(fixture.spy.syncBadgeCallCount == 1)
+        #expect(result.didPerformAction == false)
+        #expect(fixture.spy.snoozedRequests.isEmpty)
+        #expect(fixture.spy.removedDeliveredTaskIds.isEmpty)
     }
 
-    private func makeFixture(
-        frequency: CareTaskFrequency,
-        authorizationStatus: UNAuthorizationStatus
-    ) throws -> (
+    @Test
+    func snoozeActionWithRemindersOffReportsNoAction() async throws {
+        let fixture = try makeFixture(frequency: .once)
+        fixture.spy.snoozeError = NotificationSchedulingError.remindersOff
+
+        let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
+
+        #expect(result.didPerformAction == false)
+        #expect(fixture.spy.removedDeliveredTaskIds.isEmpty)
+    }
+
+    private func makeFixture(frequency: CareTaskFrequency) throws -> (
         container: ModelContainer,
         task: CareTask,
         schedule: CareTaskSchedule,
         spy: NotificationSchedulerSpy,
-        authorizationChecker: NotificationAuthorizationCheckerSpy,
         coordinator: NotificationActionCoordinator
     ) {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
         let spy = NotificationSchedulerSpy()
         spy.observe(container)
-        let authorizationChecker = NotificationAuthorizationCheckerSpy(status: authorizationStatus)
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
-            taskWriter: CareTaskWriter(scheduler: spy),
-            authorizationChecker: authorizationChecker
+            taskWriter: CareTaskWriter(scheduler: spy)
         )
 
         let cat = Cat(name: "Mochi")
@@ -149,7 +154,7 @@ struct NotificationActionCoordinatorTests {
         context.insert(schedule)
         try context.save()
 
-        return (container, task, schedule, spy, authorizationChecker, coordinator)
+        return (container, task, schedule, spy, coordinator)
     }
 
     private func fetchTask(id: UUID, in container: ModelContainer) throws -> CareTask? {
@@ -157,20 +162,5 @@ struct NotificationActionCoordinatorTests {
         var descriptor = FetchDescriptor<CareTask>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
-    }
-}
-
-@MainActor
-private final class NotificationAuthorizationCheckerSpy: NotificationAuthorizationChecking {
-    private(set) var refreshCallCount = 0
-    private let status: UNAuthorizationStatus
-
-    init(status: UNAuthorizationStatus) {
-        self.status = status
-    }
-
-    func refreshAuthorizationStatusFromSystem() async -> UNAuthorizationStatus {
-        refreshCallCount += 1
-        return status
     }
 }

@@ -19,6 +19,10 @@ enum CareTaskReminderSelection {
     /// outside this budget; the nudge is scheduled whenever a reminder series is cut short (see `nudgeFireDate`).
     static let limit = 59
 
+    /// The pending snoozes iOS's 64 slots leave room for. `NotificationManager.scheduleSnoozedNotification`
+    /// keeps to it by replacing the oldest snooze when a fifth arrives.
+    static let snoozeSlots = 4
+
     /// How long before the earliest cut end the nudge fires: 24 hours.
     private static let nudgeLeadTime: TimeInterval = 24 * 3_600
 

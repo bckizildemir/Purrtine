@@ -369,6 +369,44 @@ struct CareTaskWriterTests {
         #expect(context.hasChanges == false)
     }
 
+    /// "Remind me" on a delivered reminder fetches the task in a fresh context, where a delete that
+    /// failed to commit is still invisible. A different writer instance than the one whose delete
+    /// failed (the app has several) must still refuse, so the check reads the main context.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func snoozingATaskWhoseDeleteIsStagedThroughAnotherWriterIsRefused() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        try await sut.save(task, in: context)
+        let writer = failingWriter()
+        _ = try? await writer.delete(task, in: context)
+        let freshTask = try #require(
+            try ModelContext(container).fetch(FetchDescriptor<CareTask>()).first { $0.id == task.id }
+        )
+
+        await #expect(throws: TaskActionError.taskNotFound) {
+            try await sut.snooze(freshTask, minutes: 10)
+        }
+
+        #expect(spy.snoozedRequests.isEmpty)
+        // Lands the delete, so the watch stops observing before the test ends.
+        try context.save()
+        await writer.pendingFollowUp?.value
+    }
+
+    /// A "Remind me" for a task whose delete already landed has nothing to remind of.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func snoozingATaskThatWasDeletedAndSavedIsRefused() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        try await sut.save(task, in: context)
+        context.delete(task)
+        try context.save()
+
+        await #expect(throws: TaskActionError.taskNotFound) {
+            try await sut.snooze(task, minutes: 10)
+        }
+
+        #expect(spy.snoozedRequests.isEmpty)
+    }
+
     @Test(arguments: [-1, 0, Int.max])
     func snoozingRejectsInvalidDurationsWithoutSideEffects(minutes: Int) async throws {
         let (task, _) = makeTask(title: "Feed Mochi")
@@ -418,6 +456,23 @@ struct CareTaskWriterTests {
 
         #expect(spy.resyncCount == 3)
         #expect(spy.lastResyncedInfos.map(\.taskId) == [survivor.id])
+    }
+
+    /// A cat delete cascades to the cat's own tasks. A snooze for one of them may already be past its
+    /// checks, so its generation is bumped before the resync reads; the tasks that remain keep theirs.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func refreshingCancelsTheSnoozesOfTasksTheStoreNoLongerHoldsOnly() async throws {
+        let (survivor, _) = makeTask(title: "Feed")
+        let (doomed, _) = makeTask(title: "Brush")
+        try await sut.save(survivor, in: context)
+        try await sut.save(doomed, in: context)
+        let doomedId = doomed.id
+        context.delete(doomed)
+        try context.save()
+
+        try await sut.refreshReminders(for: [survivor.id, doomedId], in: context)
+
+        #expect(spy.cancelledSnoozeTaskIds == [doomedId])
     }
 
     @Test

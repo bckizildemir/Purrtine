@@ -17,11 +17,7 @@ repo=${here:h:h:h}
 
 # Known findings: config:rule pairs that break at the sync commit. See SKILL.md "Findings".
 known=(
-  snooze:NoSnoozeAfterCompletion
-  snooze:NoSnoozeForDeletedTask
-  snooze:OffMeansSilent
-  snooze:SnoozesWithinSlots
-  snooze:WithinIOSCap
+  # none: the four snooze findings were fixed in #142
 )
 
 # The coverage record: the sync commit and the files the model describes.

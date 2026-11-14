@@ -112,6 +112,16 @@ final class CareTaskWriter: CareTaskWriting {
 
     func snooze(_ task: CareTask, minutes: Int) async throws {
         try TaskActionService.validatePostponeMinutes(minutes)
+        // A task whose delete already landed is gone (#142), and so is one whose delete is staged: a
+        // caller's fresh context still holds it. Assumes every delete is staged in `container.mainContext`,
+        // whichever writer made it, so that is where to look.
+        guard let taskContext = task.modelContext, task.isDeleted == false else {
+            throw TaskActionError.taskNotFound
+        }
+        let modelId = task.persistentModelID
+        let isDeleteStaged = taskContext.container.mainContext.deletedModelsArray
+            .contains { $0.persistentModelID == modelId }
+        guard isDeleteStaged == false else { throw TaskActionError.taskNotFound }
 
         let info = NotificationScheduleInfo(
             snoozing: task,
@@ -124,7 +134,18 @@ final class CareTaskWriter: CareTaskWriting {
 
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws {
         guard taskIds.isEmpty == false else { return }
+        // A task the store no longer holds went with a cascade: stop any snooze already past its checks
+        // before the resync reads (#142). The tasks that remain keep theirs.
+        for taskId in Set(taskIds) where isGone(taskId, in: context) {
+            await scheduler.cancelSnoozedNotifications(forTaskId: taskId)
+        }
         try await resyncReminders(for: taskIds)
+    }
+
+    /// A failed fetch counts as "still there": a snooze is kept rather than dropped on a guess.
+    private func isGone(_ taskId: UUID, in context: ModelContext) -> Bool {
+        let descriptor = FetchDescriptor<CareTask>(predicate: #Predicate { $0.id == taskId })
+        return (try? context.fetchCount(descriptor)) == 0
     }
 
     // MARK: - Commit

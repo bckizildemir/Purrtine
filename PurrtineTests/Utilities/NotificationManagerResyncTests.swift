@@ -44,9 +44,12 @@ struct NotificationManagerResyncTests {
         let sut = try await makeManager(notificationCenter: fakeCenter)
 
         try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: taskId)])
-        try await sut.resyncCareTaskNotifications(with: [])
+        let later = Date().addingTimeInterval(2 * 86_400)
+        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: taskId, scheduledDate: later)])
 
-        #expect(fakeCenter.pendingRequests.map(\.identifier) == [snooze.identifier])
+        // The task is still in the store, so its snooze stays; one whose task is gone does not
+        // (`ReminderSnoozeTests`).
+        #expect(fakeCenter.pendingRequests.contains { $0.identifier == snooze.identifier })
     }
 
     @Test
@@ -325,7 +328,7 @@ struct NotificationManagerResyncTests {
     func theNudgeAndFourSnoozesStayWithinTheSystemLimit() async throws {
         let infos = try await starterTaskInfos()
         let fakeCenter = FakeUserNotificationCenterClient()
-        let taskId = UUID()
+        let taskId = try #require(infos.first?.taskId)
         fakeCenter.pendingRequests = (0..<4).map {
             pendingRequest(identifier: "snooze_\(taskId.uuidString)_\($0)", taskId: taskId)
         }

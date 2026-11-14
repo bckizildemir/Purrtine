@@ -18,8 +18,7 @@ export const state = (v: Vars): string => {
   const inFlight: string[] = [];
   if (v.passPc !== "idle" || v.queued) inFlight.push("resync running");
   const n = v.act.notif;
-  if (n.pc === "sz_fetch") inFlight.push("snooze tapped");
-  if (n.pc === "sz_add") inFlight.push(finished(v, n.task, n.occ) ? "snooze on its way for a finished task" : "snooze on its way");
+  if (["sz_add", "sz_q", "sz_commit"].includes(n.pc)) inFlight.push(finished(v, n.task, n.occ) ? "snooze on its way for a finished task" : "snooze on its way");
   if (v.act.app.pc !== "idle") inFlight.push("clearing the task's snoozes");
   if (n.pc === "cs_read" || n.pc === "cs_remove") inFlight.push("clearing the task's snoozes");
   const s = snoozes(v);
@@ -53,8 +52,9 @@ const verbs: Record<string, string> = {
   LaunchPermissionCheck: "the app launches and reads the permission",
   AppActivation: "you open the app",
   SnoozeTap: "you tap Remind me on a reminder",
-  SnoozeFetch: "the snooze looks up the task",
-  SnoozeAdd: "the snooze is scheduled",
+  SnoozeAdd: "the snooze checks the permission",
+  SnoozeRead: "the snooze takes its turn and reads the pending snoozes",
+  SnoozeCommit: "the snooze is added",
   Done: "nothing more happens",
 };
 
