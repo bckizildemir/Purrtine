@@ -49,8 +49,12 @@ final class FakeUserNotificationCenterClient: UserNotificationCenterClient {
         return deliveredSnapshots
     }
 
+    /// Runs before each pending read, so a test can hold a snooze add between its checks and its add.
+    var pendingRequestsHandler: (@MainActor () async -> Void)?
+
     func pendingNotificationRequests() async -> [UNNotificationRequest] {
-        pendingRequests
+        await pendingRequestsHandler?()
+        return pendingRequests
     }
 
     func removeAllDeliveredNotifications() {

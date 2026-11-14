@@ -179,6 +179,10 @@ final class NotificationManager:
     private var snoozeGenerations: [UUID: Int] = [:]
     /// The newest snooze add or cancel; the next one waits for it. See `inSnoozeQueue`.
     private var snoozeQueueTail: Task<Void, Never>?
+    /// The one test a resync and a snooze add both use: the app's switch is on and iOS allows reminders.
+    private var areRemindersOn: Bool {
+        settings.isEnabled && authorizationStatus.allowsReminderConfiguration
+    }
     /// The hook that `requestFullReminderResync()` calls. `PurrtineApp` points it at
     /// `NotificationResyncCoordinator.scheduleResync()`, which rebuilds every care-task reminder from
     /// the store. Call `requestFullReminderResync()` rather than this directly.
@@ -416,7 +420,7 @@ final class NotificationManager:
         }
         try Task.checkCancellation()
 
-        let areRemindersOn = settings.isEnabled && authorizationStatus.allowsReminderConfiguration
+        let remindersOn = areRemindersOn
         // A snooze is kept only while reminders are on and its task still has an active schedule in
         // the store. Every delete path ends in a full resync, so this is what removes the snooze of
         // a deleted task, including a delete that lands later (#142).
@@ -425,13 +429,13 @@ final class NotificationManager:
             .filter {
                 Self.isCareTaskReminder($0) || Self.isNudge($0)
                     || (Self.isSnooze($0)
-                        && (areRemindersOn == false
+                        && (remindersOn == false
                             || liveTaskIds.contains($0.content.userInfo["taskId"] as? String ?? "") == false))
             }
         try Task.checkCancellation()
 
         let now = Date()
-        let pass = areRemindersOn
+        let pass = remindersOn
             ? selectedReminderCandidates(for: infos, now: now)
             : ReminderSelectionPass(selected: [], candidateCount: 0, cutSeriesEnds: [])
         var wantedRequests = pass.selected.map(reminderRequest(for:))
@@ -802,7 +806,7 @@ final class NotificationManager:
         )
 
         try await inSnoozeQueue { [notificationCenter, taskId = info.taskId] in
-            guard self.snoozeGenerations[taskId, default: 0] == generation, self.settings.isEnabled else { return }
+            guard self.snoozeGenerations[taskId, default: 0] == generation, self.areRemindersOn else { return }
             // Four snoozes fit beside 59 reminders and the nudge in iOS's 64 slots; a fifth replaces
             // the oldest, because iOS would otherwise drop the furthest reminder.
             let pendingSnoozes = await notificationCenter.pendingNotificationRequests()
@@ -814,7 +818,7 @@ final class NotificationManager:
                     withIdentifiers: pendingSnoozes.prefix(overflow).map(\.identifier)
                 )
             }
-            guard self.snoozeGenerations[taskId, default: 0] == generation else { return }
+            guard self.snoozeGenerations[taskId, default: 0] == generation, self.areRemindersOn else { return }
             try await notificationCenter.add(request)
         }
         debugLog("🛌 Snoozed notification for task \(info.taskTitle) by \(delayMinutes) minutes")

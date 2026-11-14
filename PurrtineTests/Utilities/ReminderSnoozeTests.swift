@@ -127,6 +127,81 @@ struct ReminderSnoozeTests {
         #expect(fakeCenter.pendingRequests.isEmpty)
     }
 
+    // MARK: - Reminders turned off while a snooze waits in the queue
+
+    @Test(.timeLimit(.minutes(1)))
+    func aSnoozeQueuedBehindAnAddIsNotAddedWhenPermissionIsLostAndAResyncWipedBeforeItRuns() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        let first = makeTask()
+        let second = makeTask()
+        let gate = PermissionGate()
+        fakeCenter.addHandler = { await gate.hold() }
+
+        let firstSnooze = Task {
+            try await sut.scheduleSnoozedNotification(for: info(for: first), delayMinutes: 10)
+        }
+        await gate.waitUntilHeld()
+        let secondSnooze = Task {
+            try await sut.scheduleSnoozedNotification(for: info(for: second), delayMinutes: 10)
+        }
+        // The second snooze has passed its checks and waits in the queue behind the held add.
+        for _ in 0..<20 { await Task.yield() }
+        fakeCenter.authorizationStatusValue = .denied
+        await sut.checkAuthorizationStatus()
+        try await sut.resyncCareTaskNotifications(with: [])
+        gate.release()
+        try await firstSnooze.value
+        try await secondSnooze.value
+
+        #expect(snoozedTaskIds(in: fakeCenter).contains(second.id.uuidString) == false)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func aSnoozeWhosePendingReadIsOpenIsNotAddedWhenPermissionIsLostAndAResyncWiped() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        let task = makeTask()
+        let gate = PermissionGate()
+        fakeCenter.pendingRequestsHandler = { await gate.hold() }
+
+        let snooze = Task {
+            try await sut.scheduleSnoozedNotification(for: info(for: task), delayMinutes: 10)
+        }
+        await gate.waitUntilHeld()
+        fakeCenter.authorizationStatusValue = .denied
+        await sut.checkAuthorizationStatus()
+        try await sut.resyncCareTaskNotifications(with: [])
+        gate.release()
+        try await snooze.value
+
+        #expect(fakeCenter.addedRequests.isEmpty)
+        #expect(fakeCenter.pendingRequests.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func aSnoozeWhosePendingReadIsOpenIsNotAddedWhenRemindersAreTurnedOffInTheAppSettings() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        let task = makeTask()
+        let gate = PermissionGate()
+        fakeCenter.pendingRequestsHandler = { await gate.hold() }
+
+        let snooze = Task {
+            try await sut.scheduleSnoozedNotification(for: info(for: task), delayMinutes: 10)
+        }
+        await gate.waitUntilHeld()
+        var settings = sut.settings
+        settings.isEnabled = false
+        sut.applySettings(settings)
+        try await sut.resyncCareTaskNotifications(with: [])
+        gate.release()
+        try await snooze.value
+
+        #expect(fakeCenter.addedRequests.isEmpty)
+        #expect(fakeCenter.pendingRequests.isEmpty)
+    }
+
     // MARK: - Cap
 
     @Test
@@ -169,6 +244,12 @@ struct ReminderSnoozeTests {
     }
 
     // MARK: - Helpers
+
+    private func snoozedTaskIds(in fakeCenter: FakeUserNotificationCenterClient) -> [String] {
+        fakeCenter.pendingRequests
+            .filter { $0.identifier.hasPrefix("snooze_") }
+            .compactMap { $0.content.userInfo["taskId"] as? String }
+    }
 
     private func makeTask() -> CareTask {
         let task = CareTask(title: "Feed Mochi", category: .feeding)
@@ -239,7 +320,8 @@ private final class PermissionGate {
     private var hasReleased = false
 
     func hold() async {
-        guard hasReleased == false else { return }
+        // Only the first caller waits; a later read, such as a resync's, passes.
+        guard hasReleased == false, isHeld == false else { return }
         isHeld = true
         heldWaiters.forEach { $0.resume() }
         heldWaiters = []

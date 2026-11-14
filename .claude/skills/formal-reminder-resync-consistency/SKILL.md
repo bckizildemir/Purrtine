@@ -25,18 +25,18 @@ Yes when you change any of these (the coverage record):
 | --- | --- |
 | `PassFetch`, `PassAuth`, `PassRead`, `PassApply`, `PassAdd`, `Request` | `NotificationResyncCoordinator.scheduleResync` / `resync` / `resyncNow` / `activeScheduleInfos`; `NotificationManager.resyncCareTaskNotifications`, `selectedReminderCandidates`, `isCareTaskReminder`/`isNudge`/`isSnooze` |
 | `Derived` | `CareTaskReminderSelection.soonest` (limit) and `nudgeFireDate` (nudge only when the set was cut) |
-| `Complete` + `CancelSnoozesRead`/`Remove` | `CareTaskWriter.complete`, `NotificationManager.cancelSnoozedNotifications` |
+| `Complete` + `CancelSnoozesRead`/`Remove` | `CareTaskWriter.complete`, `NotificationManager.cancelSnoozedNotifications` (generation bump, then its turn in `inSnoozeQueue`) |
 | `DeleteTask` | `CareTaskWriter.delete`, including the failed-commit path and `watchForStagedDelete` (`StagedDeleteWatch`) |
 | `EditSchedule` | `CareTaskWriter.save` (and the staged-delete watch it fires) |
-| `DeleteCat` | `CatDeletionService.delete` (cascade, then `refreshReminders`) |
-| `SnoozeTap`, `SnoozeFetch`, `SnoozeAdd` | `NotificationActionCoordinator.handle(.snooze)`, `CareTaskWriter.snooze`, `NotificationManager.scheduleSnoozedNotification` |
+| `DeleteCat` | `CatDeletionService.delete` (cascade, then `refreshReminders`, which cancels the snoozes of touched tasks the store no longer holds, then resyncs) |
+| `SnoozeTap`, `SnoozeFetch`, `SnoozeAdd`, `SnoozeRead`, `SnoozeCommit` | `NotificationActionCoordinator.handle(.snooze)`, `CareTaskWriter.snooze` (refuses a staged delete), `NotificationManager.scheduleSnoozedNotification` (generation, reminders-on guards, `inSnoozeQueue`, the snooze cap) |
 | `ToggleSettings`, `AppActivation`, `LaunchPermissionCheck`, `RefreshPerm` | `NotificationManager.applySettings`, `handleAppActivation`, `checkAuthorizationStatus`, `refreshAuthorizationStatusFromSystem`; wiring in `PurrtineApp.init` |
 
 Files: `Purrtine/Utilities/NotificationResyncCoordinator.swift`, `NotificationManager.swift`,
 `CareTaskReminderSelection.swift`, `CareTaskWriter.swift`, `NotificationActionCoordinator.swift`,
 `CatDeletionService.swift`, `StagedDeleteWatch.swift`, `Purrtine/PurrtineApp.swift`.
 
-Sync commit: `424ad3cf1220f6aea2a7425bc19a686d0423d44b` (2026-11-12). The model was last confirmed
+Sync commit: `SYNC_PLACEHOLDER` (2026-11-14, #142). The model was last confirmed
 to describe the code at this commit. `run.sh` lists the covered files that changed since then.
 Move the sync commit forward only after you re-read the changed functions and confirmed (or fixed)
 the model at the new commit.
@@ -67,10 +67,9 @@ for 4, so the cap is 3 for 64.
 
 ## Charts
 
-`charts/<rule>/` holds the `/statechart` output (`chart.mmd`, `report.md`, `tlc.out`) for each known
-finding, made from `ReminderResync-snooze.cfg` with only that rule and `view.ts`. Make them again with
-`/statechart` after a change to the model or the view. The resync config has no chart: it passes, and
-its state graph is far over the chart budget.
+No charts are kept: every rule holds, and both state graphs are far over the chart budget. To read a
+new break, run `/statechart` on the spec, the per-rule cfg `run.sh` wrote (its `TLC output` folder)
+and `view.ts`.
 
 ## Read a result
 
@@ -89,41 +88,29 @@ Read every break with the `/statechart` skill, on `ReminderResync.tla`, the conf
 When you change covered code on purpose, change the matching action in the model in the same PR, run
 `run.sh`, and move the sync commit.
 
-## Findings (known breaks at the sync commit)
+## Findings
 
-Listed in `run.sh` as `known`. Paths are in the model's steps; each was replayed against the code.
+None open at the sync commit; `known` in `run.sh` is empty. Fixed in #142 (each was a real path in
+the code):
 
-1. **A snooze can outlive a completion** (`NoSnoozeAfterCompletion`). You tap "Remind me" on a
-   reminder; `NotificationActionCoordinator.handle(.snooze)` fetches the task and then awaits the
-   permission check (`scheduleSnoozedNotification` awaits it again). Meanwhile the occurrence is
-   completed (in the app, or with Complete on another delivered reminder of the task):
-   `CareTaskWriter.complete` commits, `cancelSnoozedNotifications` finds no snooze yet, the resync
-   runs. Then the snooze's `add` lands. It fires for an occurrence that is done, and its Complete
-   button completes the next occurrence early. Chart: `charts/NoSnoozeAfterCompletion/`.
-2. **A snooze outlives a deleted task** (`NoSnoozeForDeletedTask`). Snooze a reminder of a task only
-   one cat is on, then delete that cat. `CatDeletionService.delete` lets the `Cat.tasks` cascade
-   delete the task and runs a full resync, but never calls `cancelSnoozedNotifications`, and the
-   resync leaves snoozes alone while reminders are on. The snooze fires for a task that no longer
-   exists; Complete on it fails with `taskNotFound`. The same happens after a failed task delete
-   (#7 path): the delete drops the snoozes at once, but a snooze tapped while the delete is still
-   staged reads the committed task, lands, and the watch that later lands the delete only resyncs.
-   The shortest model path also races the snooze; the plain order (snooze, then delete the cat) breaks
-   the rule too. Chart: `charts/NoSnoozeForDeletedTask/`.
-3. **Reminders off is not silent** (`OffMeansSilent`). Turn reminders off in Settings; the resync
-   removes every reminder and snooze. Then tap "Remind me" on a reminder still in Notification
-   Center: the snooze path checks only the iOS permission, never `settings.isEnabled`, so a snooze is
-   scheduled and fires. `resyncCareTaskNotifications`'s own comment says off means "the caregiver
-   asked for silence". Chart: `charts/OffMeansSilent/`.
-4. **Snoozes have no cap** (`SnoozesWithinSlots`, `WithinIOSCap`). Each snooze gets a fresh
-   `snooze_<taskId>_<timestamp>` id and nothing limits their number, so a fifth pending snooze makes
-   65 requests and iOS silently drops the furthest reminder. Known since issue #93 (closed with this
-   item unfixed). Chart: `charts/SnoozesWithinSlots/`.
+1. **A snooze outlived a completion** (`NoSnoozeAfterCompletion`): the snooze's add awaited the
+   permission check while the occurrence was completed. Now `cancelSnoozedNotifications` bumps a
+   per-task generation at once, and the snooze stands down when it sees the bump; adds and cancels
+   run one at a time in `inSnoozeQueue`.
+2. **A snooze outlived a deleted task** (`NoSnoozeForDeletedTask`): cat delete never cancelled
+   snoozes, and a snooze tapped while a failed task delete was staged still landed. Now the resync
+   drops snoozes of tasks with no active schedule, `refreshReminders` cancels the snoozes of touched
+   tasks the store no longer holds (catches a snooze add already in the queue), and
+   `CareTaskWriter.snooze` refuses a task whose delete is staged. The model found the last two after
+   the first draft of the fix.
+3. **Reminders off was not silent** (`OffMeansSilent`): the snooze path checked only the iOS
+   permission. Now it checks the resync's own test (settings and the permission as the app last read
+   it) before and inside the queue. The model found the in-queue race (permission or settings turned
+   off while the add waited) after the first draft.
+4. **Snoozes had no cap** (`SnoozesWithinSlots`, `WithinIOSCap`): now at most
+   `CareTaskReminderSelection.snoozeSlots` (4) pending; a fifth replaces the oldest.
 
-What holds (resync config, 2 tasks, 4 events, about 2 million states): the pending reminders and
-nudge converge to the set derived from the saved tasks after every interleaving of complete,
-delete (landed or staged), edit, cat delete, settings, permission, activation, a cold launch with
-the permission not yet read, and a pass cancelled by a newer one; reminders off empties the set; a
-failed store read leaves the set as it was; the total stays within the cap without snoozes.
+What holds: every rule of both configs (resync: about 2.2 million states; snooze: about 340,000).
 
 ## What the model leaves out
 
