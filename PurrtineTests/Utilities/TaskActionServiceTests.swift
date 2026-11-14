@@ -44,11 +44,10 @@ struct TaskActionServiceTests {
     }
 
     @Test
-    func completingFutureRecurringOccurrenceSchedulesNextOccurrenceAfterCompletedDate() throws {
+    func completingTheOpenOccurrenceByExplicitDateSchedulesTheNextOccurrenceAfterIt() throws {
         let fixture = try makeFixture(frequency: .daily, endDate: nil)
         let calendar = Calendar.current
-        let completedForDate = calendar.date(byAdding: .day, value: 3, to: fixture.schedule.scheduledDate)
-            ?? fixture.schedule.scheduledDate
+        let completedForDate = fixture.schedule.scheduledDate
 
         try TaskActionService.recordCompletion(
             of: fixture.task,
@@ -57,15 +56,120 @@ struct TaskActionServiceTests {
         )
 
         let completion = try #require(fixture.task.completions.first)
-        let activeSchedules = fixture.task.schedules.filter(\.isActive)
-        let nextSchedule = try #require(activeSchedules.first)
-        let normalizedCompletedDate = calendar.startOfDay(for: completedForDate)
+        let nextSchedule = try #require(fixture.task.schedules.filter(\.isActive).first)
         // The replacement schedule keeps the original time of day, so it advances a day from the
         // completed occurrence itself — not from that occurrence's start-of-day.
         let expectedNextDate = calendar.date(byAdding: .day, value: 1, to: completedForDate)
 
-        #expect(completion.completedForDate == normalizedCompletedDate)
+        #expect(completion.completedForDate == calendar.startOfDay(for: completedForDate))
         #expect(nextSchedule.scheduledDate == expectedNextDate)
+    }
+
+    /// Calendar path: today is due, the caregiver completes tomorrow. Recording tomorrow would move
+    /// the task to the day after and drop today's occurrence from the list, the calendar and the reminders.
+    @Test
+    func completingALaterDayThanTheOpenOneChangesNothing() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(completedForDate: tomorrow),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.isEmpty)
+        #expect(fixture.task.schedules.filter(\.isActive).map(\.id) == [fixture.schedule.id])
+    }
+
+    /// Reminder and Whiskers path: the occurrence the caller saw is the pin. Yesterday was completed
+    /// elsewhere, so yesterday's reminder must not complete today.
+    @Test
+    func anExpectedOccurrenceThatIsAlreadyCompletedRecordsNothing() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let yesterdaysOccurrence = fixture.schedule.scheduledDate
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let openSchedule = try #require(fixture.task.activeSchedule)
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(expectedOccurrence: yesterdaysOccurrence),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(fixture.task.activeSchedule?.id == openSchedule.id)
+    }
+
+    /// Completing a later day's reminder while an earlier day is still open would skip the open day.
+    @Test
+    func anExpectedOccurrenceLaterThanTheOpenOneRecordsNothing() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(expectedOccurrence: tomorrow),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.isEmpty)
+        #expect(fixture.task.activeSchedule?.id == fixture.schedule.id)
+    }
+
+    @Test
+    func anExpectedOccurrenceThatIsOpenIsRecordedForThatDay() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(expectedOccurrence: fixture.schedule.scheduledDate),
+            in: fixture.context
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.completedForDate == Calendar.current.startOfDay(for: fixture.schedule.scheduledDate))
+        #expect(fixture.task.activeSchedule?.id != fixture.schedule.id)
+    }
+
+    @Test
+    func anExpectedOccurrenceOnAnAlreadyCompletedOneTimeTaskRecordsNothing() throws {
+        let fixture = try makeFixture(frequency: .once, endDate: nil)
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(expectedOccurrence: fixture.schedule.scheduledDate),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.count == 1)
+    }
+
+    /// Whiskers path: "I fed her yesterday" after yesterday was completed in the list.
+    @Test
+    func recordingADayThatAlreadyHasACompletionRecordsNothing() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let completedDay = fixture.schedule.scheduledDate
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(completedForDate: completedDay),
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.count == 1)
     }
 
     /// Builds its own timed schedule instead of leaning on `makeFixture`, so the invariant survives
@@ -183,6 +287,7 @@ struct TaskActionServiceTests {
         (TaskActionError.taskNotFound, String(localized: .errorTaskActionTaskNotFound)),
         (.caregiverUnavailable, String(localized: .errorTaskActionCaregiverUnavailable)),
         (.invalidPostponeMinutes, String(localized: .errorTaskActionInvalidPostponeMinutes)),
+        (.occurrenceNotOpen, String(localized: .errorTaskActionOccurrenceNotOpen)),
     ])
     func errorDescriptionComesFromTheStringCatalog(error: TaskActionError, expected: String) {
         #expect(error.errorDescription == expected)

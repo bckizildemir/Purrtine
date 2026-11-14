@@ -25,7 +25,7 @@ struct TaskCalendarDerivationTests {
     func completedRecurringOccurrenceAppearsOnCompletedDayWithoutDuplicatingFutureDates() async throws {
         let fixture = try makeFixture(frequency: .daily, endDate: nil)
         let calendar = Calendar.current
-        let completedDate = calendar.date(byAdding: .day, value: 3, to: fixture.schedule.scheduledDate) ?? fixture.schedule.scheduledDate
+        let completedDate = fixture.schedule.scheduledDate
         let nextDate = calendar.date(byAdding: .day, value: 1, to: completedDate) ?? completedDate
 
         try await fixture.sut.complete(
@@ -46,6 +46,39 @@ struct TaskCalendarDerivationTests {
         #expect(completedDay.completed.map(\.id) == [fixture.task.id])
         #expect(nextDay.pending.map(\.id) == [fixture.task.id])
         #expect(nextDay.completed.isEmpty)
+    }
+
+    /// Today is due and the caregiver has tomorrow selected: Complete acts on today, the occurrence
+    /// the row shows, so today's dose is not dropped.
+    @Test
+    func completingFromALaterCalendarDayCompletesTheOpenOccurrence() async throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: fixture.schedule.scheduledDate)
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+
+        let day = TaskCalendarDerivation.occurrenceToComplete(for: fixture.task, selectedDate: tomorrow)
+        try await fixture.sut.complete(
+            fixture.task,
+            with: CareTaskCompletionInput(completedForDate: day),
+            in: fixture.context
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        let nextSchedule = try #require(fixture.task.activeSchedule)
+        #expect(day == today)
+        #expect(completion.completedForDate == today)
+        #expect(calendar.isDate(nextSchedule.scheduledDate, inSameDayAs: tomorrow))
+    }
+
+    @Test
+    func theOccurrenceToCompleteIsTheSelectedDayWhenThatDayIsOpen() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let today = Calendar.current.startOfDay(for: fixture.schedule.scheduledDate)
+
+        let day = TaskCalendarDerivation.occurrenceToComplete(for: fixture.task, selectedDate: today)
+
+        #expect(day == today)
     }
 
     @Test

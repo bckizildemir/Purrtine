@@ -74,6 +74,7 @@ enum TaskFormPersistence {
         _ task: CareTask,
         from draft: TaskFormDraft,
         in modelContext: ModelContext,
+        openedScheduledDate: Date? = nil,
         updatedAt: Date = Date()
     ) throws {
         let title = try normalizedTitle(draft.title)
@@ -92,7 +93,11 @@ enum TaskFormPersistence {
         task.updatedAt = updatedAt
 
         if let schedule = task.schedules.first(where: { $0.isActive }) ?? task.schedules.first {
-            apply(draft, to: schedule)
+            // A date the caregiver did not change is not theirs to write back: the schedule may have
+            // moved while the form was open (a reminder completed today), and writing the opened
+            // date onto it would bring the completed day back.
+            let isDateUnchanged = openedScheduledDate == draft.scheduledDate
+            apply(draft, to: schedule, writesScheduledDate: isDateUnchanged == false)
         } else {
             let schedule = makeSchedule(from: draft)
             schedule.task = task
@@ -138,9 +143,15 @@ enum TaskFormPersistence {
         )
     }
 
-    private static func apply(_ draft: TaskFormDraft, to schedule: CareTaskSchedule) {
+    private static func apply(
+        _ draft: TaskFormDraft,
+        to schedule: CareTaskSchedule,
+        writesScheduledDate: Bool
+    ) {
         let scheduleValues = normalizedScheduleValues(from: draft)
-        schedule.scheduledDate = draft.scheduledDate
+        if writesScheduledDate {
+            schedule.scheduledDate = draft.scheduledDate
+        }
         schedule.scheduledTime = draft.scheduledTime
         schedule.frequency = draft.frequency
         schedule.frequencyInterval = scheduleValues.frequencyInterval

@@ -326,13 +326,20 @@ struct TaskCalendarView: View {
     private func handleTaskCompletion(_ task: CareTask) {
         guard hasCompletionForDate(task, date: selectedDate) == false else { return }
 
+        // The open occurrence, not the selected day: a later day would move the task past it.
+        let occurrence = TaskCalendarDerivation.occurrenceToComplete(
+            for: task,
+            selectedDate: selectedDate,
+            calendar: calendar
+        )
+
         if task.assignedCats.count > 1 {
             // For multi-cat tasks, show completion sheet
-            viewModel.presentTaskCompletion(task, completedForDate: selectedDate)
+            viewModel.presentTaskCompletion(task, completedForDate: occurrence)
         } else {
             // Complete directly for single cat or no specific cat
             let cats = task.assignedCats.first.map { [$0] } ?? []
-            viewModel.completeCareTask(task, for: cats, by: nil, completedForDate: selectedDate)
+            viewModel.completeCareTask(task, for: cats, by: nil, completedForDate: occurrence)
         }
     }
     

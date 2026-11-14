@@ -930,6 +930,92 @@ struct TaskAssistantViewModelTests {
         return defaults
     }
 
+    /// The card was made while today was due; the task was then completed in the list, so tomorrow
+    /// is due now. Confirm must not complete tomorrow, which nobody did.
+    @Test
+    func confirmingACompletionAfterTheTaskWasCompletedElsewhereRecordsNothing() async throws {
+        let fixture = try makeDailyFixture()
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(task: fixture.task, completedForDate: nil, notes: nil, cats: [])
+        )
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let nextSchedule = try #require(fixture.task.activeSchedule)
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(fixture.task.activeSchedule?.id == nextSchedule.id)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.messages.last?.text == TaskActionError.occurrenceNotOpen.localizedDescription)
+    }
+
+    /// "I fed her yesterday" after yesterday was completed in the list: the day is not recorded twice.
+    @Test
+    func confirmingADayThatAlreadyHasACompletionRecordsNothing() async throws {
+        let fixture = try makeDailyFixture()
+        let completedDay = fixture.schedule.scheduledDate
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(task: fixture.task, completedForDate: completedDay, notes: nil, cats: [])
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(sut.messages.last?.style == .failure)
+    }
+
+    @Test
+    func confirmingACompletionOfTheTaskAsShownRecordsIt() async throws {
+        let fixture = try makeDailyFixture()
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(task: fixture.task, completedForDate: nil, notes: nil, cats: [])
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(sut.messages.last?.style != .failure)
+    }
+
+    private func makeDailyFixture() throws -> (
+        container: ModelContainer,
+        context: ModelContext,
+        task: CareTask,
+        schedule: CareTaskSchedule,
+        writer: CareTaskWriter
+    ) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let cat = Cat(name: "Luna")
+        let caregiver = Caregiver(name: "Primary Caregiver", role: .primary)
+        let task = CareTask(title: "Feed Luna", category: .feeding)
+        let schedule = CareTaskSchedule(
+            scheduledDate: Calendar.current.startOfDay(for: Date()),
+            frequency: .daily,
+            frequencyInterval: 1
+        )
+        task.assignedCats = [cat]
+        task.assignedCaregiver = caregiver
+        schedule.task = task
+        task.schedules = [schedule]
+        context.insert(cat)
+        context.insert(caregiver)
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task, schedule, CareTaskWriter(scheduler: NotificationSchedulerSpy()))
+    }
+
     private func makeFixture() throws -> (container: ModelContainer, task: CareTask) {
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext

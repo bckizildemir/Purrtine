@@ -5,9 +5,12 @@ enum TaskActionError: LocalizedError, Equatable {
     case taskNotFound
     case caregiverUnavailable
     case invalidPostponeMinutes
+    case occurrenceNotOpen
 
     var errorDescription: String? {
         switch self {
+        case .occurrenceNotOpen:
+            String(localized: .errorTaskActionOccurrenceNotOpen)
         case .taskNotFound:
             String(localized: .errorTaskActionTaskNotFound)
         case .caregiverUnavailable:
@@ -30,6 +33,11 @@ enum TaskActionService {
         return try context.fetch(descriptor).first
     }
 
+    /// The day `task` is due now: the day of its active schedule, or `nil` when it has none.
+    static func openOccurrence(of task: CareTask) -> Date? {
+        task.activeSchedule.map { Calendar.current.startOfDay(for: $0.scheduledDate) }
+    }
+
     /// Records a completion of `task` in `context` without saving it.
     static func recordCompletion(
         of task: CareTask,
@@ -43,6 +51,8 @@ enum TaskActionService {
         ) else {
             throw TaskActionError.caregiverUnavailable
         }
+
+        try validateOccurrence(of: task, for: input)
 
         let activeSchedule = task.activeSchedule
         let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate)
@@ -83,6 +93,33 @@ enum TaskActionService {
     }
 
     // MARK: - Helpers
+
+    /// The one check every completion path shares, run before anything is recorded: a completion
+    /// names an occurrence only when the caller was shown it, and that occurrence must be the one
+    /// open now. Otherwise recording it would skip the open day (a later day), credit a day twice
+    /// (a day that already has a completion), or complete a day nobody saw (a stale reminder or
+    /// Whiskers card). A completion that names no day completes the open occurrence, as before.
+    private static func validateOccurrence(of task: CareTask, for input: CareTaskCompletionInput) throws {
+        let calendar = Calendar.current
+        let openDay = openOccurrence(of: task)
+
+        if let expected = input.expectedOccurrence {
+            guard openDay == calendar.startOfDay(for: expected) else {
+                throw TaskActionError.occurrenceNotOpen
+            }
+        }
+
+        if let explicit = input.completedForDate {
+            let day = calendar.startOfDay(for: explicit)
+            if let openDay, day > openDay {
+                throw TaskActionError.occurrenceNotOpen
+            }
+            if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
+                throw TaskActionError.occurrenceNotOpen
+            }
+        }
+    }
+
     private static func resolveCaregiver(
         for task: CareTask,
         preferred caregiver: Caregiver?,

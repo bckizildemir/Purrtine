@@ -61,6 +61,65 @@ struct NotificationActionCoordinatorTests {
         #expect(fixture.spy.removedDeliveredTaskIds == [fixture.task.id])
     }
 
+    /// Yesterday's reminder is still on the lock screen after yesterday was completed in the app.
+    /// Today's occurrence is open now, and the stale Complete must not record it.
+    @Test
+    func completeActionForAnOccurrenceAlreadyCompletedRecordsNothing() async throws {
+        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let yesterdaysOccurrence = fixture.schedule.scheduledDate
+        _ = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
+        let resyncsBefore = fixture.spy.resyncCount
+
+        let result = await fixture.coordinator.handle(
+            .complete,
+            taskId: fixture.task.id,
+            occurrence: yesterdaysOccurrence
+        )
+        let task = try #require(try fetchTask(id: fixture.task.id, in: fixture.container))
+
+        #expect(result.didPerformAction == false)
+        #expect(task.completions.count == 1)
+        #expect(task.activeSchedule?.scheduledDate != yesterdaysOccurrence)
+        #expect(fixture.spy.resyncCount == resyncsBefore)
+    }
+
+    /// Yesterday is still open, today's reminder fires and the caregiver taps Complete on it.
+    /// Recording today would skip yesterday, and recording yesterday credits the wrong day.
+    @Test
+    func completeActionForALaterOccurrenceThanTheOpenOneRecordsNothing() async throws {
+        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let laterOccurrence = try #require(
+            Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate)
+        )
+
+        let result = await fixture.coordinator.handle(
+            .complete,
+            taskId: fixture.task.id,
+            occurrence: laterOccurrence
+        )
+        let task = try #require(try fetchTask(id: fixture.task.id, in: fixture.container))
+
+        #expect(result.didPerformAction == false)
+        #expect(task.completions.isEmpty)
+        #expect(task.activeSchedule?.id == fixture.schedule.id)
+    }
+
+    @Test
+    func completeActionForTheOpenOccurrenceRecordsIt() async throws {
+        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+
+        let result = await fixture.coordinator.handle(
+            .complete,
+            taskId: fixture.task.id,
+            occurrence: fixture.schedule.scheduledDate
+        )
+        let task = try #require(try fetchTask(id: fixture.task.id, in: fixture.container))
+
+        #expect(result.didPerformAction)
+        #expect(task.completions.count == 1)
+        #expect(task.activeSchedule?.id != fixture.schedule.id)
+    }
+
     @Test
     func snoozeActionCreatesExpectedDelayedRequest() async throws {
         let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)

@@ -536,7 +536,14 @@ final class TaskAssistantViewModel {
             // A failure is already in the chat; this path has no sheet to keep open.
             try? await complete(
                 task,
-                with: CareTaskCompletionInput(cats: selectedCats, completedForDate: completedForDate, notes: notes),
+                with: CareTaskCompletionInput(
+                    cats: selectedCats,
+                    completedForDate: completedForDate,
+                    notes: notes,
+                    // The day the card was made for: a task completed elsewhere meanwhile is not
+                    // completed again for its next day.
+                    expectedOccurrence: pendingConfirmation.openOccurrence
+                ),
                 in: context
             )
             return .none

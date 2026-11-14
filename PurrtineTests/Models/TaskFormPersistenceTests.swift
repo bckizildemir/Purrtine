@@ -313,6 +313,104 @@ struct TaskFormPersistenceTests {
         #expect(schedule.frequency == .daily)
     }
 
+    /// Edit Task opens with today's date, today is completed from the reminder, then Save without
+    /// touching the date. The form must not write the stale date back onto the new active schedule.
+    @Test
+    func savingWithoutChangingTheDateKeepsTheScheduleThatMovedWhileTheFormWasOpen() throws {
+        let fixture = try makeCompletableFixture()
+        let openedDate = fixture.schedule.scheduledDate
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let movedSchedule = try #require(fixture.task.activeSchedule)
+        let movedDate = movedSchedule.scheduledDate
+
+        try TaskFormPersistence.updateTask(
+            fixture.task,
+            from: makeDraft(scheduledDate: openedDate, title: "Feed Mochi (edited)"),
+            in: fixture.context,
+            openedScheduledDate: openedDate
+        )
+
+        #expect(fixture.task.title == "Feed Mochi (edited)")
+        #expect(fixture.task.activeSchedule?.id == movedSchedule.id)
+        #expect(movedSchedule.scheduledDate == movedDate)
+        #expect(movedDate > openedDate)
+    }
+
+    @Test
+    func savingWithAChangedDateWritesItEvenWhenTheScheduleMoved() throws {
+        let fixture = try makeCompletableFixture()
+        let openedDate = fixture.schedule.scheduledDate
+        let chosenDate = try #require(Calendar.current.date(byAdding: .day, value: 5, to: openedDate))
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        try TaskFormPersistence.updateTask(
+            fixture.task,
+            from: makeDraft(scheduledDate: chosenDate, title: "Feed Mochi"),
+            in: fixture.context,
+            openedScheduledDate: openedDate
+        )
+
+        #expect(fixture.task.activeSchedule?.scheduledDate == chosenDate)
+    }
+
+    @Test
+    func savingWithoutAnOpenedDateStillWritesTheDraftDate() throws {
+        let fixture = try makeCompletableFixture()
+        let chosenDate = try #require(Calendar.current.date(byAdding: .day, value: 2, to: fixture.schedule.scheduledDate))
+
+        try TaskFormPersistence.updateTask(
+            fixture.task,
+            from: makeDraft(scheduledDate: chosenDate, title: "Feed Mochi"),
+            in: fixture.context
+        )
+
+        #expect(fixture.schedule.scheduledDate == chosenDate)
+    }
+
+    private func makeCompletableFixture() throws -> (
+        container: ModelContainer,
+        context: ModelContext,
+        task: CareTask,
+        schedule: CareTaskSchedule
+    ) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let caregiver = Caregiver(name: "Alex", role: .primary)
+        let task = CareTask(title: "Feed Mochi", category: .feeding)
+        let schedule = CareTaskSchedule(
+            scheduledDate: Calendar.current.startOfDay(for: Date()),
+            frequency: .daily,
+            frequencyInterval: 1
+        )
+        schedule.task = task
+        task.schedules = [schedule]
+        task.assignedCaregiver = caregiver
+        context.insert(caregiver)
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task, schedule)
+    }
+
+    private func makeDraft(scheduledDate: Date, title: String) -> TaskFormDraft {
+        TaskFormDraft(
+            title: title,
+            taskDescription: "",
+            category: .feeding,
+            iconName: "fork.knife",
+            priority: .medium,
+            assignedCats: [],
+            assignedCaregiver: nil,
+            scheduledDate: scheduledDate,
+            scheduledTime: nil,
+            frequency: .daily,
+            frequencyInterval: 1,
+            endDate: nil,
+            reminderMinutes: nil,
+            customDays: nil
+        )
+    }
+
     private func makeDate(
         year: Int,
         month: Int,
