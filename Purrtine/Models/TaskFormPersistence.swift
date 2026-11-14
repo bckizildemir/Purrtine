@@ -96,7 +96,10 @@ enum TaskFormPersistence {
             // A date the caregiver did not change is not theirs to write back: the schedule may have
             // moved while the form was open (a reminder completed today), and writing the opened
             // date onto it would bring the completed day back.
-            let isDateUnchanged = openedScheduledDate == draft.scheduledDate
+            // Compared by day: tapping the same day in the date picker again can change its time.
+            let isDateUnchanged = openedScheduledDate.map {
+                Calendar.current.isDate($0, inSameDayAs: draft.scheduledDate)
+            } ?? false
             apply(draft, to: schedule, writesScheduledDate: isDateUnchanged == false)
         } else {
             let schedule = makeSchedule(from: draft)

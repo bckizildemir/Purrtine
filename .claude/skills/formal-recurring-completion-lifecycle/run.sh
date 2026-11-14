@@ -47,13 +47,14 @@ Purrtine/Utilities/NotificationActionCoordinator.swift|let input = CareTaskCompl
 Purrtine/Utilities/NotificationManager.swift|content.userInfo[Self.occurrenceDateKey] = occurrenceDate.timeIntervalSince1970
 Purrtine/Utilities/NotificationManager.swift|let occurrence = (userInfo[Self.occurrenceDateKey] as? Double).map(Date.init(timeIntervalSince1970:))
 Purrtine/Utilities/TaskActionService.swift|try validateOccurrence(of: task, for: input)
-Purrtine/Utilities/TaskActionService.swift|guard openDay == calendar.startOfDay(for: expected) else {
+Purrtine/Utilities/TaskActionService.swift|if let expected, openDay != calendar.startOfDay(for: expected) {
+Purrtine/Utilities/CareTaskWriter.swift|try TaskActionService.refreshFromStore(task, in: context)
 Purrtine/Utilities/TaskActionService.swift|if let openDay, day > openDay {
 Purrtine/Utilities/TaskActionService.swift|if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
 Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence = TaskActionService.openOccurrence(of: task)
 Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence: TaskActionService.openOccurrence(of: task)
 Purrtine/Models/TaskAssistantViewModel.swift|expectedOccurrence: pendingConfirmation.openOccurrence
-Purrtine/Models/TaskFormPersistence.swift|let isDateUnchanged = openedScheduledDate == draft.scheduledDate
+Purrtine/Models/TaskFormPersistence.swift|Calendar.current.isDate($0, inSameDayAs: draft.scheduledDate)
 Purrtine/Models/TaskFormPersistence.swift|if writesScheduledDate {
 Purrtine/Views/Tasks/TaskCalendarView.swift|guard hasCompletionForDate(task, date: selectedDate) == false else { return }
 Purrtine/Models/TaskCalendarPresentation.swift|calendar.isDate(occurrence, inSameDayAs: date) else {

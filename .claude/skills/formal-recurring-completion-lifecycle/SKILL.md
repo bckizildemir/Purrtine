@@ -101,7 +101,7 @@ refused rather than mapped to the open one, which would break `CompletesTheOccur
 | `OpenEditForm` / `SaveEditForm` | `TaskFormPersistence.updateTask` (`schedules.first(where: isActive) ?? schedules.first`, `apply`, date written only when changed) |
 | `DeleteTask` / `DeleteCat` | `CareTaskWriter.delete` (cascade); `CatDeletionService.delete` (`assignedCats.count <= 1` deleted, shared kept) |
 | `CompletionFindsNoTask` | `fetchTask` → `taskNotFound` |
-| `Valid` / `CompletionRefused` | `TaskActionService.validateOccurrence` → `TaskActionError.occurrenceNotOpen` |
+| `Valid` / `CompletionRefused` | `TaskActionService.validateOccurrence` / `canComplete` (shared `isOccurrenceAccepted`) → `TaskActionError.occurrenceNotOpen` |
 | `expect` in a request | `CareTaskCompletionInput.expectedOccurrence`: `TaskCompletionRequest`, `handleCompletionAction`, `TaskAssistantConfirmation.openOccurrence`, `NotificationManager.occurrenceDateKey` |
 
 `run.sh` lists the exact anchor lines per file.
@@ -118,9 +118,12 @@ sync commit forward only after you re-read those changes and confirm the model s
   lifecycle only needs `nextOccurrence` to be monotone and never earlier than the anchor, which they share.
 - **One commit is one step.** `recordCompletion` and `save()` run on the main actor with no `await` between them
   (`CareTaskWriter.commit`), and the reminder path fetches and commits in the same step.
-- **Shared-store assumption.** Every commit reads the store as it is now: the main context sees a save made
-  by `NotificationActionCoordinator`'s own context. If SwiftData did not merge it, the in-app paths would act on
-  a stale task, which the model does not explore (finding 3 depends on the merge).
+- **Shared-store assumption.** Every commit reads the store as it is now. Measured in #141: the main context
+  does NOT refresh objects it already holds after another context saves (a held task kept its old schedule
+  active). `CareTaskWriter.complete` therefore runs `TaskActionService.refreshFromStore` (re-fetches this
+  task and its schedules) before its undo snapshot and the occurrence check; tests pin it
+  (`NotificationActionCoordinatorTests`). `TaskFormPersistence` (Edit Task) has no such refresh; its
+  unchanged-date rule covers the date.
 - Edit Task is modal: while it is open only a reminder action can complete (`OnScreen`). The list sheet and the
   calendar share one `taskCompletionRequest`. The caregiver picks a new date from today on, or keeps the shown one.
 - A completion reaching a deleted task writes nothing. For the reminder path this is `taskNotFound`; for a stale

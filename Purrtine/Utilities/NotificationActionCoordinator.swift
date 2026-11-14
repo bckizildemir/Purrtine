@@ -73,7 +73,11 @@ final class NotificationActionCoordinator {
                     return NotificationActionResult(didPerformAction: false)
                 }
 
-                try await taskWriter.snooze(try fetchTask(taskId, in: context), minutes: minutes)
+                try await taskWriter.snooze(
+                    try fetchTask(taskId, in: context),
+                    minutes: minutes,
+                    occurrence: occurrence
+                )
             }
 
             return NotificationActionResult(didPerformAction: true)

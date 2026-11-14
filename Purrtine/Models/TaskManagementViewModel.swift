@@ -458,23 +458,41 @@ final class TaskManagementViewModel {
         taskCompletionRequest = nil
     }
 
+    /// Presents the sheet for a multi-cat task and returns `nil`; otherwise completes at once and
+    /// returns the task doing it.
     @discardableResult
-    func handleCompletionAction(for task: CareTask, completedForDate: Date? = nil) -> Bool {
+    func handleCompletionAction(for task: CareTask, completedForDate: Date? = nil) -> Task<Void, Never>? {
         if task.assignedCats.count > 1 {
             presentTaskCompletion(task, completedForDate: completedForDate)
-            return false
+            return nil
         }
 
         let cats = task.assignedCats.isEmpty ? [] : [task.assignedCats.first!]
-        // The day due at the tap: a list that is out of date completes nothing instead of the next day.
-        completeCareTask(
+        // Pins the day due at the tap. The row is read from the same store, so this only guards a
+        // change between the tap and the commit, not a row that was already out of date.
+        return completeCareTask(
             task,
             for: cats,
             by: nil,
             completedForDate: completedForDate,
             expectedOccurrence: TaskActionService.openOccurrence(of: task)
         )
-        return true
+    }
+
+    /// A Complete tap in the calendar for the selected `day`. A day the task cannot be completed for
+    /// (one after the open occurrence, or one already done) is refused here with the alert the one-tap
+    /// path shows, before any sheet opens.
+    func handleCalendarCompletion(of task: CareTask, on day: Date) {
+        guard TaskActionService.canComplete(task, on: day) else {
+            raiseActionFailure(.occurrenceNotOpen)
+            return
+        }
+        if task.assignedCats.count > 1 {
+            presentTaskCompletion(task, completedForDate: day)
+        } else {
+            let cats = task.assignedCats.first.map { [$0] } ?? []
+            completeCareTask(task, for: cats, by: nil, completedForDate: day)
+        }
     }
     
     // MARK: - Navigation Handling

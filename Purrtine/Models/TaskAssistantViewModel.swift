@@ -522,7 +522,8 @@ final class TaskAssistantViewModel {
                     task: task,
                     completedForDate: completedForDate,
                     initialNotes: notes,
-                    initialSelectedCats: selectedCats
+                    initialSelectedCats: selectedCats,
+                    expectedOccurrence: pendingConfirmation.openOccurrence
                 )
                 messages.append(
                     TaskAssistantMessage(
@@ -588,6 +589,7 @@ final class TaskAssistantViewModel {
         notes: String?,
         photos: [UIImage]?,
         completedForDate: Date?,
+        expectedOccurrence: Date? = nil,
         in context: ModelContext
     ) async throws {
         isProcessing = true
@@ -607,7 +609,8 @@ final class TaskAssistantViewModel {
                     caregiver: selectedCaregiver,
                     completedForDate: completedForDate,
                     notes: notes,
-                    photoURLs: savedPhotos.fileNames
+                    photoURLs: savedPhotos.fileNames,
+                    expectedOccurrence: expectedOccurrence
                 ),
                 in: context
             )

@@ -172,6 +172,39 @@ struct TaskActionServiceTests {
         #expect(fixture.task.completions.count == 1)
     }
 
+    /// `canComplete` is what a view asks before it opens a sheet for a day. It must say yes exactly
+    /// when `recordCompletion` would accept that day: the day before the open one, the open day, and
+    /// the day after it.
+    @Test(arguments: [-1, 0, 1])
+    func canCompleteAgreesWithRecordCompletion(dayOffset: Int) throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let day = try #require(Calendar.current.date(byAdding: .day, value: dayOffset, to: fixture.schedule.scheduledDate))
+        let canComplete = TaskActionService.canComplete(fixture.task, on: day)
+
+        var isRecorded = true
+        do {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(completedForDate: day),
+                in: fixture.context
+            )
+        } catch {
+            isRecorded = false
+        }
+
+        #expect(canComplete == isRecorded)
+        #expect(canComplete == (dayOffset <= 0))
+    }
+
+    @Test
+    func canCompleteIsFalseForADayThatAlreadyHasACompletion() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let completedDay = fixture.schedule.scheduledDate
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        #expect(TaskActionService.canComplete(fixture.task, on: completedDay) == false)
+    }
+
     /// Builds its own timed schedule instead of leaning on `makeFixture`, so the invariant survives
     /// any future change to the fixture's anchor. A midnight-anchored fixture is what previously let
     /// a same-day-repeat regression reach `main` unnoticed.

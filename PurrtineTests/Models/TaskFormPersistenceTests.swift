@@ -336,6 +336,28 @@ struct TaskFormPersistenceTests {
         #expect(movedDate > openedDate)
     }
 
+    /// Tapping the same day again in the date picker can change its time of day. That is still the
+    /// day the form opened with, so it is not written back over a schedule that moved meanwhile.
+    @Test
+    func savingTheSameDayAtAnotherTimeKeepsTheScheduleThatMovedWhileTheFormWasOpen() throws {
+        let fixture = try makeCompletableFixture()
+        let openedDate = fixture.schedule.scheduledDate
+        let sameDayLater = try #require(Calendar.current.date(byAdding: .minute, value: 615, to: openedDate))
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let movedSchedule = try #require(fixture.task.activeSchedule)
+        let movedDate = movedSchedule.scheduledDate
+
+        try TaskFormPersistence.updateTask(
+            fixture.task,
+            from: makeDraft(scheduledDate: sameDayLater, title: "Feed Mochi"),
+            in: fixture.context,
+            openedScheduledDate: openedDate
+        )
+
+        #expect(movedSchedule.scheduledDate == movedDate)
+        #expect(movedDate > openedDate)
+    }
+
     @Test
     func savingWithAChangedDateWritesItEvenWhenTheScheduleMoved() throws {
         let fixture = try makeCompletableFixture()

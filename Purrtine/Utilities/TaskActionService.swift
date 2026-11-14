@@ -33,6 +33,19 @@ enum TaskActionService {
         return try context.fetch(descriptor).first
     }
 
+    /// Reads `task`'s own rows (the task and its schedules) from the store, so the objects `context`
+    /// already holds show what another context committed since, such as a reminder's Complete (#141).
+    /// Without it, a held schedule still says it is active and the same day would be recorded twice.
+    /// A fetch does not discard a change staged in `context` and not yet saved. It covers only this
+    /// task; new completions arrive through the task's relationship.
+    static func refreshFromStore(_ task: CareTask, in context: ModelContext) throws {
+        let id = task.id
+        var taskDescriptor = FetchDescriptor<CareTask>(predicate: #Predicate { $0.id == id })
+        taskDescriptor.fetchLimit = 1
+        _ = try context.fetch(taskDescriptor)
+        _ = try context.fetch(FetchDescriptor<CareTaskSchedule>(predicate: #Predicate { $0.task?.id == id }))
+    }
+
     /// The day `task` is due now: the day of its active schedule, or `nil` when it has none.
     static func openOccurrence(of task: CareTask) -> Date? {
         task.activeSchedule.map { Calendar.current.startOfDay(for: $0.scheduledDate) }
@@ -100,24 +113,45 @@ enum TaskActionService {
     /// (a day that already has a completion), or complete a day nobody saw (a stale reminder or
     /// Whiskers card). A completion that names no day completes the open occurrence, as before.
     private static func validateOccurrence(of task: CareTask, for input: CareTaskCompletionInput) throws {
+        guard isOccurrenceAccepted(
+            of: task,
+            expected: input.expectedOccurrence,
+            completedForDate: input.completedForDate
+        ) else {
+            throw TaskActionError.occurrenceNotOpen
+        }
+    }
+
+    /// Whether `recordCompletion` would accept a completion of `task` for `day`. A view asks this
+    /// before it opens a sheet for a day, so it refuses at once instead of on submit. It runs the
+    /// same rules as `validateOccurrence`, so the two cannot drift.
+    static func canComplete(_ task: CareTask, on day: Date) -> Bool {
+        isOccurrenceAccepted(of: task, expected: nil, completedForDate: day)
+    }
+
+    /// The rules behind `validateOccurrence` and `canComplete`.
+    private static func isOccurrenceAccepted(
+        of task: CareTask,
+        expected: Date?,
+        completedForDate explicit: Date?
+    ) -> Bool {
         let calendar = Calendar.current
         let openDay = openOccurrence(of: task)
 
-        if let expected = input.expectedOccurrence {
-            guard openDay == calendar.startOfDay(for: expected) else {
-                throw TaskActionError.occurrenceNotOpen
-            }
+        if let expected, openDay != calendar.startOfDay(for: expected) {
+            return false
         }
 
-        if let explicit = input.completedForDate {
+        if let explicit {
             let day = calendar.startOfDay(for: explicit)
             if let openDay, day > openDay {
-                throw TaskActionError.occurrenceNotOpen
+                return false
             }
             if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
-                throw TaskActionError.occurrenceNotOpen
+                return false
             }
         }
+        return true
     }
 
     private static func resolveCaregiver(

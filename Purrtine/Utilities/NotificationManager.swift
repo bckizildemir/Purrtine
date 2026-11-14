@@ -118,6 +118,9 @@ struct NotificationScheduleInfo: Sendable {
     let endDate: Date?
     let customDays: [Int]?
     let reminderMinutes: Int?
+    /// A snooze only: the due date of the reminder it postpones, written to its content as
+    /// `NotificationManager.occurrenceDateKey` so its Complete action completes that day (#141).
+    var occurrenceDate: Date?
 }
 
 enum NotificationDelayError: Error, Equatable {
@@ -772,7 +775,7 @@ final class NotificationManager:
             throw NotificationSchedulingError.unauthorized
         }
 
-        let content = createNotificationContent(for: info)
+        let content = createNotificationContent(for: info, occurrenceDate: info.occurrenceDate)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delayInterval, repeats: false)
         let request = UNNotificationRequest(
             identifier: "snooze_\(info.taskId.uuidString)_\(Int(Date().timeIntervalSince1970))",

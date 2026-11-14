@@ -16,6 +16,7 @@ final class CareTaskWriterSpy: CareTaskWriting {
     private(set) var deletedTaskIds: [UUID] = []
     private(set) var completions: [(task: CareTask, input: CareTaskCompletionInput)] = []
     private(set) var snoozes: [(task: CareTask, minutes: Int)] = []
+    private(set) var snoozeOccurrences: [Date?] = []
     private(set) var refreshedTaskIds: [[UUID]] = []
 
     func save(_ task: CareTask, in context: ModelContext) async throws {
@@ -40,8 +41,9 @@ final class CareTaskWriterSpy: CareTaskWriting {
         }
     }
 
-    func snooze(_ task: CareTask, minutes: Int) async throws {
+    func snooze(_ task: CareTask, minutes: Int, occurrence: Date?) async throws {
         snoozes.append((task, minutes))
+        snoozeOccurrences.append(occurrence)
     }
 
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws {

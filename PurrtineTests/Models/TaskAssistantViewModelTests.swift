@@ -987,6 +987,74 @@ struct TaskAssistantViewModelTests {
         #expect(sut.messages.last?.style != .failure)
     }
 
+    /// The detailed sheet carries the day the card was made for. The task is completed elsewhere while
+    /// the sheet is open, so tomorrow is due now, and submitting the sheet must not complete tomorrow.
+    ///
+    /// The request is built by hand: `requiresDetailedCompletion` never returns true today (a
+    /// multi-cat task with no chosen cats gets all its cats), so `confirmPendingAction` cannot open
+    /// the sheet. The card-to-request copy of the day is one line there; this test covers the submit.
+    @Test
+    func theAssistantSheetRecordsNothingAfterTheTaskWasCompletedElsewhere() async throws {
+        let fixture = try makeDailyFixture()
+        let secondCat = Cat(name: "Mochi")
+        fixture.context.insert(secondCat)
+        fixture.task.assignedCats.append(secondCat)
+        let today = Calendar.current.startOfDay(for: fixture.schedule.scheduledDate)
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        let request = TaskAssistantCompletionRequest(
+            task: fixture.task,
+            completedForDate: nil,
+            initialNotes: nil,
+            initialSelectedCats: fixture.task.assignedCats,
+            expectedOccurrence: TaskActionService.openOccurrence(of: fixture.task)
+        )
+        sut.taskCompletionRequest = request
+        #expect(request.expectedOccurrence == today)
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        let tomorrowsSchedule = try #require(fixture.task.activeSchedule)
+
+        await #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try await sut.completeDetailedTask(
+                task: request.task,
+                selectedCats: request.initialSelectedCats,
+                selectedCaregiver: nil,
+                notes: nil,
+                photos: nil,
+                completedForDate: request.completedForDate,
+                expectedOccurrence: request.expectedOccurrence,
+                in: fixture.context
+            )
+        }
+
+        #expect(fixture.task.completions.count == 1)
+        #expect(fixture.task.activeSchedule?.id == tomorrowsSchedule.id)
+        #expect(sut.messages.last?.style == .failure)
+    }
+
+    /// "I fed her yesterday" while today is open: yesterday is recorded and today stays due. This is
+    /// the accepted side of the rule that an explicit day must not be after the open one.
+    @Test
+    func confirmingYesterdayWhileTodayIsOpenRecordsYesterdayAndKeepsTodayDue() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: fixture.schedule.scheduledDate)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(task: fixture.task, completedForDate: yesterday, notes: nil, cats: [])
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(fixture.task.completions.count == 1)
+        #expect(completion.completedForDate == yesterday)
+        #expect(TaskActionService.openOccurrence(of: fixture.task) == today)
+        #expect(sut.messages.last?.style != .failure)
+    }
+
     private func makeDailyFixture() throws -> (
         container: ModelContainer,
         context: ModelContext,

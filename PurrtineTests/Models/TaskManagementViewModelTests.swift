@@ -15,7 +15,7 @@ struct TaskManagementViewModelTests {
 
         let completedInline = sut.handleCompletionAction(for: task, completedForDate: completedForDate)
 
-        #expect(completedInline == false)
+        #expect(completedInline == nil)
         #expect(sut.taskCompletionRequest?.task.id == task.id)
         #expect(sut.taskCompletionRequest?.completedForDate == completedForDate)
         #expect(task.completions.isEmpty)
@@ -782,11 +782,40 @@ struct TaskManagementViewModelTests {
         sut.configure(with: fixture.context, tasks: [fixture.task])
         let expected = Calendar.current.startOfDay(for: try #require(fixture.task.activeSchedule).scheduledDate)
 
-        sut.handleCompletionAction(for: fixture.task)
-        // The one-tap complete runs in a task; let it reach the writer before reading the spy.
-        for _ in 0..<20 where spy.completions.isEmpty { await Task.yield() }
+        await sut.handleCompletionAction(for: fixture.task)?.value
 
         #expect(spy.completions.first?.input.expectedOccurrence == expected)
+    }
+
+    /// Calendar path, two cats: a later selected day is refused before the sheet opens, with the alert
+    /// the one-tap path shows, not after the caregiver filled the sheet in.
+    @Test
+    func aLaterCalendarDayForAMultiCatTaskIsRefusedBeforeTheSheetOpens() async throws {
+        let fixture = try makeRecurringFixture()
+        fixture.task.assignedCats = [Cat(name: "Mochi"), Cat(name: "Luna")]
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
+
+        sut.handleCalendarCompletion(of: fixture.task, on: tomorrow)
+
+        #expect(sut.taskCompletionRequest == nil)
+        #expect(sut.actionFailure == .occurrenceNotOpen)
+        #expect(sut.isShowingActionFailure)
+        #expect(fixture.task.completions.isEmpty)
+    }
+
+    @Test
+    func theOpenCalendarDayForAMultiCatTaskOpensTheSheet() throws {
+        let fixture = try makeRecurringFixture()
+        fixture.task.assignedCats = [Cat(name: "Mochi"), Cat(name: "Luna")]
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+
+        sut.handleCalendarCompletion(of: fixture.task, on: fixture.schedule.scheduledDate)
+
+        #expect(sut.taskCompletionRequest?.task === fixture.task)
+        #expect(sut.actionFailure == nil)
     }
 
     private func makeRecurringFixture() throws -> (
