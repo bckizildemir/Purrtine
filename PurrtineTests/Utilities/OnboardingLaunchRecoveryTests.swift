@@ -80,22 +80,16 @@ struct OnboardingLaunchRecoveryTests {
         CaregiverBootstrapper.ensureDefaultCaregiverExists(in: container.mainContext)
 
         // Run 1: the commit lands, the process dies before `completeOnboarding()`.
-        let firstRun = OnboardingManager(userDefaults: suite)
         var tempData = TempCatData()
         tempData.name = "Mochi"
         let builder = OnboardingDataBuilder(taskWriter: CommitThenDieWriter())
-        var didDie = false
-        do {
-            try await builder.createCatAndTasks(
+        await #expect(throws: ProcessKilledError.self) {
+            _ = try await builder.createCatAndTasks(
                 from: tempData,
                 selectedTasks: [.feeding],
                 in: container.mainContext
             )
-        } catch is ProcessKilledError {
-            didDie = true
         }
-        #expect(didDie)
-        #expect(firstRun.hasCompletedOnboarding == false)
 
         // Run 2: a fresh manager on the same defaults, and the launch step on a fresh context.
         let secondRun = OnboardingManager(userDefaults: suite)

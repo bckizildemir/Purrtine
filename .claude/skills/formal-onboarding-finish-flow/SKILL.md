@@ -64,7 +64,7 @@ should catch it.
 | `FinishGuard` | `OnboardingTaskSetupModel.finish()`: `guard isFinishing == false else { return .alreadyFinishing }` |
 | `UnstageOnFail` | `OnboardingDataBuilder`: both `unstage(cat, [], …)` (no starter task) and `unstage(cat, tasks, …)` (first commit throws) |
 | `FlagOnlyAfterSave` | `finish()`: `completeOnboarding()` appears only in the `else` after `if outcome == .notSaved { … isShowingSaveFailure = true` |
-| `LaunchRepair` | `PurrtineApp.init` calls `OnboardingManager.shared.completeIfStoreHoldsCat(in: container.mainContext)`, and that method sets the flag only when a `Cat` fetch is not empty (#140) |
+| `LaunchRepair` | `PurrtineApp.init` calls `OnboardingManager.shared.completeIfStoreHoldsCat(in: container.mainContext)`, and that method counts cats with `let catCount = try context.fetchCount(FetchDescriptor<Cat>())` and sets the flag inside `if catCount > 0 {` (#140) |
 
 A refactor that keeps the behaviour but rewords one of these lines prints FALSE and breaks rules:
 that is a modelling miss, not a bug. Read the new code, confirm the guard still holds, and update

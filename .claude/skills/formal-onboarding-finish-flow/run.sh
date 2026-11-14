@@ -46,8 +46,9 @@ if awk '
 
 # LaunchRepair: at launch, a store that holds a cat sets hasCompletedOnboarding (#140).
 r1=$(anchor "$app" 'OnboardingManager.shared.completeIfStoreHoldsCat(in: container.mainContext)')
-r2=$(anchor "$manager" 'guard let cats = try? context.fetch(descriptor), cats.isEmpty == false else { return }')
-if [ "$r1" = TRUE ] && [ "$r2" = TRUE ]; then launch_repair=TRUE; else launch_repair=FALSE; fi
+r2=$(anchor "$manager" 'let catCount = try context.fetchCount(FetchDescriptor<Cat>())')
+r3=$(anchor "$manager" 'if catCount > 0 {')
+if [ "$r1" = TRUE ] && [ "$r2" = TRUE ] && [ "$r3" = TRUE ]; then launch_repair=TRUE; else launch_repair=FALSE; fi
 
 echo "Guards read from the code:"
 echo "  FinishGuard       = $finish_guard  (double-tap guard in finish())"
