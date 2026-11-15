@@ -61,7 +61,9 @@ Last session:
    The plan is in `docs/stage2-polish-decisions.md`.
 2. Land the formal-check fixes: #140 is done (#154); #142 is in #155, #141 in #156 (after the owner's two
    decisions). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
-3. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
+3. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
+   blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
+   It becomes ready when #2 merges.
 
 ## Waits for the owner
 
