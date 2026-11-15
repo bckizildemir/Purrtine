@@ -272,7 +272,8 @@ repo: perf work is not detectable from the shape of a diff, so the `CLAUDE.md` t
 route.
 
 **The two repos cannot contaminate each other.** A repo's `.claude/skills/` loads only for that
-repo, so Purrtine never sees TTB's project skills and TTB never sees `testflight-release`.
+repo, so Purrtine never sees TTB's project skills and TTB never sees Purrtine's (`verify-purrtine`).
+`testflight-release` moved to `~/.claude/skills` on 2026-11-13 and now serves both repos.
 The only shared tree is `~/.claude/skills`, the 21 personal skills (`swift-style-guide` among them) both repos are meant to use. A `.agents/skills/` directory inside a repo is never
 read by Claude Code at all; TTB carried an empty `.agents/` as a leftover until 2026-08-16.
 

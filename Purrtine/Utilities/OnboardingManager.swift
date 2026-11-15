@@ -1,5 +1,7 @@
 import SwiftUI
+import SwiftData
 import Foundation
+import OSLog
 
 /// Owns the onboarding flow's state. Every member is read or written from a
 /// SwiftUI view or from `AppLaunchBootstrapper.prepareProcessState`, both of
@@ -11,7 +13,9 @@ final class OnboardingManager {
     
     @ObservationIgnored
     private let userDefaults: UserDefaults
-    
+
+    private let logger = Logger(subsystem: "com.berkecankizildemir.CatCareCalendar", category: "Onboarding")
+
     // Onboarding tamamlanma durumu (artık stored property)
     var hasCompletedOnboarding: Bool {
         didSet {
@@ -39,6 +43,22 @@ final class OnboardingManager {
         tempCatData.photo = nil
     }
     
+    /// Launch-time repair for a kill between onboarding's first commit and `completeOnboarding()`
+    /// (#140): the store holds a cat but the flag is still false, and showing onboarding again would
+    /// save a second cat. The store is the truth, so the flag follows it. Call once at process launch,
+    /// never during a session, so the DEBUG "reset onboarding" keeps working.
+    func completeIfStoreHoldsCat(in context: ModelContext) {
+        guard hasCompletedOnboarding == false else { return }
+        do {
+            let catCount = try context.fetchCount(FetchDescriptor<Cat>())
+            if catCount > 0 {
+                completeOnboarding()
+            }
+        } catch {
+            logger.error("Launch recovery could not count cats: \(error.localizedDescription)")
+        }
+    }
+
     func resetOnboarding() {
         hasCompletedOnboarding = false
         currentStep = .welcome
