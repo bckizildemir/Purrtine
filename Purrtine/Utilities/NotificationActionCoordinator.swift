@@ -38,20 +38,35 @@ struct SimulatedNotificationAuthorizationChecker: NotificationAuthorizationCheck
     }
 }
 
+/// Tells the caregiver that a reminder's Complete was refused and nothing was recorded (#141).
+@MainActor
+protocol CompletionRefusalNoticePosting {
+    func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async
+}
+
+/// Posts nothing: for launches that must not touch the real notification center.
+@MainActor
+struct SilentCompletionRefusalNotice: CompletionRefusalNoticePosting {
+    func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async {}
+}
+
 @MainActor
 final class NotificationActionCoordinator {
     private let modelContainer: ModelContainer
     private let taskWriter: any CareTaskWriting
     private let authorizationChecker: NotificationAuthorizationChecking
+    private let refusalNotice: CompletionRefusalNoticePosting
 
     init(
         modelContainer: ModelContainer,
         taskWriter: any CareTaskWriting,
-        authorizationChecker: NotificationAuthorizationChecking = NotificationManager.shared
+        authorizationChecker: NotificationAuthorizationChecking = NotificationManager.shared,
+        refusalNotice: CompletionRefusalNoticePosting
     ) {
         self.modelContainer = modelContainer
         self.taskWriter = taskWriter
         self.authorizationChecker = authorizationChecker
+        self.refusalNotice = refusalNotice
     }
 
     func handle(
@@ -86,6 +101,10 @@ final class NotificationActionCoordinator {
             // them. Reporting failure here would invite a second completion of the same occurrence.
             print("❌ Reminders stale after notification action for task \(taskId): \(error.localizedDescription)")
             return NotificationActionResult(didPerformAction: true)
+        } catch TaskActionError.occurrenceNotOpen where action == .complete {
+            // The tap did nothing, and the lock screen would show nothing: say so (#141).
+            await refusalNotice.postCompletionNotRecordedNotice(forTaskId: taskId)
+            return NotificationActionResult(didPerformAction: false)
         } catch {
             print("❌ Failed to handle notification action for task \(taskId): \(error.localizedDescription)")
             return NotificationActionResult(didPerformAction: false)

@@ -6747,6 +6747,40 @@
         }
       }
     },
+    "notification.completion_refused.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That day isn't the one due now. Open Purrtine to check the task."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O gün şu an beklenen gün değil. Görevi kontrol etmek için Purrtine'i aç."
+          }
+        }
+      }
+    },
+    "notification.completion_refused.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not recorded"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedilmedi"
+          }
+        }
+      }
+    },
     "notification.nudge.body" : {
       "extractionState" : "manual",
       "localizations" : {

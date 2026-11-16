@@ -104,6 +104,71 @@ struct NotificationActionCoordinatorTests {
         #expect(task.activeSchedule?.id == fixture.schedule.id)
     }
 
+    /// After a missed day the reminder's Complete stays refused, but the caregiver is told (#141).
+    @Test
+    func aRefusedReminderCompleteTellsTheCaregiverAndRecordsNothing() async throws {
+        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let laterOccurrence = try #require(
+            Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate)
+        )
+
+        let result = await fixture.coordinator.handle(
+            .complete,
+            taskId: fixture.task.id,
+            occurrence: laterOccurrence
+        )
+        let task = try #require(try fetchTask(id: fixture.task.id, in: fixture.container))
+
+        #expect(result.didPerformAction == false)
+        #expect(fixture.refusalNotice.postedTaskIds == [fixture.task.id])
+        #expect(task.completions.isEmpty)
+        #expect(fixture.spy.resyncCount == 0)
+    }
+
+    @Test
+    func anAcceptedOrFailedForOtherReasonsActionPostsNoNotice() async throws {
+        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+
+        _ = await fixture.coordinator.handle(
+            .complete,
+            taskId: fixture.task.id,
+            occurrence: fixture.schedule.scheduledDate
+        )
+        _ = await fixture.coordinator.handle(.complete, taskId: UUID())
+
+        #expect(fixture.refusalNotice.postedTaskIds.isEmpty)
+    }
+
+    @Test
+    func theNoticeIsOneStableRequestPerTaskAndNamesNoTask() async throws {
+        let center = FakeUserNotificationCenterClient()
+        let manager = try await makeManager(center: center)
+        let taskId = UUID()
+
+        await manager.postCompletionNotRecordedNotice(forTaskId: taskId)
+        await manager.postCompletionNotRecordedNotice(forTaskId: taskId)
+
+        let identifiers = center.addedRequests.map(\.identifier)
+        let expected = NotificationManager.completionRefusalNoticeIdentifier(forTaskId: taskId)
+        #expect(identifiers == [expected, expected])
+        let request = try #require(center.addedRequests.first)
+        #expect(request.content.title == String(localized: .notificationCompletionRefusedTitle))
+        #expect(request.content.body == String(localized: .notificationCompletionRefusedBody))
+        #expect(request.content.userInfo["taskId"] == nil)
+        #expect(request.trigger == nil)
+    }
+
+    @Test
+    func theNoticeIsNotPostedWhileRemindersAreOff() async throws {
+        let center = FakeUserNotificationCenterClient()
+        let manager = try await makeManager(center: center)
+        manager.settings.isEnabled = false
+
+        await manager.postCompletionNotRecordedNotice(forTaskId: UUID())
+
+        #expect(center.addedRequests.isEmpty)
+    }
+
     @Test
     func completeActionForTheOpenOccurrenceRecordsIt() async throws {
         let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
@@ -228,7 +293,8 @@ struct NotificationActionCoordinatorTests {
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
             taskWriter: CareTaskWriter(scheduler: NotificationSchedulerSpy()),
-            authorizationChecker: NotificationAuthorizationCheckerSpy(status: .authorized)
+            authorizationChecker: NotificationAuthorizationCheckerSpy(status: .authorized),
+            refusalNotice: RefusalNoticeSpy()
         )
 
         try await manager.resyncCareTaskNotifications(with: NotificationScheduleInfo.activeInfos(for: task))
@@ -336,8 +402,10 @@ struct NotificationActionCoordinatorTests {
         schedule: CareTaskSchedule,
         spy: NotificationSchedulerSpy,
         authorizationChecker: NotificationAuthorizationCheckerSpy,
-        coordinator: NotificationActionCoordinator
+        coordinator: NotificationActionCoordinator,
+        refusalNotice: RefusalNoticeSpy
     ) {
+        let refusalNotice = RefusalNoticeSpy()
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
         let spy = NotificationSchedulerSpy()
@@ -346,7 +414,8 @@ struct NotificationActionCoordinatorTests {
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
             taskWriter: CareTaskWriter(scheduler: spy),
-            authorizationChecker: authorizationChecker
+            authorizationChecker: authorizationChecker,
+            refusalNotice: refusalNotice
         )
 
         let cat = Cat(name: "Mochi")
@@ -371,7 +440,7 @@ struct NotificationActionCoordinatorTests {
         context.insert(schedule)
         try context.save()
 
-        return (container, task, schedule, spy, authorizationChecker, coordinator)
+        return (container, task, schedule, spy, authorizationChecker, coordinator, refusalNotice)
     }
 
     private func makeManager(center: FakeUserNotificationCenterClient) async throws -> NotificationManager {
@@ -389,6 +458,15 @@ struct NotificationActionCoordinatorTests {
         var descriptor = FetchDescriptor<CareTask>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
+    }
+}
+
+@MainActor
+private final class RefusalNoticeSpy: CompletionRefusalNoticePosting {
+    private(set) var postedTaskIds: [UUID] = []
+
+    func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async {
+        postedTaskIds.append(taskId)
     }
 }
 

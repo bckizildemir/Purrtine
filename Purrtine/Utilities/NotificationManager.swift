@@ -160,6 +160,7 @@ final class NotificationManager:
     NSObject,
     TaskNotificationScheduling,
     NotificationAuthorizationChecking,
+    CompletionRefusalNoticePosting,
     NotificationResyncing
 {
     nonisolated static let shared: NotificationManager = MainActor.assumeIsolated {
@@ -785,6 +786,37 @@ final class NotificationManager:
 
         try await notificationCenter.add(request)
         debugLog("🛌 Snoozed notification for task \(info.taskTitle) by \(delayMinutes) minutes")
+    }
+
+    // MARK: - Refused completion notice (#141)
+
+    /// Stable identifier of a task's "not recorded" notice, so repeated refusals replace it.
+    nonisolated static func completionRefusalNoticeIdentifier(forTaskId taskId: UUID) -> String {
+        "completion_refused_\(taskId.uuidString)"
+    }
+
+    /// Posts the notice right away. It honours the Reminders setting and the system permission like
+    /// every other notification. It carries no `taskId`, so a tap opens the app and resyncs,
+    /// completions and reminder cleanup never touch it.
+    func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async {
+        guard AppLaunchConfiguration.current.disablesRealNotifications == false else { return }
+        let status = await refreshAuthorizationStatusFromSystem()
+        guard settings.isEnabled, status.allowsReminderConfiguration else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: .notificationCompletionRefusedTitle)
+        content.body = String(localized: .notificationCompletionRefusedBody)
+        content.sound = settings.soundEnabled ? .default : nil
+        let request = UNNotificationRequest(
+            identifier: Self.completionRefusalNoticeIdentifier(forTaskId: taskId),
+            content: content,
+            trigger: nil
+        )
+        do {
+            try await notificationCenter.add(request)
+        } catch {
+            print("❌ Failed to post the not-recorded notice for task \(taskId): \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Cancel Notifications

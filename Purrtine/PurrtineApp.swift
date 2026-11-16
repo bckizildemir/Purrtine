@@ -38,10 +38,15 @@ struct PurrtineApp: App {
                 configuration.disablesRealNotifications || configuration.isUnitTesting
                 ? SimulatedNotificationAuthorizationChecker()
                 : notificationManager
+            let refusalNotice: CompletionRefusalNoticePosting =
+                configuration.disablesRealNotifications || configuration.isUnitTesting
+                ? SilentCompletionRefusalNotice()
+                : notificationManager
             let coordinator = NotificationActionCoordinator(
                 modelContainer: container,
                 taskWriter: taskWriter,
-                authorizationChecker: authorizationChecker
+                authorizationChecker: authorizationChecker,
+                refusalNotice: refusalNotice
             )
 
             modelContainer = container
