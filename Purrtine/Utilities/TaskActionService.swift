@@ -84,6 +84,12 @@ enum TaskActionService {
         context.insert(completion)
 
         if let activeSchedule, activeSchedule.frequency != .once {
+            // A day before the open one (a missed day filled in late, after a later day was
+            // completed) is recorded only: moving the schedule would pull the open day back.
+            if effectiveCompletedForDate < Calendar.current.startOfDay(for: activeSchedule.scheduledDate) {
+                task.updatedAt = Date()
+                return
+            }
             handleRecurringCompletion(
                 for: task,
                 activeSchedule: activeSchedule,
@@ -144,7 +150,9 @@ enum TaskActionService {
 
         if let explicit {
             let day = calendar.startOfDay(for: explicit)
-            if let openDay, day > openDay {
+            // Any day up to and including today with no completion yet. An earlier open (missed)
+            // day does not block a later one; only days after today are refused.
+            if day > calendar.startOfDay(for: Date()) {
                 return false
             }
             if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {

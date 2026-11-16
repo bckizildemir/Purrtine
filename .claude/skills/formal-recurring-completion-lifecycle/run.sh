@@ -49,7 +49,8 @@ Purrtine/Utilities/NotificationManager.swift|let occurrence = (userInfo[Self.occ
 Purrtine/Utilities/TaskActionService.swift|try validateOccurrence(of: task, for: input)
 Purrtine/Utilities/TaskActionService.swift|if let expected, openDay != calendar.startOfDay(for: expected) {
 Purrtine/Utilities/CareTaskWriter.swift|try TaskActionService.refreshFromStore(task, in: context)
-Purrtine/Utilities/TaskActionService.swift|if let openDay, day > openDay {
+Purrtine/Utilities/TaskActionService.swift|if day > calendar.startOfDay(for: Date()) {
+Purrtine/Utilities/TaskActionService.swift|if effectiveCompletedForDate < Calendar.current.startOfDay(for: activeSchedule.scheduledDate) {
 Purrtine/Utilities/TaskActionService.swift|if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
 Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence = TaskActionService.openOccurrence(of: task)
 Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence: TaskActionService.openOccurrence(of: task)

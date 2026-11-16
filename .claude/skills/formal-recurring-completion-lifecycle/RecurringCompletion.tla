@@ -84,20 +84,26 @@ CompletionDate(r) ==
 
 (* TaskActionService.validateOccurrence (#141), run by recordCompletion before *)
 (* anything is recorded: a named expected occurrence must be the open one; an  *)
-(* explicit completedForDate must not be after the open day nor already done.  *)
+(* explicit completedForDate must not be after today nor already done (owner   *)
+(* decision 2: an earlier open, missed day does not block a later day).        *)
 Valid(r) ==
     /\ (r.expect /= None => (HasActive /\ ActiveDay = r.expect))
     /\ (r.forDate /= None =>
-          /\ (HasActive => r.forDate <= ActiveDay)
+          /\ r.forDate <= today
           /\ r.forDate \notin DoneDays)
 
 (* TaskActionService.recordCompletion + handleRecurringCompletion            *)
 (* (TaskActionService.swift:34, :128). Returns the task after the change.    *)
 Recorded(r, via) ==
     LET cfd   == CompletionDate(r)
-        entry == [for |-> cfd, seen |-> r.seen]
-    IN IF HasActive
-       THEN LET a       == ActiveI
+        entry == [for |-> cfd, seen |-> r.seen, at |-> today,
+                  named |-> (r.forDate /= None)]
+    IN IF HasActive /\ cfd < ActiveDay
+       \* a missed day filled in late: recorded only, the open day stays where it is
+       THEN [scheds |-> scheds, status |-> status,
+             done   |-> Append(done, entry @@ [next |-> None])]
+       ELSE IF HasActive
+       THEN LET a      == ActiveI
                 \* resolved from the start of the day after the completed one,
                 \* before isActive is cleared
                 nxt     == NextOccurrence(scheds[a], cfd + 1)
@@ -340,12 +346,19 @@ NeverCompletedTwice ==
 CompletesTheOccurrenceShown ==
     \A i \in DOMAIN done : done[i].for = done[i].seen
 
-\* No occurrence between the first day asked for and the due day (or the end
-\* day, once closed) disappears without a completion.
+\* A day between the first day asked for and the due day (or the end day, once closed)
+\* has a completion, or was left behind as missed because a later day was completed
+\* (owner decision 2). Nothing else makes a day disappear.
 NoOccurrenceSkipped ==
-    exists =>
-      /\ (status = "pending")   => \A d \in start..(ActiveDay - 1) : d \in DoneDays
-      /\ (status = "completed") => \A d \in start..EndDay : d \in DoneDays
+    LET Left(d) == d \in DoneDays \/ \E i \in DOMAIN done : done[i].for > d
+    IN exists =>
+      /\ (status = "pending")   => \A d \in start..(ActiveDay - 1) : Left(d)
+      /\ (status = "completed") => \A d \in start..EndDay : Left(d)
+
+\* A completion that names its day (calendar, Whiskers) is never for a day after the day
+\* it was recorded. (Completing the open day with no named day, from the list, is unchanged.)
+NoFutureDayCompleted ==
+    \A i \in DOMAIN done : done[i].named => done[i].for <= done[i].at
 
 \* A failed save leaves the task exactly as it was.
 FailedSaveChangesNothing == undoOK

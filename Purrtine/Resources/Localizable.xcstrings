@@ -4699,13 +4699,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "That day is not the one due now, so nothing was recorded. Check the task list."
+            "value" : "That day can't be recorded now (it is already done, has not come yet, or is no longer the one due), so nothing was recorded. Check the task list."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O gün şu an beklenen gün değil, bu yüzden bir şey kaydedilmedi. Görev listesine bak."
+            "value" : "O gün şu an kaydedilemez (zaten yapılmış, henüz gelmemiş ya da artık beklenen gün değil), bu yüzden bir şey kaydedilmedi. Görev listesine bak."
           }
         }
       }

@@ -34,12 +34,12 @@ It does three things, in order:
 3. **Known findings** (`findings.cfg`): each rule in `KNOWN_FINDINGS` must still break. The list is empty
    since #141. Add a rule there only for a new finding that waits for a product decision.
 
-Exit 0 means: code matches the anchors and every rule holds (about 319,000 states).
+Exit 0 means: code matches the anchors and every rule holds (about 1,107,000 states).
 
 **Read every TLC result with the `/statechart` skill**, with `RecurringCompletion.tla`, the config in
 question and `view.js` as the view (`--view`). It turns a violation into the shortest path in a caregiver's
 words and draws the chart. Use `chart.cfg` for a readable chart of the normal lifecycle (72 states);
-`promise.cfg` is too large for a chart (about 319,000 states), so for a gate break read its path in the
+`promise.cfg` is too large for a chart (about 1,107,000 states), so for a gate break read its path in the
 report. The saved output is in `charts/lifecycle/`. `/statechart` writes only to a new or empty folder: write to a fresh `--out` folder, then copy `chart.mmd` and `report.md` over.
 
 ## The rules
@@ -52,7 +52,8 @@ report. The saved output is in `charts/lifecycle/`. `/statechart` writes only to
 | `CompletedNeverReappears` | The day the task is due again is never a day already completed (unless the caregiver reopened it in Edit Task: moved the date onto or before it). | holds (#141) |
 | `NeverCompletedTwice` | No day carries two completions (same exception). | holds (#141) |
 | `CompletesTheOccurrenceShown` | The completion is recorded for the day the caregiver saw and confirmed. | holds (#141) |
-| `NoOccurrenceSkipped` | No day between the start date and the due day (or the end date, once closed) disappears without a completion. | holds (#141) |
+| `NoOccurrenceSkipped` | A day between the start date and the due day (or the end date, once closed) has a completion, or was left behind as missed because a later day was completed (owner decision 2). | holds (#141) |
+| `NoFutureDayCompleted` | A completion that names its day (calendar, Whiskers) is never for a day after today. | holds (#141) |
 
 ## Fixed findings (#141)
 
@@ -62,13 +63,19 @@ The four paths below broke the rules until #141. The fix is one check every comp
 - a caller that showed the caregiver a day passes it as `expectedOccurrence`, and it must be the open
   day: the reminder (its `userInfo` carries `occurrenceDate`), the Whiskers card (`openOccurrence` when the
   card was made), the task-list row (at the tap) and the completion sheet (when it opened);
-- an explicit `completedForDate` (calendar, Whiskers "today"/"yesterday") must not be after the open day
-  and must not already have a completion.
+- an explicit `completedForDate` (calendar, Whiskers "today"/"yesterday") must not be after today and
+  must not already have a completion (owner decision 2, 2026-11-16: an earlier open, missed day does not
+  block a later day up to today). Completing a later day leaves the earlier open days behind as missed
+  (no completion) and the open day moves past the completed day. A day before the open day, filled in late,
+  is recorded only: the open day does not move back. A reminder's Complete still names its day and must be
+  the open one (owner decision 1).
 
 A refused completion records nothing and shows "That day is not the one due now" (`CompletionRefused`).
 
 1. **`NoOccurrenceSkipped`**: completing a later day in the calendar (or Whiskers "today" on an overdue
-   task) moved the task past today. Now refused.
+   task) moved the task past today. Until owner decision 2 this was refused; now a day up to today is
+   allowed (the earlier days stay missed on purpose) and only a day after today is refused
+   (`NoFutureDayCompleted`).
 2. **`CompletesTheOccurrenceShown`**: a reminder's Complete, or a Whiskers card / sheet confirmed after the
    task was completed elsewhere, credited a different day. Now they name their day and are refused when it
    is no longer open.

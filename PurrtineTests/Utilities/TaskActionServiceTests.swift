@@ -205,6 +205,137 @@ struct TaskActionServiceTests {
         #expect(TaskActionService.canComplete(fixture.task, on: completedDay) == false)
     }
 
+    /// Owner decision 2 (#141): a missed day that is still open does not block completing a later
+    /// day up to today. Yesterday is open (missed); the caregiver completes today.
+    @Test
+    func completingTodayWhileYesterdayIsOpenLeavesYesterdayMissed() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        fixture.schedule.scheduledDate = yesterday
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+
+        #expect(TaskActionService.canComplete(fixture.task, on: today))
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context
+        )
+
+        #expect(fixture.task.completions.map(\.completedForDate) == [today])
+        #expect(TaskCalendarDerivation.hasCompletion(for: fixture.task, on: calendar.startOfDay(for: yesterday), calendar: calendar) == false)
+        let open = try #require(fixture.task.activeSchedule)
+        #expect(calendar.startOfDay(for: open.scheduledDate) == tomorrow)
+        #expect(fixture.task.schedules.filter(\.isActive).count == 1)
+    }
+
+    /// Yesterday is still open, so it can be completed on its own, and then the open day moves to today.
+    @Test
+    func theOpenMissedDayCanStillBeCompletedAndMovesTheOpenDayOn() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        fixture.schedule.scheduledDate = yesterday
+
+        try TaskActionService.recordCompletion(of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        let open = try #require(fixture.task.activeSchedule)
+        #expect(calendar.startOfDay(for: open.scheduledDate) == calendar.startOfDay(for: Date()))
+    }
+
+    /// After today was completed while yesterday was open, yesterday can still be filled in later
+    /// from the calendar; that must not pull the open day back from tomorrow.
+    @Test
+    func completingAnEarlierMissedDayLaterDoesNotMoveTheOpenDayBack() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        fixture.schedule.scheduledDate = yesterday
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context
+        )
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: yesterday),
+            in: fixture.context
+        )
+
+        #expect(fixture.task.completions.count == 2)
+        let open = try #require(fixture.task.activeSchedule)
+        #expect(calendar.startOfDay(for: open.scheduledDate) == tomorrow)
+        #expect(fixture.task.schedules.filter(\.isActive).count == 1)
+    }
+
+    /// A day after today is refused even when an earlier day is open.
+    @Test
+    func aFutureDayIsRefusedWhileAnEarlierDayIsOpen() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        fixture.schedule.scheduledDate = yesterday
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: Date()))
+
+        #expect(TaskActionService.canComplete(fixture.task, on: tomorrow) == false)
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(completedForDate: tomorrow),
+                in: fixture.context
+            )
+        }
+        #expect(fixture.task.completions.isEmpty)
+        #expect(fixture.task.activeSchedule?.id == fixture.schedule.id)
+    }
+
+    /// Today was completed with yesterday open; completing today again is refused.
+    @Test
+    func anAlreadyCompletedDayIsRefusedEvenWhenAnEarlierDayIsOpen() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        fixture.schedule.scheduledDate = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        let today = calendar.startOfDay(for: Date())
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context
+        )
+
+        #expect(TaskActionService.canComplete(fixture.task, on: today) == false)
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(completedForDate: today),
+                in: fixture.context
+            )
+        }
+        #expect(fixture.task.completions.count == 1)
+    }
+
+    /// Decision 1 stays: a reminder names its day, and a day that is not the open one is refused,
+    /// even though the same day passes as an explicit `completedForDate`.
+    @Test
+    func aReminderForALaterDayIsStillRefusedWhileAnEarlierDayIsOpen() throws {
+        let fixture = try makeFixture(frequency: .daily, endDate: nil)
+        let calendar = Calendar.current
+        fixture.schedule.scheduledDate = try #require(calendar.date(byAdding: .day, value: -1, to: fixture.schedule.scheduledDate))
+        let today = calendar.startOfDay(for: Date())
+
+        #expect(throws: TaskActionError.occurrenceNotOpen) {
+            try TaskActionService.recordCompletion(
+                of: fixture.task,
+                with: CareTaskCompletionInput(expectedOccurrence: today),
+                in: fixture.context
+            )
+        }
+        #expect(fixture.task.completions.isEmpty)
+    }
+
     /// Builds its own timed schedule instead of leaning on `makeFixture`, so the invariant survives
     /// any future change to the fixture's anchor. A midnight-anchored fixture is what previously let
     /// a same-day-repeat regression reach `main` unnoticed.
