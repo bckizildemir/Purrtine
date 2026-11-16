@@ -19,7 +19,16 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
-- 2026-11-16 (latest): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
+- 2026-11-16 (night, latest): grilling round on #1 (Deepen: the recurrence rule as a module) with the owner, then the
+  Swift-skill check (`decision-check`). Root cause named: one pair of dates (`completedForDate`, `completedAt`) does two
+  jobs, and "which day" is a loose `Date?` through ~30 spots. Four steps, in this order: #163 (fix: a completion records
+  when the care was done and which day it counts for; `ready-for-agent`), then #1, then #164 (typed day and one
+  target choice), then #165 (setting "count the next day from the day I did it", new schema version, after #2).
+  New glossary words (Occurrence, Open Occurrence, Missed Occurrence, Fill-in), the idea #162 (linked care tasks) in
+  `docs/IDEAS.md`, and the research in `docs/repeat-completion-research.md` (docs PR #166, squash-merged by the
+  agent once CI was green). Decisions are in a comment on #1. Owner
+  answers still to come: none open. The Whiskers time field needs a cloud deploy, which needs the owner's separate yes.
+- 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
   Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
   a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
   Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
@@ -83,7 +92,20 @@ Last session:
    task"; start trigger: the owner picks it. First step: open an issue.
 4. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
    blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
-   It becomes ready when #2 merges.
+   It becomes ready when #2 merges. #165 (the "count from the day I did it" setting) also needs a schema version
+   and takes the next free one; whichever merges second takes the version after it.
+5. Recurrence chain, decided 2026-11-16: #163 (fix) first, then #1, then #164, then #165 (see "Last session").
+6. Postponed by the owner 2026-11-16 (tooling, both apps): SwiftUI Preview rendering through Xcode's MCP server
+   (`xcrun mcpbridge`, tool `RenderPreview`, Xcode 26.3 or later; the host has Xcode 27.2). Step A, chosen by the
+   owner: a global `/preview` skill that renders a `#Preview` to a PNG and opens it with the `show-in-yazi` skill.
+   Step B, to follow after A: a Claude Code mod with its own pane (the mods docs:
+   https://code.claude.com/docs/en/plugins/mods/overview; the blog post that inspired it is
+   https://www.natashatherobot.com/p/faster-swiftui-development-in-claude, its mod is paid and has no repo, so build
+   our own). Start trigger for A: the owner turns on Xcode > Settings > Intelligence > Model Context Protocol >
+   "Allow external agents to use Xcode tools" and registers the server
+   (`claude mcp add --scope user --transport stdio xcode -- xcrun mcpbridge`), then restarts the session so the tool
+   is visible; write the skill from the real tool schema, not from the blog. A preview shows layout with sample
+   data only; behavior still needs `verify-purrtine`.
 
 ## Waits for the owner
 
