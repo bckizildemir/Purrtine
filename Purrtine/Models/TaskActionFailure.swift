@@ -7,6 +7,11 @@ enum TaskActionFailure: Equatable {
     /// A one-tap complete saved nothing. The task stays incomplete, so the caregiver can try again.
     case completionNotSaved
 
+    /// A complete was refused, so nothing was recorded: the day is after today, already has a
+    /// completion, or is no longer due (a list or reminder that was out of date). Trying again with
+    /// the same day fails again.
+    case occurrenceNotOpen
+
     /// A delete commit failed. The delete stays staged and lands on the next successful save, so the
     /// row stays removed and the message must not say the task was kept.
     case deletePending
@@ -15,6 +20,8 @@ enum TaskActionFailure: Equatable {
         switch self {
         case .completionNotSaved:
             String(localized: .errorDataSave)
+        case .occurrenceNotOpen:
+            String(localized: .errorTaskActionOccurrenceNotOpenTitle)
         case .deletePending:
             String(localized: .tasksDeletePendingTitle)
         }
@@ -24,6 +31,8 @@ enum TaskActionFailure: Equatable {
         switch self {
         case .completionNotSaved:
             String(localized: .errorDataSaveMessage)
+        case .occurrenceNotOpen:
+            String(localized: .errorTaskActionOccurrenceNotOpen)
         case .deletePending:
             String(localized: .tasksDeletePendingMessage)
         }

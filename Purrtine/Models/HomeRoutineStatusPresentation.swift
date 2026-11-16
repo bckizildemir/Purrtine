@@ -31,6 +31,7 @@ struct HomeRoutineStatusPresentation {
         let task: CareTask
         let activeDueDate: Date
         let lastCompletionDate: Date
+        let lastCompletionIsFillIn: Bool
         let sortPriority: Int
     }
 
@@ -43,12 +44,13 @@ struct HomeRoutineStatusPresentation {
         tasks
             .compactMap { task -> DecoratedTask? in
                 guard let activeSchedule = task.activeSchedule,
-                      let lastCompletionDate = task.lastCompletionDate else { return nil }
+                      let lastCompletion = task.lastCompletion else { return nil }
                 let dueDate = activeSchedule.effectiveDueDate
                 return DecoratedTask(
                     task: task,
                     activeDueDate: dueDate,
-                    lastCompletionDate: lastCompletionDate,
+                    lastCompletionDate: lastCompletion.performedAt(calendar: calendar),
+                    lastCompletionIsFillIn: lastCompletion.isFillIn(calendar: calendar),
                     sortPriority: sortPriority(dueDate: dueDate, referenceDate: referenceDate, calendar: calendar)
                 )
             }
@@ -66,6 +68,7 @@ struct HomeRoutineStatusPresentation {
                     ),
                     secondaryTimestampText: secondaryTimestampText(
                         lastCompletionDate: decorated.lastCompletionDate,
+                        hasTime: decorated.lastCompletionIsFillIn == false,
                         locale: locale,
                         calendar: calendar
                     ),
@@ -143,10 +146,14 @@ struct HomeRoutineStatusPresentation {
 
     private static func secondaryTimestampText(
         lastCompletionDate: Date,
+        hasTime: Bool,
         locale: Locale,
         calendar: Calendar
     ) -> String {
-        CompletionTimestamp.text(for: lastCompletionDate, locale: locale, calendar: calendar)
+        guard hasTime else {
+            return CompletionTimestamp.dayText(for: lastCompletionDate, locale: locale, calendar: calendar)
+        }
+        return CompletionTimestamp.text(for: lastCompletionDate, locale: locale, calendar: calendar)
     }
 
     private static func dueStatusText(
