@@ -19,7 +19,11 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
-- 2026-11-16 (night, latest): grilling round on #1 (Deepen: the recurrence rule as a module) with the owner, then the
+- 2026-11-16 (night, lessons): `session-lessons` after the #1 grilling. Written: owner preferences that must hold in
+  every folder go in `~/.claude/CLAUDE.md` or a skill, not project memory; keep a recommendation stable between
+  rounds; `decision-check` shows the owner the real screens; `verify-purrtine` gotcha: an open sheet does not hide
+  the screen behind it from `$V ui`. New global skill `show-in-yazi` and the `/in-your-own-words` skill.
+- 2026-11-16 (night): grilling round on #1 (Deepen: the recurrence rule as a module) with the owner, then the
   Swift-skill check (`decision-check`). Root cause named: one pair of dates (`completedForDate`, `completedAt`) does two
   jobs, and "which day" is a loose `Date?` through ~30 spots. Four steps, in this order: #163 (fix: a completion records
   when the care was done and which day it counts for; `ready-for-agent`), then #1, then #164 (typed day and one
