@@ -92,7 +92,20 @@ Last session:
    task"; start trigger: the owner picks it. First step: open an issue.
 4. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
    blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
-   It becomes ready when #2 merges.
+   It becomes ready when #2 merges. #165 (the "count from the day I did it" setting) also needs a schema version
+   and takes the next free one; whichever merges second takes the version after it.
+5. Recurrence chain, decided 2026-11-16: #163 (fix) first, then #1, then #164, then #165 (see "Last session").
+6. Postponed by the owner 2026-11-16 (tooling, both apps): SwiftUI Preview rendering through Xcode's MCP server
+   (`xcrun mcpbridge`, tool `RenderPreview`, Xcode 26.3 or later; the host has Xcode 27.2). Step A, chosen by the
+   owner: a global `/preview` skill that renders a `#Preview` to a PNG and opens it with the `show-in-yazi` skill.
+   Step B, to follow after A: a Claude Code mod with its own pane (the mods docs:
+   https://code.claude.com/docs/en/plugins/mods/overview; the blog post that inspired it is
+   https://www.natashatherobot.com/p/faster-swiftui-development-in-claude, its mod is paid and has no repo, so build
+   our own). Start trigger for A: the owner turns on Xcode > Settings > Intelligence > Model Context Protocol >
+   "Allow external agents to use Xcode tools" and registers the server
+   (`claude mcp add --scope user --transport stdio xcode -- xcrun mcpbridge`), then restarts the session so the tool
+   is visible; write the skill from the real tool schema, not from the blog. A preview shows layout with sample
+   data only; behavior still needs `verify-purrtine`.
 
 ## Waits for the owner
 
