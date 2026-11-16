@@ -34,12 +34,12 @@ It does three things, in order:
 3. **Known findings** (`findings.cfg`): each rule in `KNOWN_FINDINGS` must still break. The list is empty
    since #141. Add a rule there only for a new finding that waits for a product decision.
 
-Exit 0 means: code matches the anchors and every rule holds (about 1,107,000 states).
+Exit 0 means: code matches the anchors and every rule holds (about 820,000 distinct states).
 
 **Read every TLC result with the `/statechart` skill**, with `RecurringCompletion.tla`, the config in
 question and `view.js` as the view (`--view`). It turns a violation into the shortest path in a caregiver's
 words and draws the chart. Use `chart.cfg` for a readable chart of the normal lifecycle (72 states);
-`promise.cfg` is too large for a chart (about 1,107,000 states), so for a gate break read its path in the
+`promise.cfg` is too large for a chart (about 820,000 states), so for a gate break read its path in the
 report. The saved output is in `charts/lifecycle/`. `/statechart` writes only to a new or empty folder: write to a fresh `--out` folder, then copy `chart.mmd` and `report.md` over.
 
 ## The rules
@@ -54,6 +54,7 @@ report. The saved output is in `charts/lifecycle/`. `/statechart` writes only to
 | `CompletesTheOccurrenceShown` | The completion is recorded for the day the caregiver saw and confirmed. | holds (#141) |
 | `NoOccurrenceSkipped` | A day between the start date and the due day (or the end date, once closed) has a completion, or was left behind as missed because a later day was completed (owner decision 2). | holds (#141) |
 | `NoFutureDayCompleted` | A completion that names its day (calendar, Whiskers) is never for a day after today. | holds (#141) |
+| `OpenDayNeverMovesBack` | The open day only moves forward (a completion) or closes the task; it moves back only when Edit Task saves. A day before the open day is recorded without moving it. | holds (#141) |
 
 ## Fixed findings (#141)
 
@@ -70,7 +71,12 @@ The four paths below broke the rules until #141. The fix is one check every comp
   is recorded only: the open day does not move back. A reminder's Complete still names its day and must be
   the open one (owner decision 1).
 
-A refused completion records nothing and shows "That day is not the one due now" (`CompletionRefused`).
+A named day is never combined with `expectedOccurrence`: the completion sheet, the list row and the Whiskers
+card pass the open day only when they name no day of their own (a day named in the calendar or by Whiskers is
+checked against that day, so the open day moving meanwhile does not refuse it).
+
+A refused completion records nothing and shows the "Not recorded" alert with "Nothing was recorded: that day
+is already done, hasn't come yet, or is no longer due. Check the task list." (`CompletionRefused`).
 
 1. **`NoOccurrenceSkipped`**: completing a later day in the calendar (or Whiskers "today" on an overdue
    task) moved the task past today. Until owner decision 2 this was refused; now a day up to today is
@@ -95,14 +101,14 @@ refused rather than mapped to the open one, which would break `CompletesTheOccur
 | --- | --- |
 | `ActiveI` / `ActiveDay` | `CareTask.activeSchedule` (`Models/CareTask.swift`, `activeSchedules.min`) |
 | `NextOccurrence` | `CareTaskSchedule.nextOccurrence(from:calendar:)`: nil when inactive, never before the anchor, nil past `endDate` |
-| `CompletionDate` | `TaskActionService.completionDate(for:explicit:)` |
+| `CompletionDate` | `TaskActionService.completionDate(for:explicit:now:)` |
 | `Recorded` | `TaskActionService.recordCompletion` + `handleRecurringCompletion` (+1 day, then `nextOccurrence`, then `isActive = false`) |
 | `CompletionSaved` | `CareTaskWriter.complete` → `commit` succeeds |
 | `CompletionSaveFails` / `Restored` | `commit` catches, `CompletionUndo.restore` |
 | `DeliveredRemindersRemoved` | `scheduler.removeDeliveredCareTaskNotifications` after the resync in `complete` |
 | `TapCompleteInList` | `TaskManagementView` row → `TaskManagementViewModel.handleCompletionAction` / `submitCompletion` |
 | `TapCompleteInCalendar` | `TaskCalendarView.handleTaskCompletion`, `TaskCalendarDerivation.tasksByDate` |
-| `AskWhiskersToComplete` | `TaskAssistantViewModel.confirmPendingAction` / `completeDetailedTask`, `TaskAssistantInterpreter.detectCompletionDate`, cloud `"yesterday"` |
+| `AskWhiskersToComplete` | `TaskAssistantViewModel.confirmPendingAction` / `completeDetailedTask`, `TaskAssistantInterpreter.detectCompletionDate`, cloud `"yesterday"` / `"today"` |
 | `ReminderFires` | `NotificationManager` reminder series (`followingOccurrence`), `userInfo` with `taskId` and `occurrenceDate` |
 | `CompletionSaved("notification")` | `NotificationActionCoordinator.handle(.complete)`: new `ModelContext`, `fetchTask`, `complete` |
 | `OpenEditForm` / `SaveEditForm` | `TaskFormPersistence.updateTask` (`schedules.first(where: isActive) ?? schedules.first`, `apply`, date written only when changed) |

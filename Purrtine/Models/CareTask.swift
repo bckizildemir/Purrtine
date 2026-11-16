@@ -364,11 +364,14 @@ extension CareTask {
         lastCompletion?.completedAt
     }
 
-    /// The one "completed today" rule: the last completion falls on `referenceDate`'s day (or a
-    /// later one). Home's "Last done: Today" label and the Whiskers assistant both use it.
+    /// The one "completed today" rule: some completion is FOR `referenceDate`'s day (or a later
+    /// one). It reads the day a completion counts for, not when it was recorded, so filling in an
+    /// older day today does not make today's still-open occurrence look done (the Whiskers assistant
+    /// uses it). The "Last done" labels keep showing when the task was last recorded.
     func isCompletedToday(referenceDate: Date = Date(), calendar: Calendar = .current) -> Bool {
-        guard let lastCompletionDate else { return false }
-        return Self.isCompletionToday(lastCompletionDate, referenceDate: referenceDate, calendar: calendar)
+        completions.contains { completion in
+            Self.isCompletionToday(completion.completedForDate, referenceDate: referenceDate, calendar: calendar)
+        }
     }
 
     static func isCompletionToday(
@@ -450,21 +453,26 @@ extension CareTask {
 extension CareTaskSchedule {
     /// Combines date and time into a single due date. Date-only schedules resolve to end-of-day.
     var effectiveDueDate: Date {
+        dueDate(on: scheduledDate)
+    }
+
+    /// The due instant of this schedule's time of day on `day`; end of day when it has no time.
+    func dueDate(on day: Date) -> Date {
         let calendar = Calendar.current
-        
+
         if let scheduledTime {
             let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: scheduledTime)
             return calendar.date(
                 bySettingHour: timeComponents.hour ?? 0,
                 minute: timeComponents.minute ?? 0,
                 second: timeComponents.second ?? 0,
-                of: scheduledDate
-            ) ?? scheduledDate
+                of: day
+            ) ?? day
         }
-        
-        let startOfDay = calendar.startOfDay(for: scheduledDate)
+
+        let startOfDay = calendar.startOfDay(for: day)
         // End of day is start + 1 day - 1 second (23:59:59)
-        return calendar.date(byAdding: DateComponents(day: 1, second: -1), to: startOfDay) ?? scheduledDate
+        return calendar.date(byAdding: DateComponents(day: 1, second: -1), to: startOfDay) ?? day
     }
     
     var nextOccurrence: Date? {

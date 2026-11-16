@@ -1055,6 +1055,30 @@ struct TaskAssistantViewModelTests {
         #expect(sut.messages.last?.style != .failure)
     }
 
+    /// "I fed her today" while yesterday is open: the card names today. Yesterday is then recorded
+    /// elsewhere, so today becomes the open day. Confirming is accepted: a card that names a day does
+    /// not pin the open day it was made with.
+    @Test
+    func confirmingANamedDayAfterTheOpenDayMovedMeanwhileIsAccepted() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        fixture.schedule.scheduledDate = yesterday
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(task: fixture.task, completedForDate: today, notes: nil, cats: [])
+        )
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        #expect(Set(fixture.task.completions.map(\.completedForDate)) == [yesterday, today])
+        #expect(sut.messages.last?.style != .failure)
+    }
+
     private func makeDailyFixture() throws -> (
         container: ModelContainer,
         context: ModelContext,

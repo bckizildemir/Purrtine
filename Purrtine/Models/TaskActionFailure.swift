@@ -7,8 +7,9 @@ enum TaskActionFailure: Equatable {
     /// A one-tap complete saved nothing. The task stays incomplete, so the caregiver can try again.
     case completionNotSaved
 
-    /// A complete named a day that is not the one due now (a later day picked in the calendar, or a
-    /// list that was out of date), so nothing was recorded. Trying again with the same day fails again.
+    /// A complete was refused, so nothing was recorded: the day is after today, already has a
+    /// completion, or is no longer due (a list or reminder that was out of date). Trying again with
+    /// the same day fails again.
     case occurrenceNotOpen
 
     /// A delete commit failed. The delete stays staged and lands on the next successful save, so the
@@ -17,8 +18,10 @@ enum TaskActionFailure: Equatable {
 
     var title: String {
         switch self {
-        case .completionNotSaved, .occurrenceNotOpen:
+        case .completionNotSaved:
             String(localized: .errorDataSave)
+        case .occurrenceNotOpen:
+            String(localized: .errorTaskActionOccurrenceNotOpenTitle)
         case .deletePending:
             String(localized: .tasksDeletePendingTitle)
         }

@@ -163,9 +163,12 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
         case .complete:
             let catIds = response["catIds"] as? [String] ?? []
             let selectedCats = task.assignedCats.filter { catIds.contains($0.id.uuidString) }
-            let completedForDate: Date? = (response["completedForDate"] as? String) == "yesterday"
-                ? Calendar.current.date(byAdding: .day, value: -1, to: referenceDate)
-                : nil
+            // "today" must be explicit: no day means the open day, which can be an earlier one.
+            let completedForDate: Date? = switch response["completedForDate"] as? String {
+            case "yesterday": Calendar.current.date(byAdding: .day, value: -1, to: referenceDate)
+            case "today": referenceDate
+            default: nil
+            }
             let notes = response["notes"] as? String
 
             return .complete(task: task, completedForDate: completedForDate, notes: notes, cats: selectedCats)

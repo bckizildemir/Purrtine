@@ -523,7 +523,7 @@ final class TaskAssistantViewModel {
                     completedForDate: completedForDate,
                     initialNotes: notes,
                     initialSelectedCats: selectedCats,
-                    expectedOccurrence: pendingConfirmation.openOccurrence
+                    expectedOccurrence: completedForDate == nil ? pendingConfirmation.openOccurrence : nil
                 )
                 messages.append(
                     TaskAssistantMessage(
@@ -541,9 +541,10 @@ final class TaskAssistantViewModel {
                     cats: selectedCats,
                     completedForDate: completedForDate,
                     notes: notes,
-                    // The day the card was made for: a task completed elsewhere meanwhile is not
-                    // completed again for its next day.
-                    expectedOccurrence: pendingConfirmation.openOccurrence
+                    // The day the card was made for, when it names no day: a task completed
+                    // elsewhere meanwhile is not completed again for its next day. A named day is
+                    // checked against that day by the service.
+                    expectedOccurrence: completedForDate == nil ? pendingConfirmation.openOccurrence : nil
                 ),
                 in: context
             )

@@ -4699,13 +4699,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "That day can't be recorded now (it is already done, has not come yet, or is no longer the one due), so nothing was recorded. Check the task list."
+            "value" : "Nothing was recorded: that day is already done, hasn't come yet, or is no longer due. Check the task list."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O gün şu an kaydedilemez (zaten yapılmış, henüz gelmemiş ya da artık beklenen gün değil), bu yüzden bir şey kaydedilmedi. Görev listesine bak."
+            "value" : "Hiçbir şey kaydedilmedi: o gün zaten yapılmış, henüz gelmemiş ya da artık beklenen gün değil. Görev listesine bak."
+          }
+        }
+      }
+    },
+    "error.task_action.occurrence_not_open_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not recorded"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedilmedi"
           }
         }
       }

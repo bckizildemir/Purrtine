@@ -99,7 +99,7 @@ Recorded(r, via) ==
         entry == [for |-> cfd, seen |-> r.seen, at |-> today,
                   named |-> (r.forDate /= None)]
     IN IF HasActive /\ cfd < ActiveDay
-       \* a missed day filled in late: recorded only, the open day stays where it is
+       \* a day left behind, filled in late (Whiskers "yesterday"): recorded only, the open day stays put
        THEN [scheds |-> scheds, status |-> status,
              done   |-> Append(done, entry @@ [next |-> None])]
        ELSE IF HasActive
@@ -182,8 +182,9 @@ AskWhiskersToComplete ==
     /\ \E f \in {None, today} \cup (IF today >= 1 THEN {today - 1} ELSE {}) :
           req' = [req EXCEPT !["assistant"] =
                     [seen |-> IF f = None THEN ActiveDay ELSE f, forDate |-> f,
-                     \* TaskAssistantConfirmation.openOccurrence: the open day when the card was made
-                     expect |-> ActiveDay]]
+                     \* TaskAssistantConfirmation.openOccurrence: the open day when the card was made,
+                     \* passed as expectedOccurrence only when the card names no day
+                     expect |-> IF f = None THEN ActiveDay ELSE None]]
     /\ UNCHANGED <<today, exists, cats, status, scheds, done, removePending, form,
                    start, moved, undoOK>>
 
@@ -362,6 +363,12 @@ NoFutureDayCompleted ==
 
 \* A failed save leaves the task exactly as it was.
 FailedSaveChangesNothing == undoOK
+
+\* The open day never moves back, except when Edit Task saves (the form closes). Completing a day
+\* before the open one only records it; a completion moves the open day forward or closes the task.
+OpenDayNeverMovesBack ==
+    [][ (exists /\ exists' /\ HasActive /\ HasActive' /\ ~(form /= None /\ form' = None))
+           => ActiveDay' >= ActiveDay ]_vars
 
 TypeOK ==
     /\ today \in 0..MaxDay

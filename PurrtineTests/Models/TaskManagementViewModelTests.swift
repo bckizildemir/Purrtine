@@ -756,6 +756,49 @@ struct TaskManagementViewModelTests {
         #expect(sut.taskCompletionRequest != nil)
     }
 
+    /// The sheet names today while yesterday is open. Yesterday is then recorded elsewhere, so today
+    /// becomes the open day. Submitting for today is accepted: a sheet for a named day carries no
+    /// expected occurrence, so the open day moving does not refuse it.
+    @Test
+    func sheetForANamedDaySurvivesTheOpenDayMovingMeanwhile() async throws {
+        let fixture = try makeRecurringFixture()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        fixture.schedule.scheduledDate = yesterday
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        sut.presentTaskCompletion(fixture.task, completedForDate: today)
+        let request = try #require(sut.taskCompletionRequest)
+        #expect(request.expectedOccurrence == nil)
+        try await fixture.writer.complete(fixture.task, with: CareTaskCompletionInput(), in: fixture.context)
+        #expect(fixture.task.activeSchedule.map { calendar.startOfDay(for: $0.scheduledDate) } == today)
+
+        try await sut.submitCompletion(
+            of: request.task,
+            by: nil,
+            completedForDate: request.completedForDate,
+            expectedOccurrence: request.expectedOccurrence
+        )
+
+        #expect(Set(fixture.task.completions.map(\.completedForDate)) == [yesterday, today])
+    }
+
+    /// A one-tap completion for a named day does not pin the open day either.
+    @Test
+    func rowCompletionForANamedDayPassesNoExpectedOccurrence() async throws {
+        let fixture = try makeCompletionFixture()
+        let spy = CareTaskWriterSpy()
+        let sut = TaskManagementViewModel(taskWriter: spy)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let day = Calendar.current.startOfDay(for: Date())
+
+        await sut.handleCompletionAction(for: fixture.task, completedForDate: day)?.value
+
+        #expect(spy.completions.first?.input.completedForDate == day)
+        #expect(spy.completions.first?.input.expectedOccurrence == nil)
+    }
+
     /// Calendar path with a one-tap row: a later selected day is refused, and the refusal shows.
     @Test
     func completingALaterSelectedDayRecordsNothingAndShowsTheRefusal() async throws {

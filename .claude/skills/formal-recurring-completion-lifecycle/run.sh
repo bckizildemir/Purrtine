@@ -27,7 +27,7 @@ while IFS='|' read -r file text; do
     anchors_ok=0
   fi
 done <<'EOF'
-Purrtine/Utilities/TaskActionService.swift|let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate)
+Purrtine/Utilities/TaskActionService.swift|let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate, now: now)
 Purrtine/Utilities/TaskActionService.swift|if let activeSchedule, activeSchedule.frequency != .once {
 Purrtine/Utilities/TaskActionService.swift|if let scheduledDate = task.activeSchedule?.scheduledDate {
 Purrtine/Utilities/TaskActionService.swift|.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: completedOccurrenceDate))
@@ -46,15 +46,16 @@ Purrtine/Utilities/CareTaskWriter.swift|await scheduler.removeDeliveredCareTaskN
 Purrtine/Utilities/NotificationActionCoordinator.swift|let input = CareTaskCompletionInput(expectedOccurrence: occurrence)
 Purrtine/Utilities/NotificationManager.swift|content.userInfo[Self.occurrenceDateKey] = occurrenceDate.timeIntervalSince1970
 Purrtine/Utilities/NotificationManager.swift|let occurrence = (userInfo[Self.occurrenceDateKey] as? Double).map(Date.init(timeIntervalSince1970:))
-Purrtine/Utilities/TaskActionService.swift|try validateOccurrence(of: task, for: input)
+Purrtine/Utilities/TaskActionService.swift|try validateOccurrence(of: task, for: input, now: now)
 Purrtine/Utilities/TaskActionService.swift|if let expected, openDay != calendar.startOfDay(for: expected) {
 Purrtine/Utilities/CareTaskWriter.swift|try TaskActionService.refreshFromStore(task, in: context)
-Purrtine/Utilities/TaskActionService.swift|if day > calendar.startOfDay(for: Date()) {
+Purrtine/Utilities/TaskActionService.swift|if day > calendar.startOfDay(for: now) {
 Purrtine/Utilities/TaskActionService.swift|if effectiveCompletedForDate < Calendar.current.startOfDay(for: activeSchedule.scheduledDate) {
 Purrtine/Utilities/TaskActionService.swift|if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
-Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence = TaskActionService.openOccurrence(of: task)
-Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence: TaskActionService.openOccurrence(of: task)
-Purrtine/Models/TaskAssistantViewModel.swift|expectedOccurrence: pendingConfirmation.openOccurrence
+Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence = completedForDate == nil ? TaskActionService.openOccurrence(of: task) : nil
+Purrtine/Models/TaskManagementViewModel.swift|expectedOccurrence: completedForDate == nil ? TaskActionService.openOccurrence(of: task) : nil
+Purrtine/Models/TaskAssistantViewModel.swift|expectedOccurrence: completedForDate == nil ? pendingConfirmation.openOccurrence : nil
+Purrtine/Utilities/TaskAssistantCloudInterpreter.swift|case "today": referenceDate
 Purrtine/Models/TaskFormPersistence.swift|Calendar.current.isDate($0, inSameDayAs: draft.scheduledDate)
 Purrtine/Models/TaskFormPersistence.swift|if writesScheduledDate {
 Purrtine/Views/Tasks/TaskCalendarView.swift|guard hasCompletionForDate(task, date: selectedDate) == false else { return }

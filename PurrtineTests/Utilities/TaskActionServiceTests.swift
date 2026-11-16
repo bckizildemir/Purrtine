@@ -245,7 +245,8 @@ struct TaskActionServiceTests {
     }
 
     /// After today was completed while yesterday was open, yesterday can still be filled in later
-    /// from the calendar; that must not pull the open day back from tomorrow.
+    /// (only through Whiskers "yesterday": the calendar shows nothing on a left-behind day); that
+    /// must not pull the open day back from tomorrow.
     @Test
     func completingAnEarlierMissedDayLaterDoesNotMoveTheOpenDayBack() throws {
         let fixture = try makeFixture(frequency: .daily, endDate: nil)
@@ -334,6 +335,129 @@ struct TaskActionServiceTests {
             )
         }
         #expect(fixture.task.completions.isEmpty)
+    }
+
+    /// A weekly or custom-day task left behind on its first day: completing today (a later valid day)
+    /// is accepted, records only today, and moves the open day to the next occurrence after today.
+    @Test(arguments: [false, true])
+    func completingALaterValidDayOfAWeeklyTaskLeavesTheEarlierDayBehind(usesCustomDays: Bool) throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let today = calendar.startOfDay(for: now)
+        let openDay = try #require(calendar.date(byAdding: .day, value: -4, to: today))
+        let customDays = usesCustomDays
+            ? [calendar.component(.weekday, from: today) - 1, calendar.component(.weekday, from: openDay) - 1]
+            : nil
+        let fixture = try makeTimedFixture(
+            frequency: .weekly,
+            openDay: openDay,
+            customDays: customDays,
+            now: now
+        )
+        // Both shapes next occur 3 days from today (every 7 days from the open day, or the second
+        // custom weekday). An explicit day is accepted whether or not it is an occurrence.
+        let expectedNext = try #require(calendar.date(byAdding: .day, value: 3, to: today))
+
+        #expect(TaskActionService.canComplete(fixture.task, on: today, now: now))
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context,
+            now: now
+        )
+
+        #expect(fixture.task.completions.map(\.completedForDate) == [today])
+        let open = try #require(fixture.task.activeSchedule)
+        #expect(fixture.task.schedules.filter(\.isActive).count == 1)
+        #expect(calendar.startOfDay(for: open.scheduledDate) == expectedNext)
+        #expect(TaskCalendarDerivation.hasCompletion(for: fixture.task, on: openDay, calendar: calendar) == false)
+    }
+
+    /// `canComplete` for a day before the open day: accepted while it has no completion, refused once
+    /// it has one.
+    @Test
+    func canCompleteADayBeforeTheOpenDayUntilItHasACompletion() throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let today = calendar.startOfDay(for: now)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let fixture = try makeTimedFixture(frequency: .daily, openDay: today, now: now)
+
+        #expect(TaskActionService.canComplete(fixture.task, on: yesterday, now: now))
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: yesterday),
+            in: fixture.context,
+            now: now
+        )
+
+        #expect(TaskActionService.canComplete(fixture.task, on: yesterday, now: now) == false)
+        let open = try #require(fixture.task.activeSchedule)
+        #expect(calendar.startOfDay(for: open.scheduledDate) == today)
+    }
+
+    /// Daily 09:00, open since yesterday. Completing today at 08:00 is before today's due time.
+    @Test
+    func completingTodayBeforeTheDueTimeIsOnTimeEvenWhenYesterdayIsOpen() throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)))
+        let fixture = try makeTimedFixture(frequency: .daily, openDay: yesterday, now: now)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: calendar.startOfDay(for: now)),
+            in: fixture.context,
+            now: now
+        )
+
+        #expect(try #require(fixture.task.completions.first).wasOnTime)
+    }
+
+    /// Filling in a day before today is late, whatever the time of day.
+    @Test
+    func fillingInADayBeforeTodayIsLate() throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let today = calendar.startOfDay(for: now)
+        let threeDaysAgo = try #require(calendar.date(byAdding: .day, value: -3, to: today))
+        let fixture = try makeTimedFixture(frequency: .daily, openDay: today, now: now)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: threeDaysAgo),
+            in: fixture.context,
+            now: now
+        )
+
+        #expect(try #require(fixture.task.completions.first).wasOnTime == false)
+    }
+
+    /// Whiskers' "fed Luna yesterday" while today is the open day: recorded for yesterday, and it
+    /// must not make today's still-open occurrence look done.
+    @Test
+    func fillingInAnOlderDayDoesNotMakeTodayLookCompleted() throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let today = calendar.startOfDay(for: now)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let fixture = try makeTimedFixture(frequency: .daily, openDay: today, now: now)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: yesterday),
+            in: fixture.context,
+            now: now
+        )
+        #expect(fixture.task.isCompletedToday(referenceDate: now) == false)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context,
+            now: now
+        )
+        #expect(fixture.task.isCompletedToday(referenceDate: now))
     }
 
     /// Builds its own timed schedule instead of leaning on `makeFixture`, so the invariant survives
@@ -455,6 +579,40 @@ struct TaskActionServiceTests {
     ])
     func errorDescriptionComesFromTheStringCatalog(error: TaskActionError, expected: String) {
         #expect(error.errorDescription == expected)
+    }
+
+    /// One fixed "now" (today 08:00) for a test, passed into the code under test, so a run across
+    /// midnight cannot see two different days.
+    private func fixedNow() throws -> Date {
+        try #require(Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: Date()))
+    }
+
+    /// A task whose schedule is due at 09:00 (`scheduledTime`) on `openDay`.
+    private func makeTimedFixture(
+        frequency: CareTaskFrequency,
+        openDay: Date,
+        customDays: [Int]? = nil,
+        now: Date
+    ) throws -> (container: ModelContainer, context: ModelContext, task: CareTask, schedule: CareTaskSchedule) {
+        let calendar = Calendar.current
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let dueTime = try #require(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now))
+        let task = CareTask(title: "Feed Mochi")
+        let schedule = CareTaskSchedule(
+            scheduledDate: calendar.startOfDay(for: openDay),
+            scheduledTime: dueTime,
+            frequency: frequency,
+            frequencyInterval: 1,
+            customDays: customDays
+        )
+        schedule.task = task
+        task.schedules = [schedule]
+        context.insert(Caregiver(name: "Primary Caregiver", role: .primary))
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task, schedule)
     }
 
     private func makeFixture(

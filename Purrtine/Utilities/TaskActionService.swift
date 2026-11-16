@@ -51,11 +51,13 @@ enum TaskActionService {
         task.activeSchedule.map { Calendar.current.startOfDay(for: $0.scheduledDate) }
     }
 
-    /// Records a completion of `task` in `context` without saving it.
+    /// Records a completion of `task` in `context` without saving it. `now` is the completion
+    /// instant; callers leave it at the default, tests pin it.
     static func recordCompletion(
         of task: CareTask,
         with input: CareTaskCompletionInput,
-        in context: ModelContext
+        in context: ModelContext,
+        now: Date = Date()
     ) throws {
         guard let caregiver = try resolveCaregiver(
             for: task,
@@ -65,16 +67,16 @@ enum TaskActionService {
             throw TaskActionError.caregiverUnavailable
         }
 
-        try validateOccurrence(of: task, for: input)
+        try validateOccurrence(of: task, for: input, now: now)
 
         let activeSchedule = task.activeSchedule
-        let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate)
+        let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate, now: now)
         let completion = CareTaskCompletion(
-            completedAt: Date(),
+            completedAt: now,
             completedForDate: effectiveCompletedForDate,
             notes: input.notes,
             photoURLs: input.photoURLs,
-            wasOnTime: isOnTime(activeSchedule)
+            wasOnTime: isOnTime(day: effectiveCompletedForDate, schedule: activeSchedule, now: now)
         )
         completion.task = task
         completion.caregiver = caregiver
@@ -84,10 +86,10 @@ enum TaskActionService {
         context.insert(completion)
 
         if let activeSchedule, activeSchedule.frequency != .once {
-            // A day before the open one (a missed day filled in late, after a later day was
-            // completed) is recorded only: moving the schedule would pull the open day back.
+            // A day before the open one (a day left behind, filled in late through Whiskers
+            // "yesterday") is recorded only: moving the schedule would pull the open day back.
             if effectiveCompletedForDate < Calendar.current.startOfDay(for: activeSchedule.scheduledDate) {
-                task.updatedAt = Date()
+                task.updatedAt = now
                 return
             }
             handleRecurringCompletion(
@@ -113,16 +115,22 @@ enum TaskActionService {
 
     // MARK: - Helpers
 
-    /// The one check every completion path shares, run before anything is recorded: a completion
-    /// names an occurrence only when the caller was shown it, and that occurrence must be the one
-    /// open now. Otherwise recording it would skip the open day (a later day), credit a day twice
-    /// (a day that already has a completion), or complete a day nobody saw (a stale reminder or
-    /// Whiskers card). A completion that names no day completes the open occurrence, as before.
-    private static func validateOccurrence(of task: CareTask, for input: CareTaskCompletionInput) throws {
+    /// The one check every completion path shares, run before anything is recorded. A completion
+    /// that names no day completes the open occurrence. One that names a day (a day picked in the
+    /// calendar, or "yesterday" said to Whiskers) is accepted for any day up to today that has no
+    /// completion yet, and refused for a day after today or a day already done. A caller that was
+    /// shown the open day and names no day of its own (a reminder's Complete, a stale card) passes
+    /// that day as `expectedOccurrence`, so it completes that day or nothing.
+    private static func validateOccurrence(
+        of task: CareTask,
+        for input: CareTaskCompletionInput,
+        now: Date
+    ) throws {
         guard isOccurrenceAccepted(
             of: task,
             expected: input.expectedOccurrence,
-            completedForDate: input.completedForDate
+            completedForDate: input.completedForDate,
+            now: now
         ) else {
             throw TaskActionError.occurrenceNotOpen
         }
@@ -131,15 +139,16 @@ enum TaskActionService {
     /// Whether `recordCompletion` would accept a completion of `task` for `day`. A view asks this
     /// before it opens a sheet for a day, so it refuses at once instead of on submit. It runs the
     /// same rules as `validateOccurrence`, so the two cannot drift.
-    static func canComplete(_ task: CareTask, on day: Date) -> Bool {
-        isOccurrenceAccepted(of: task, expected: nil, completedForDate: day)
+    static func canComplete(_ task: CareTask, on day: Date, now: Date = Date()) -> Bool {
+        isOccurrenceAccepted(of: task, expected: nil, completedForDate: day, now: now)
     }
 
     /// The rules behind `validateOccurrence` and `canComplete`.
     private static func isOccurrenceAccepted(
         of task: CareTask,
         expected: Date?,
-        completedForDate explicit: Date?
+        completedForDate explicit: Date?,
+        now: Date
     ) -> Bool {
         let calendar = Calendar.current
         let openDay = openOccurrence(of: task)
@@ -152,7 +161,7 @@ enum TaskActionService {
             let day = calendar.startOfDay(for: explicit)
             // Any day up to and including today with no completion yet. An earlier open (missed)
             // day does not block a later one; only days after today are refused.
-            if day > calendar.startOfDay(for: Date()) {
+            if day > calendar.startOfDay(for: now) {
                 return false
             }
             if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
@@ -185,7 +194,7 @@ enum TaskActionService {
         return caregivers.first
     }
 
-    private static func completionDate(for task: CareTask, explicit completedForDate: Date?) -> Date {
+    private static func completionDate(for task: CareTask, explicit completedForDate: Date?, now: Date) -> Date {
         let calendar = Calendar.current
 
         if let completedForDate {
@@ -196,12 +205,15 @@ enum TaskActionService {
             return calendar.startOfDay(for: scheduledDate)
         }
 
-        return calendar.startOfDay(for: Date())
+        return calendar.startOfDay(for: now)
     }
 
-    private static func isOnTime(_ schedule: CareTaskSchedule?) -> Bool {
+    /// On time is measured against the day recorded: that day's due time versus the completion
+    /// instant. A day before today is never on time.
+    private static func isOnTime(day: Date, schedule: CareTaskSchedule?, now: Date) -> Bool {
+        if day < Calendar.current.startOfDay(for: now) { return false }
         guard let schedule else { return true }
-        return schedule.effectiveDueDate >= Date()
+        return schedule.dueDate(on: day) >= now
     }
 
     private static func handleRecurringCompletion(

@@ -11,8 +11,10 @@ struct TaskCreationRequest: Identifiable {
 struct TaskCompletionRequest: Identifiable {
     let task: CareTask
     let completedForDate: Date?
-    /// The day the task was due when the sheet opened. Submitting completes that day or nothing, so a
-    /// task completed elsewhere while the sheet was open does not lose its next day.
+    /// The day the task was due when the sheet opened, set only when the sheet names no day of its
+    /// own. Submitting then completes that day or nothing, so a task completed elsewhere while the
+    /// sheet was open does not lose its next day. A sheet for an explicit day is checked against that
+    /// day instead (up to today, not already done), so the open day moving meanwhile does not refuse it.
     let expectedOccurrence: Date?
 
     var id: UUID { task.id }
@@ -20,7 +22,7 @@ struct TaskCompletionRequest: Identifiable {
     init(task: CareTask, completedForDate: Date?) {
         self.task = task
         self.completedForDate = completedForDate
-        expectedOccurrence = TaskActionService.openOccurrence(of: task)
+        expectedOccurrence = completedForDate == nil ? TaskActionService.openOccurrence(of: task) : nil
     }
 }
 
@@ -468,20 +470,21 @@ final class TaskManagementViewModel {
         }
 
         let cats = task.assignedCats.isEmpty ? [] : [task.assignedCats.first!]
-        // Pins the day due at the tap. The row is read from the same store, so this only guards a
-        // change between the tap and the commit, not a row that was already out of date.
+        // Pins the day due at the tap when no day was named. The row is read from the same store, so
+        // this only guards a change between the tap and the commit, not a row that was already out of
+        // date. A named day is checked against that day by the service instead.
         return completeCareTask(
             task,
             for: cats,
             by: nil,
             completedForDate: completedForDate,
-            expectedOccurrence: TaskActionService.openOccurrence(of: task)
+            expectedOccurrence: completedForDate == nil ? TaskActionService.openOccurrence(of: task) : nil
         )
     }
 
     /// A Complete tap in the calendar for the selected `day`. A day the task cannot be completed for
-    /// (one after the open occurrence, or one already done) is refused here with the alert the one-tap
-    /// path shows, before any sheet opens.
+    /// (one after today, or one already done) is refused here with the alert the one-tap path shows,
+    /// before any sheet opens.
     func handleCalendarCompletion(of task: CareTask, on day: Date) {
         guard TaskActionService.canComplete(task, on: day) else {
             raiseActionFailure(.occurrenceNotOpen)
