@@ -5,8 +5,8 @@ Hand-off file: where the work stands. Read it at session start; update it before
 ## Focus
 
 Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the animation audit and decisions,
-#131, are done). Items, #124 first (#125 and #127 depend on it):
-- #124 (Polish 1: shared motion tokens)
+#131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
+- #124 (Polish 1: shared motion tokens): done, #158 merged 2026-11-16
 - #125 (Polish 2: Home cards and task rows lose glass)
 - #126 (Polish 3: Apple calendar view)
 - #127 (Polish 4: onboarding fades)
@@ -19,6 +19,16 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
+- 2026-11-16 (later): #158 (Polish 1: shared motion tokens, closes #124) reviewed with `/code-review`, branch
+  updated, CI green incl. UI tests, merged (squash, owner's yes). Review notes left for #130 (Polish 7: Reduce
+  Motion): `Motion.resolve(_:reduceMotion:)` only swaps the curve for a 0.15 s ease-out, it does not remove
+  movement, although its doc comment says "short fade"; callers must also swap scale/offset transitions; the plan
+  in `docs/animation-audit.md` returns `Animation?`, the code a non-optional. `MotionTests` check only that
+  tokens differ, not their values.
+  #156 (repeating-task day fix): owner decision 1 = (a): a refused reminder Complete now posts a "Not recorded"
+  notice (`completion_refused_<taskId>`, en + tr, skipped when Reminders are off), commit `0611c8d`, 4 new unit
+  tests, suites green locally; CI pending. Decision 2 still open (see "Waits for the owner").
+  New open PR #159 (fix #152: make the CI UI tests reliable): `UI tests` red, still in work.
 - 2026-11-16 (checked on GitHub that day): #154 merged 2026-11-15 (a kill after onboarding Start no longer
   makes a second first cat) and #140 is closed. Three PRs stay open:
   - #155 (reminder snooze fixes, for #142): branch updated from main 2026-11-15, unit tests green, `UI tests` red
@@ -56,20 +66,19 @@ Last session:
 
 ## Next step
 
-1. Stage 2 polish (the Focus): #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
-   and #127 (onboarding fades) depend on it. #126, #128, #129 and #130 name no such dependency.
-   The plan is in `docs/stage2-polish-decisions.md`.
-2. Land the formal-check fixes: #140 is done (#154); #142 is in #155, #141 in #156 (after the owner's two
-   decisions). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
+1. Stage 2 polish (the Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
+   fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
+2. Land the formal-check fixes: #140 is done (#154); #142 is in #155, #141 in #156 (decision 1 done; after the
+   owner's decision 2, then a verify-purrtine proof and the owner's merge). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
 3. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
    blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
    It becomes ready when #2 merges.
 
 ## Waits for the owner
 
-- #156 (repeating-task day fix) needs two product decisions before merge: (1) after a missed day, a reminder's
-  Complete is refused with no message: keep refusing but post a "not recorded, open Purrtine" notice, or let it
-  leave the missed day behind and record its own day; (2) a missed day blocks completing today from the calendar
-  and Whiskers: keep that, or allow any day up to today and leave the missed days behind.
+- #156 (repeating-task day fix): decision 1 is made (keep refusing a reminder's Complete after a missed day, but
+  post a "Not recorded" notice; done in `0611c8d`). Decision 2 is open: a missed day blocks completing today from
+  the calendar and Whiskers: keep that, or allow any day up to today and leave the missed days behind (agent
+  recommends the second).
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
