@@ -25,7 +25,8 @@ Last session:
   when the care was done and which day it counts for; `ready-for-agent`), then #1, then #164 (typed day and one
   target choice), then #165 (setting "count the next day from the day I did it", new schema version, after #2).
   New glossary words (Occurrence, Open Occurrence, Missed Occurrence, Fill-in), the idea #162 (linked care tasks) in
-  `docs/IDEAS.md`, and the research in `docs/repeat-completion-research.md`. Decisions are in a comment on #1. Owner
+  `docs/IDEAS.md`, and the research in `docs/repeat-completion-research.md` (docs PR #166, squash-merged by the
+  agent once CI was green). Decisions are in a comment on #1. Owner
   answers still to come: none open. The Whiskers time field needs a cloud deploy, which needs the owner's separate yes.
 - 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
   Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
