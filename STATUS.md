@@ -19,6 +19,13 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
+- 2026-11-16 (latest): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
+  Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
+  a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
+  Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
+  Simulator proofs PASS (runs `2026-11-16-121258-4944`, `2026-11-16-125755-713c`); CI green incl. UI tests.
+  `interpretTaskAssistantRequest` deployed after the merge (owner's yes): revision `00006-dol`, ready. It adds
+  the cloud interpreter's `"today"` day.
 - 2026-11-16 (later): #158 (Polish 1: shared motion tokens, closes #124) reviewed with `/code-review`, branch
   updated, CI green incl. UI tests, merged (squash, owner's yes). Review notes left for #130 (Polish 7: Reduce
   Motion): `Motion.resolve(_:reduceMotion:)` only swaps the curve for a 0.15 s ease-out, it does not remove
@@ -68,17 +75,17 @@ Last session:
 
 1. Stage 2 polish (the Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
    fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
-2. Land the formal-check fixes: #140 is done (#154); #142 is in #155, #141 in #156 (decision 1 done; after the
-   owner's decision 2, then a verify-purrtine proof and the owner's merge). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
-3. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
+2. Land the formal-check fixes: #140 is done (#154), #141 is done (#156); #142 is in #155 (rebase it on main:
+   #156 touched `NotificationActionCoordinator.swift` and its tests). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
+3. Postponed by the owner 2026-11-16 (a later task, no issue yet): after #156, a missed earlier day of a repeating
+   task can be filled in from a reminder or Whiskers, but the calendar shows that day as "No tasks". Show a missed
+   day in the calendar as missed and let the user complete it there. Waits because the owner said "yes, but as a later
+   task"; start trigger: the owner picks it. First step: open an issue.
+4. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
    blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
    It becomes ready when #2 merges.
 
 ## Waits for the owner
 
-- #156 (repeating-task day fix): decision 1 is made (keep refusing a reminder's Complete after a missed day, but
-  post a "Not recorded" notice; done in `0611c8d`). Decision 2 is open: a missed day blocks completing today from
-  the calendar and Whiskers: keep that, or allow any day up to today and leave the missed days behind (agent
-  recommends the second).
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
