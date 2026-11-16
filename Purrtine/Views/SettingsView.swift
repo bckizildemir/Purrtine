@@ -33,7 +33,7 @@ struct SettingsView: View {
         let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
         // Count directly in the store instead of faulting every task's completions into memory.
         let descriptor = FetchDescriptor<CareTaskCompletion>(
-            predicate: #Predicate { $0.completedAt >= startOfWeek }
+            predicate: CareTaskCompletion.performed(onOrAfter: startOfWeek)
         )
         return (try? modelContext.fetchCount(descriptor)) ?? 0
     }

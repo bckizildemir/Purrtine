@@ -29,6 +29,20 @@ enum HistoryPresentation {
         }
     }
 
+    /// Newest first by when the care was done (`performedAt`), so a day filled in late sits under
+    /// its own day, not under the day it was typed in. Ties keep the newest-recorded first.
+    static func sortedNewestFirst(
+        _ completions: [CareTaskCompletion],
+        calendar: Calendar = .current
+    ) -> [CareTaskCompletion] {
+        completions.sorted { first, second in
+            let firstDate = first.performedAt(calendar: calendar)
+            let secondDate = second.performedAt(calendar: calendar)
+            if firstDate != secondDate { return firstDate > secondDate }
+            return first.completedAt > second.completedAt
+        }
+    }
+
     /// The cats a History row shows and a search matches.
     ///
     /// Schema V1 could strip a completion of its cat when a later completion named the same cat.

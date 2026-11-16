@@ -22,8 +22,10 @@ struct HistoryView: View {
   }
 
   private func scopedCompletions(for scopedTask: CatTask?) -> [CareTaskCompletion] {
-    guard let scopedTask else { return allCompletions }
-    return allCompletions.filter { $0.task?.id == scopedTask.id }
+    // The query sorts by when each completion was recorded; History orders by when the care was done.
+    let completions = HistoryPresentation.sortedNewestFirst(allCompletions)
+    guard let scopedTask else { return completions }
+    return completions.filter { $0.task?.id == scopedTask.id }
   }
 
   var body: some View {
@@ -217,17 +219,20 @@ struct CompletionHistoryRow: View {
           .foregroundStyle(.primary)
 
         HStack(spacing: 4) {
-          Text(completion.completedAt, format: CompletionTimestamp.dateStyle)
+          Text(completion.performedAt(), format: CompletionTimestamp.dateStyle)
             .font(.caption)
             .foregroundStyle(.secondary)
 
-          Text(verbatim: "•")
-            .font(.caption)
-            .foregroundStyle(.tertiary)
+          // A day filled in late has no real time of day, so it shows the day alone.
+          if completion.isFillIn() == false {
+            Text(verbatim: "•")
+              .font(.caption)
+              .foregroundStyle(.tertiary)
 
-          Text(completion.completedAt, format: CompletionTimestamp.timeStyle)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(completion.completedAt, format: CompletionTimestamp.timeStyle)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
 
           let displayCats = HistoryPresentation.displayCats(for: completion, fallbackCutoff: fallbackCutoff)
           if displayCats.isEmpty == false {

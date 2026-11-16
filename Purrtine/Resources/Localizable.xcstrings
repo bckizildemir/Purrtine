@@ -14683,6 +14683,24 @@
         }
       }
     },
+    "tasks.row.last_completed_day" : {
+      "comment" : "Task row label when the last completion was filled in for an earlier day, so it has no time. %@ is the day.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last completed: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son tamamlanma: %@"
+          }
+        }
+      }
+    },
     "tasks.row.no_completions_yet" : {
       "extractionState" : "manual",
       "localizations" : {

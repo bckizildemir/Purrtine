@@ -12,6 +12,15 @@ enum CompletionTimestamp {
         .dateTime.hour().minute()
     }
 
+    /// The day alone, for a completion filled in late that has no real time of day.
+    static func dayText(for date: Date, locale: Locale = .current, calendar: Calendar = .current) -> String {
+        var dateStyle = dateStyle
+        dateStyle.locale = locale
+        dateStyle.calendar = calendar
+        dateStyle.timeZone = calendar.timeZone
+        return date.formatted(dateStyle)
+    }
+
     /// Date and time in one string, for places that show them together.
     static func text(for date: Date, locale: Locale = .current, calendar: Calendar = .current) -> String {
         var dateStyle = dateStyle

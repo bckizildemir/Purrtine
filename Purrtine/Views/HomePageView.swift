@@ -266,7 +266,7 @@ struct HomePageView: View {
     #if DEBUG
     let allCompletions = allCareTasks.flatMap { $0.completions }
     let startOfWeek = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-    let filteredCompletions = allCompletions.filter { $0.completedAt >= startOfWeek }
+    let filteredCompletions = allCompletions.filter { $0.performedAt() >= startOfWeek }
 
     print("🔍 DEBUG HomePageView:")
     print("  - Total tasks: \(allCareTasks.count)")
