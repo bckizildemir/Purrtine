@@ -84,6 +84,9 @@ final class CareTaskWriter: CareTaskWriting {
         with input: CareTaskCompletionInput,
         in context: ModelContext
     ) async throws {
+        // Another context (a reminder's Complete) may have committed since this one loaded the task;
+        // read it before the undo snapshot and before the occurrence check.
+        try TaskActionService.refreshFromStore(task, in: context)
         let undo = CompletionUndo(capturing: task)
         try commit(in: context) {
             try TaskActionService.recordCompletion(of: task, with: input, in: context)
@@ -110,12 +113,23 @@ final class CareTaskWriter: CareTaskWriting {
         }
     }
 
-    func snooze(_ task: CareTask, minutes: Int) async throws {
+    func snooze(_ task: CareTask, minutes: Int, occurrence: Date?) async throws {
         try TaskActionService.validatePostponeMinutes(minutes)
+        // A task whose delete already landed is gone (#142), and so is one whose delete is staged: a
+        // caller's fresh context still holds it. Assumes every delete is staged in `container.mainContext`,
+        // whichever writer made it, so that is where to look.
+        guard let taskContext = task.modelContext, task.isDeleted == false else {
+            throw TaskActionError.taskNotFound
+        }
+        let modelId = task.persistentModelID
+        let isDeleteStaged = taskContext.container.mainContext.deletedModelsArray
+            .contains { $0.persistentModelID == modelId }
+        guard isDeleteStaged == false else { throw TaskActionError.taskNotFound }
 
         let info = NotificationScheduleInfo(
             snoozing: task,
-            firingAt: Date().addingTimeInterval(TimeInterval(minutes * 60))
+            firingAt: Date().addingTimeInterval(TimeInterval(minutes * 60)),
+            occurrence: occurrence ?? TaskActionService.openOccurrence(of: task)
         )
         try await scheduler.scheduleSnoozedNotification(for: info, delayMinutes: minutes)
         await scheduler.removeDeliveredCareTaskNotifications(forTaskId: info.taskId)
@@ -124,7 +138,18 @@ final class CareTaskWriter: CareTaskWriting {
 
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws {
         guard taskIds.isEmpty == false else { return }
+        // A task the store no longer holds went with a cascade: stop any snooze already past its checks
+        // before the resync reads (#142). The tasks that remain keep theirs.
+        for taskId in Set(taskIds) where isGone(taskId, in: context) {
+            await scheduler.cancelSnoozedNotifications(forTaskId: taskId)
+        }
         try await resyncReminders(for: taskIds)
+    }
+
+    /// A failed fetch counts as "still there": a snooze is kept rather than dropped on a guess.
+    private func isGone(_ taskId: UUID, in context: ModelContext) -> Bool {
+        let descriptor = FetchDescriptor<CareTask>(predicate: #Predicate { $0.id == taskId })
+        return (try? context.fetchCount(descriptor)) == 0
     }
 
     // MARK: - Commit

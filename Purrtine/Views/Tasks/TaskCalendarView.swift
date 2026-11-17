@@ -326,14 +326,9 @@ struct TaskCalendarView: View {
     private func handleTaskCompletion(_ task: CareTask) {
         guard hasCompletionForDate(task, date: selectedDate) == false else { return }
 
-        if task.assignedCats.count > 1 {
-            // For multi-cat tasks, show completion sheet
-            viewModel.presentTaskCompletion(task, completedForDate: selectedDate)
-        } else {
-            // Complete directly for single cat or no specific cat
-            let cats = task.assignedCats.first.map { [$0] } ?? []
-            viewModel.completeCareTask(task, for: cats, by: nil, completedForDate: selectedDate)
-        }
+        // A selected day after the open occurrence is refused: recording it would move the task past
+        // the open day. The view model shows the refusal before any sheet opens.
+        viewModel.handleCalendarCompletion(of: task, on: selectedDate)
     }
     
     private func deleteTask(_ task: CareTask) {

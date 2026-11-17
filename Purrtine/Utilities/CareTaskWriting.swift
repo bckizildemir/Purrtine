@@ -41,10 +41,20 @@ protocol CareTaskWriting {
     ) async throws
 
     /// Schedules a one-off reminder `minutes` from now. Writes nothing to the store.
-    func snooze(_ task: CareTask, minutes: Int) async throws
+    ///
+    /// `occurrence` is the due date the snoozed reminder was for, carried to the snooze's Complete
+    /// action (#141). `nil` means the occurrence open now.
+    func snooze(_ task: CareTask, minutes: Int, occurrence: Date?) async throws
 
     /// Resyncs the reminders after a change *outside* the tasks with `taskIds`, such as a cat rename
     /// or delete. The resync covers every task; `taskIds` names the ones a failure reports as stale,
     /// and an empty list resyncs nothing.
     func refreshReminders(for taskIds: [UUID], in context: ModelContext) async throws
+}
+
+extension CareTaskWriting {
+    /// Snoozes for the occurrence open now.
+    func snooze(_ task: CareTask, minutes: Int) async throws {
+        try await snooze(task, minutes: minutes, occurrence: nil)
+    }
 }

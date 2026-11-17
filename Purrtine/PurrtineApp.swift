@@ -40,14 +40,14 @@ struct PurrtineApp: App {
             Self.sanitizeInvalidCatAges(in: container.mainContext)
             #endif
 
-            let authorizationChecker: NotificationAuthorizationChecking =
+            let refusalNotice: CompletionRefusalNoticePosting =
                 configuration.disablesRealNotifications || configuration.isUnitTesting
-                ? SimulatedNotificationAuthorizationChecker()
+                ? SilentCompletionRefusalNotice()
                 : notificationManager
             let coordinator = NotificationActionCoordinator(
                 modelContainer: container,
                 taskWriter: taskWriter,
-                authorizationChecker: authorizationChecker
+                refusalNotice: refusalNotice
             )
 
             modelContainer = container

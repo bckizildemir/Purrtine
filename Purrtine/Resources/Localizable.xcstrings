@@ -4693,6 +4693,40 @@
         }
       }
     },
+    "error.task_action.occurrence_not_open" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing was recorded: that day is already done, hasn't come yet, or is no longer due. Check the task list."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiçbir şey kaydedilmedi: o gün zaten yapılmış, henüz gelmemiş ya da artık beklenen gün değil. Görev listesine bak."
+          }
+        }
+      }
+    },
+    "error.task_action.occurrence_not_open_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not recorded"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedilmedi"
+          }
+        }
+      }
+    },
     "error.task_action.invalid_postpone_minutes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6726,6 +6760,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bildirim Geçmişi"
+          }
+        }
+      }
+    },
+    "notification.completion_refused.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That day isn't the one due now. Open Purrtine to check the task."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O gün şu an beklenen gün değil. Görevi kontrol etmek için Purrtine'i aç."
+          }
+        }
+      }
+    },
+    "notification.completion_refused.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not recorded"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedilmedi"
           }
         }
       }
@@ -9218,13 +9286,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Event will occur %@."
+            "value" : "Repeats: %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etkinlik %@ gerçekleşecek."
+            "value" : "Tekrar: %@"
           }
         }
       }
@@ -14611,6 +14679,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Son tamamlanma: %@, %@"
+          }
+        }
+      }
+    },
+    "tasks.row.last_completed_day" : {
+      "comment" : "Task row label when the last completion was filled in for an earlier day, so it has no time. %@ is the day.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last completed: %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son tamamlanma: %@"
           }
         }
       }

@@ -14,6 +14,8 @@ final class NotificationSchedulerSpy: TaskNotificationScheduling {
     private(set) var resyncCount = 0
     private(set) var resyncAttemptCount = 0
     private(set) var snoozedRequests: [(taskId: UUID, delayMinutes: Int)] = []
+    /// The `occurrenceDate` of each snooze in `snoozedRequests`.
+    private(set) var snoozedOccurrences: [Date?] = []
     private(set) var removedDeliveredTaskIds: [UUID] = []
     private(set) var cancelledSnoozeTaskIds: [UUID] = []
     private(set) var syncBadgeCallCount = 0
@@ -58,6 +60,7 @@ final class NotificationSchedulerSpy: TaskNotificationScheduling {
             throw snoozeError
         }
         snoozedRequests.append((info.taskId, delayMinutes))
+        snoozedOccurrences.append(info.occurrenceDate)
     }
 
     func removeDeliveredCareTaskNotifications(forTaskId taskId: UUID) async {

@@ -48,6 +48,56 @@ struct HomeRoutineStatusPresentationTests {
     }
 
     @Test
+    func recencyIsTodayOnlyBecauseOfTodaysRealCompletionNotAFillInForYesterday() {
+        let now = makeDate(year: 2026, month: 11, day: 16, hour: 12)
+        let task = makeTask(
+            title: "Brush Coat",
+            dueDate: makeDate(year: 2026, month: 11, day: 17, hour: 9),
+            completionDates: [makeDate(year: 2026, month: 11, day: 16, hour: 8)]
+        )
+        // Typed in at 11:00 today for yesterday: it must not replace today's real completion.
+        addCompletion(
+            to: task,
+            recordedAt: makeDate(year: 2026, month: 11, day: 16, hour: 11),
+            careDay: makeDate(year: 2026, month: 11, day: 15, hour: 0)
+        )
+
+        let row = HomeRoutineStatusPresentation.rows(
+            from: [task], referenceDate: now, locale: locale, calendar: makeCalendar()
+        ).first
+
+        #expect(row?.lastCompletionDate == makeDate(year: 2026, month: 11, day: 16, hour: 8))
+        #expect(row?.primaryRecencyText == String(localized: .homeRoutineStatusLastDone(
+            String(localized: .homeRoutineStatusToday)
+        )))
+    }
+
+    @Test
+    func aFillInForThreeDaysAgoAloneIsNotToday() {
+        let now = makeDate(year: 2026, month: 11, day: 16, hour: 12)
+        let task = makeTask(
+            title: "Brush Coat",
+            dueDate: makeDate(year: 2026, month: 11, day: 17, hour: 9),
+            completionDates: []
+        )
+        addCompletion(
+            to: task,
+            recordedAt: makeDate(year: 2026, month: 11, day: 16, hour: 11),
+            careDay: makeDate(year: 2026, month: 11, day: 13, hour: 0)
+        )
+
+        let row = HomeRoutineStatusPresentation.rows(
+            from: [task], referenceDate: now, locale: locale, calendar: makeCalendar()
+        ).first
+
+        #expect(row?.lastCompletionDate == makeDate(year: 2026, month: 11, day: 13, hour: 0))
+        #expect(row?.primaryRecencyText == String(localized: .homeRoutineStatusLastDone(
+            String(localized: .homeRoutineStatusDaysAgo(3))
+        )))
+        #expect(row?.secondaryTimestampText == "Nov 13, 2026")
+    }
+
+    @Test
     func rowsExcludeTasksWithNoCompletionHistory() {
         let referenceDate = makeDate(year: 2026, month: 4, day: 7, hour: 12)
 
@@ -158,12 +208,22 @@ struct HomeRoutineStatusPresentationTests {
                 completedAt: completionDate,
                 completedForDate: completionDate
             )
+            // Pin the care day to the suite's calendar, not the machine's time zone.
+            completion.completedForDate = makeCalendar().startOfDay(for: completionDate)
             completion.task = task
             return completion
         }
 
         task.completions = completions
         return task
+    }
+
+    /// A completion recorded at `recordedAt` for the earlier or same day `careDay`.
+    private func addCompletion(to task: CareTask, recordedAt: Date, careDay: Date) {
+        let completion = CareTaskCompletion(completedAt: recordedAt, completedForDate: careDay)
+        completion.completedForDate = makeCalendar().startOfDay(for: careDay)
+        completion.task = task
+        task.completions.append(completion)
     }
 
     private func makeCalendar() -> Calendar {

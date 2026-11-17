@@ -31,6 +31,8 @@ struct TaskEditView: View {
     
     // Scheduling
     @State private var startDate: Date = Date()
+    /// The date the form opened with. Save writes the date back only when it differs from this.
+    @State private var openedStartDate: Date?
     @State private var selectedTime: Date = Date()
     @State private var hasDate: Bool = false
     @State private var hasTime: Bool = false
@@ -607,6 +609,7 @@ struct TaskEditView: View {
         // Schedule - get the primary active schedule
         if let primarySchedule = task.schedules.first(where: { $0.isActive }) ?? task.schedules.first {
             startDate = primarySchedule.scheduledDate
+            openedStartDate = primarySchedule.scheduledDate
             hasDate = true
             
             if let scheduledTime = primarySchedule.scheduledTime {
@@ -676,7 +679,12 @@ struct TaskEditView: View {
         )
 
         do {
-            try TaskFormPersistence.updateTask(task, from: draft, in: modelContext)
+            try TaskFormPersistence.updateTask(
+                task,
+                from: draft,
+                in: modelContext,
+                openedScheduledDate: openedStartDate
+            )
         } catch {
             presentSaveError(error)
             return

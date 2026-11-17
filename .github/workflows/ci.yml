@@ -9,10 +9,15 @@ name: CI
 # changed tests and the suites of the changed files, and `cd functions && npm test`.
 # The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests, on the
 # iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
-# pass in CI). It runs in parallel with `app` on every push to main and manual run. On a PR it runs
-# only when the PR changes Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or
-# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. The run step prints
-# a retry summary: which tests passed only on retry, and which failed without recovering (#97).
+# pass in CI). The `changes` job decides which of the two run (its comment has the rules). A manual
+# run runs both. On a PR and on a push to main (diffed against the commit before it), `app` is
+# skipped when only docs, agent files or Cloud Function files changed, and `ui-tests` is skipped
+# unless Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or .github/workflows/** changed. The
+# `ui-tests` job runs in parallel with `app`. It has a 60 minute
+# limit: green runs took 32-38 minutes (2026-11-13..15), and a run that retries tests needs room
+# (#152). The run step prints a retry summary: which tests passed only on retry, and which failed
+# without recovering (#97). The retry flags work; a test suite whose runner exits after a failure
+# defeats them (an `async` tearDown did, #152).
 on:
   push:
     branches: [main]
@@ -24,70 +29,122 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Only a pull request run is cancelled by a newer push. Two runs on main both finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
-    name: Detect UI-test paths
+    name: Detect changed paths
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       ui: ${{ steps.filter.outputs.ui }}
+      app: ${{ steps.filter.outputs.app }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
-      - name: Decide if the UI tests must run
+      # A pull request is compared with its base, a push to main with the commit before it. A manual
+      # run, a push whose previous commit is not in the clone (a force push) and any failure to diff
+      # run everything.
+      #
+      # ui:  the UI tests run when the change touches the app, the UI tests, the project or a workflow.
+      # app: the `app` job runs unless every changed file is one the build and unit tests cannot see:
+      #      Markdown at the root, docs/, documentation/, .claude/, the Cloud Function folder and the
+      #      Firebase config, LICENSE, skills-lock.json and the Dependabot config. This is a deny-list on purpose: a new kind
+      #      of file builds until it is added here. Markdown under Purrtine/ or Scripts/ can still be a
+      #      bundle resource or script input, so only root Markdown is excluded.
+      #
+      # `app` is a required check. A job skipped by its `if:` reports "Success" to a required check
+      # (GitHub docs, "Troubleshooting required status checks": a job skipped by a conditional
+      # "reports Success"; a whole workflow skipped by path filtering stays Pending and blocks
+      # merging, so keep the path filter inside the jobs and never on the `on:` triggers).
+      - name: Decide which jobs must run
         id: filter
         env:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          if [ "$EVENT" != "pull_request" ]; then
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+          write() {
+            echo "ui=$1" >> "$GITHUB_OUTPUT"
+            echo "app=$2" >> "$GITHUB_OUTPUT"
+          }
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$BASE_SHA...HEAD"
+          elif [ "$EVENT" = "push" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            range="$BEFORE_SHA..HEAD"
+          else
+            echo "No diff base for a $EVENT event: everything runs."
+            write true true
             exit 0
           fi
-          git diff --name-only "$BASE_SHA"...HEAD | tee changed.txt
+          if ! git diff --name-only "$range" > changed.txt; then
+            echo "git diff $range failed: everything runs."
+            write true true
+            exit 0
+          fi
+          cat changed.txt
+
           if grep -qE '^(Purrtine/|PurrtineUITests/|[^/]+\.xcodeproj/|\.github/workflows/)' changed.txt; then
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            ui=true
           else
-            echo "ui=false" >> "$GITHUB_OUTPUT"
+            ui=false
             echo "No app, UI-test, project or workflow change: UI tests skipped."
           fi
+
+          if grep -vE '^([^/]+\.md|docs/|documentation/|\.claude/|functions/|firebase\.json|\.firebaserc|LICENSE|skills-lock\.json|\.github/dependabot\.yml)' changed.txt | grep -q .; then
+            app=true
+          else
+            app=false
+            echo "Only docs, agent files or Cloud Function files changed: build and unit tests skipped."
+          fi
+          write "$ui" "$app"
+
   app:
     name: Build, unit tests, coverage, Release build
-    if: ${{ !github.event.repository.private }}
+    needs: changes
+    # Required check: a skip through this `if:` counts as passing. If the `changes` job itself fails,
+    # run: a broken filter must not skip the build.
+    if: ${{ !cancelled() && !github.event.repository.private && (needs.changes.result != 'success' || needs.changes.outputs.app == 'true') }}
     runs-on: macos-26
     timeout-minutes: 60
     env:
       MINIMUM_LINE_COVERAGE: "17.5"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
-          xcode-version: latest-stable
+          xcode-version: '26.6'
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/Library/Caches/ci-spm
           key: spm-${{ hashFiles('Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
+      # The picker sorts runtimes by number (iOS 26.10 beats 26.6) and prefers a plain iPhone 17.
+      # The same file is in TriQ; keep the two byte-identical.
+      - name: Pick a simulator
+        run: |
+          Scripts/ci-pick-simulator.sh --self-test
+          UDID=$(Scripts/ci-pick-simulator.sh)
+          echo "Simulator: $UDID"
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
       # No GoogleService-Info.plist in the repo: the app builds and runs with the cloud tier off.
       - name: Run unit tests with coverage
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
-          echo "Simulator: $UDID"
           mkdir -p TestResults
           xcodebuild test \
             -project Purrtine.xcodeproj \
             -scheme Purrtine \
             -testPlan Purrtine \
-            -destination "id=$UDID" \
+            -destination "id=$SIM_UDID" \
             -skip-testing:PurrtineUITests \
             -resultBundlePath TestResults/Purrtine.xcresult \
             -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
@@ -121,7 +178,7 @@ jobs:
 
       - name: Upload test results and logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ci-results
           path: |
@@ -133,19 +190,20 @@ jobs:
   ui-tests:
     name: UI tests
     needs: changes
-    if: ${{ !github.event.repository.private && needs.changes.outputs.ui == 'true' }}
+    # If the `changes` job itself fails, run: a broken filter must not skip the tests.
+    if: ${{ !cancelled() && !github.event.repository.private && (needs.changes.result != 'success' || needs.changes.outputs.ui == 'true') }}
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
-          xcode-version: latest-stable
+          xcode-version: '26.6'
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/Library/Caches/ci-spm
           key: spm-${{ hashFiles('Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
@@ -210,7 +268,7 @@ jobs:
 
       - name: Upload UI test results and log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ui-test-results
           path: |
@@ -228,9 +286,9 @@ jobs:
       run:
         working-directory: functions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm

@@ -34,8 +34,12 @@ final class FakeUserNotificationCenterClient: UserNotificationCenterClient {
         pendingRequests.append(request)
     }
 
+    /// Runs before each permission read, so a test can hold the read open and let other work run.
+    var authorizationStatusHandler: (@MainActor () async -> Void)?
+
     func authorizationStatus() async -> UNAuthorizationStatus {
-        authorizationStatusValue
+        await authorizationStatusHandler?()
+        return authorizationStatusValue
     }
 
     func deliveredNotificationSnapshots() async -> [DeliveredNotificationSnapshot] {
@@ -45,8 +49,12 @@ final class FakeUserNotificationCenterClient: UserNotificationCenterClient {
         return deliveredSnapshots
     }
 
+    /// Runs before each pending read, so a test can hold a snooze add between its checks and its add.
+    var pendingRequestsHandler: (@MainActor () async -> Void)?
+
     func pendingNotificationRequests() async -> [UNNotificationRequest] {
-        pendingRequests
+        await pendingRequestsHandler?()
+        return pendingRequests
     }
 
     func removeAllDeliveredNotifications() {

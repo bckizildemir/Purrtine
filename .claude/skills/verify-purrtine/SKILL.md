@@ -216,6 +216,8 @@ and the same screen size as the recorded runs. Measure again before you change t
 
 ## Gotchas
 
+- **An open sheet does not hide the screen behind it.** `$V ui` still lists the rows below a sheet, so the
+  tree cannot tell you the sheet is open. Confirm it with `$V shot`.
 - **Other sessions shut the device down.** Before #80, `Scripts/xcb.sh test` shut down every other
   booted simulator; since 2026-10-27 it shuts down none it did not boot. On 2026-10-14 a TriQ session's scratchpad
   script also ran `xcrun simctl shutdown all` before each of its own launches; nothing in this repo

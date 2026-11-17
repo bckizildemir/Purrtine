@@ -4,9 +4,19 @@ Hand-off file: where the work stands. Read it at session start; update it before
 
 ## Focus
 
-Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the animation audit and decisions,
-#131, are done). Items, #124 first (#125 and #127 depend on it):
-- #124 (Polish 1: shared motion tokens)
+Robustness first (owner, 2026-11-17): a red CI blocks every merge, and bugs damage user data while polish can wait.
+Items, in this order:
+- #152 (CI UI tests are flaky): done, #159 merged 2026-11-17
+- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off), PR #155: main merged in
+  (`8caf1fc`, 2026-11-17), unit job green, UI job was running when work paused; then the owner's merge
+- CI quick pack, PR #171 (see "Next step" 7): waits for its UI job, then the owner's merge
+- #149 (build number 14): update the branch and merge once the UI tests pass
+- #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
+  #1, #164, #165 (see "Next step" 5)
+
+Then Stage 2 polish (animation and look) resumes, plan `docs/stage2-polish-decisions.md` (the animation audit and
+decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
+- #124 (Polish 1: shared motion tokens): done, #158 merged 2026-11-16
 - #125 (Polish 2: Home cards and task rows lose glass)
 - #126 (Polish 3: Apple calendar view)
 - #127 (Polish 4: onboarding fades)
@@ -16,9 +26,74 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 
 ## Last updated
 
-2026-11-13
+2026-11-17
 
 Last session:
+- 2026-11-17 (paused by the owner mid-run; resume from here):
+  - #159 merged (owner's go): a failed UI test now really retries (sync tearDown), safer taps and waits, the
+    double-save tests send one `doubleTap()`, and a test that passes only on retry shows as a `::warning`
+    annotation and in the job's step summary. Last two CI runs: 50/50 UI tests, no retry needed.
+  - CI audit of both apps (read-only, last 60 runs). The owner approved a quick pack now and the rest later
+    ("Next step" 7). Purrtine quick pack is PR #171 (branch `ci/ci-pack`, worktree `../wt-p-ci`): cancel in progress
+    only on PRs; push to main runs the UI tests only when app paths changed; the `app` job skips docs-only changes
+    (job names unchanged, a skipped job passes a required check); shared `Scripts/ci-pick-simulator.sh` (identical to
+    TriQ's) in the `app` job; Xcode pinned to 26.6; actions pinned to SHAs; `.github/dependabot.yml`. Unit job green
+    (8.5 min, was ~12.7). UI job run 44085128337 was still running. Not proven until the next docs-only merge: the
+    skip on push. Dependabot security updates are disabled in the repo settings (needs the owner).
+  - Tried in TriQ and dropped: booting the simulator during the build made the build 2-3x slower.
+  - #155: main merged in, conflicts resolved, pushed; its UI job was still running.
+  - To resume: `gh pr checks 171` and `gh pr checks 155`; if UI tests are red, read the failing test from the log
+    before changing anything; then ask the owner to merge #171 and #155, then update and merge #149.
+- 2026-11-17 (later): the owner reordered the focus: robustness (#152 flaky CI UI tests, #142 snoozes, #149
+  build 14, #163) before the polish items. PR #159 CI run 43793613651: the retry now runs, but
+  `testTaskEditDoubleSaveTapUpdatesTaskOnce` failed on both attempts ("No matches found for taskEdit.saveButton"
+  after the first tap closed the sheet); a fix is in work on the PR.
+- 2026-11-17: #169 merged (owner's go). `lastCompletionDisplayText(relativeTo:)` and `dueDisplayText(relativeTo:)`
+  read the clock instead of their reference date, so the #156 test pinned to 2026-11-16 failed from 2026-11-17 and
+  turned CI red; both now compare start-of-day values with the reference date. Same PR: the custom repeat summary
+  reads "Repeats: %@" / "Tekrar: %@". Preview tooling steps A and B done (item 6).
+- 2026-11-16 (night, lessons): `session-lessons` after the #1 grilling. Written: owner preferences that must hold in
+  every folder go in `~/.claude/CLAUDE.md` or a skill, not project memory; keep a recommendation stable between
+  rounds; `decision-check` shows the owner the real screens; `verify-purrtine` gotcha: an open sheet does not hide
+  the screen behind it from `$V ui`. New global skill `show-in-yazi` and the `/in-your-own-words` skill.
+- 2026-11-16 (night): grilling round on #1 (Deepen: the recurrence rule as a module) with the owner, then the
+  Swift-skill check (`decision-check`). Root cause named: one pair of dates (`completedForDate`, `completedAt`) does two
+  jobs, and "which day" is a loose `Date?` through ~30 spots. Four steps, in this order: #163 (fix: a completion records
+  when the care was done and which day it counts for; `ready-for-agent`), then #1, then #164 (typed day and one
+  target choice), then #165 (setting "count the next day from the day I did it", new schema version, after #2).
+  New glossary words (Occurrence, Open Occurrence, Missed Occurrence, Fill-in), the idea #162 (linked care tasks) in
+  `docs/IDEAS.md`, and the research in `docs/repeat-completion-research.md` (docs PR #166, squash-merged by the
+  agent once CI was green). Decisions are in a comment on #1. Owner
+  answers still to come: none open. The Whiskers time field needs a cloud deploy, which needs the owner's separate yes.
+- 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
+  Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
+  a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
+  Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
+  Simulator proofs PASS (runs `2026-11-16-121258-4944`, `2026-11-16-125755-713c`); CI green incl. UI tests.
+  `interpretTaskAssistantRequest` deployed after the merge (owner's yes): revision `00006-dol`, ready. It adds
+  the cloud interpreter's `"today"` day.
+- 2026-11-16 (later): #158 (Polish 1: shared motion tokens, closes #124) reviewed with `/code-review`, branch
+  updated, CI green incl. UI tests, merged (squash, owner's yes). Review notes left for #130 (Polish 7: Reduce
+  Motion): `Motion.resolve(_:reduceMotion:)` only swaps the curve for a 0.15 s ease-out, it does not remove
+  movement, although its doc comment says "short fade"; callers must also swap scale/offset transitions; the plan
+  in `docs/animation-audit.md` returns `Animation?`, the code a non-optional. `MotionTests` check only that
+  tokens differ, not their values.
+  #156 (repeating-task day fix): owner decision 1 = (a): a refused reminder Complete now posts a "Not recorded"
+  notice (`completion_refused_<taskId>`, en + tr, skipped when Reminders are off), commit `0611c8d`, 4 new unit
+  tests, suites green locally; CI pending. Decision 2 still open (see "Waits for the owner").
+  New open PR #159 (fix #152: make the CI UI tests reliable): `UI tests` red, still in work.
+- 2026-11-16 (checked on GitHub that day): #154 merged 2026-11-15 (a kill after onboarding Start no longer
+  makes a second first cat) and #140 is closed. Three PRs stay open:
+  - #155 (reminder snooze fixes, for #142): branch updated from main 2026-11-15, unit tests green, `UI tests` red
+    on `testSimulatedNotificationSnoozeKeepsTaskPendingAndShowsPendingNotification`, a snooze test, so likely
+    tied to the change, not to #152. Another agent is working on it.
+  - #156 (repeating-task day fix, for #141): CI green (run of 2026-11-14), not updated since. Waits for two owner
+    decisions (see "Waits for the owner"), and has no verify-purrtine proof yet. #155 and #156 conflict in
+    `NotificationActionCoordinator.swift` and its tests; whichever merges second fixes that.
+  - #149 (build number 14): branch updated 2026-11-15, unit tests green, `UI tests` red again (both attempts;
+    this time `testCatCardContextMenuAddTaskOpensFormWithCatPreselected`), a different test each run, which
+    looks like the flakiness in #152. So main still says build 13, while build 14 is already with the
+    external testers.
 - 2026-11-13 (later): build number 14 (#149). The `## Open PRs` section left this file: GitHub is the only
   list of open PRs (`gh pr list`, or `/where`), so the file cannot go stale on it. TestFlight: build 14 is uploaded,
   `VALID`, and sent to the External Testers group and Apple's beta review (waits for Apple). The release skill
@@ -44,13 +119,50 @@ Last session:
 
 ## Next step
 
-1. Stage 2 polish (the Focus): #124 (Polish 1: shared motion tokens) first, since #125 (Home cards without glass)
-   and #127 (onboarding fades) depend on it. #126, #128, #129 and #130 name no such dependency.
-   The plan is in `docs/stage2-polish-decisions.md`.
-2. Fix #140, #141 and #142 (the formal-check bugs).
-3. Still `ready-for-agent`: #9 (feeding details saved, schema V2).
+1. Stage 2 polish (after the robustness items in Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
+   fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
+2. Land the formal-check fixes: #140 is done (#154), #141 is done (#156); #142 is in #155 (rebase it on main:
+   #156 touched `NotificationActionCoordinator.swift` and its tests). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
+3. Postponed by the owner 2026-11-16 (a later task, no issue yet): after #156, a missed earlier day of a repeating
+   task can be filled in from a reminder or Whiskers, but the calendar shows that day as "No tasks". Show a missed
+   day in the calendar as missed and let the user complete it there. Waits because the owner said "yes, but as a later
+   task"; start trigger: the owner picks it. First step: open an issue.
+4. #9 (feeding details are saved, schema V3: V2 is already on main, so it adds V3 with a V2→V3 step) is
+   blocked by #2 (Deepen: the task form draft; open, `ready-for-human`, no PR), so it lost `ready-for-agent`.
+   It becomes ready when #2 merges. #165 (the "count from the day I did it" setting) also needs a schema version
+   and takes the next free one; whichever merges second takes the version after it.
+5. Recurrence chain, decided 2026-11-16: #163 (fix) first, then #1, then #164, then #165 (see "Last session").
+6. SwiftUI Preview rendering through Xcode's MCP server (`xcode`, `xcrun mcpbridge`, tool `RenderPreview`), both
+   apps. Step A is done (2026-11-17): the global `preview` skill (`~/.claude/skills/preview/`) renders a `#Preview` to
+   `~/preview-renders/<app>/` and shows it with `show-in-yazi`; `decision-check` step 4 now uses it for screens a
+   decision changes. Proved on `CustomRepeatSheet.swift` in Turkish dark and English light. It must name the render
+   device: left to Xcode it drew on the work project's `iPhone 12 slim (CWA)`. Step B is done (2026-11-17): the
+   `swiftui-preview` mod (`~/.claude/mods/swiftui-preview/`, loaded in every session through
+   `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`) keeps each render's PNG, draws it in a "SwiftUI Preview"
+   pane (`/preview-pane` reopens it), and refuses a render that names no device. A preview shows layout with sample
+   data only; behavior still needs `verify-purrtine`. Postponed by the owner 2026-11-17 ("will do later"; Yazi is
+   enough for now): an interactive preview, and centering the image in Yazi. `docs/swiftui-preview-interaction-research.md`
+   holds what is possible (no mod can drive a `#Preview` today; nearest: an "open in Xcode" button, or a pisim-style
+   simulator stream in a herdr pane; Yazi centering only by padding the PNG). Start trigger: the owner picks one.
+7. CI improvements from the 2026-11-17 audit (both apps). The quick pack is PR #171 (Purrtine) and TriQ #192.
+   The owner chose the quick pack now and the bigger items later (2026-11-17); start trigger: #171 merged and the
+   owner picks one:
+   - Split the 50 UI tests (one class, ~26 min serial) into 3-4 parallel jobs: ~35 min → ~12-15 min. Free on a
+     public repo; the free plan runs about 5 macOS jobs at once, so a TriQ run may queue.
+   - A test summary on the PR page (failed tests, slowest tests, coverage per target) from `xcresulttool`, plus
+     `::error` annotations for failed tests; artifact `retention-days`.
+   - Raise the coverage floor (`MINIMUM_LINE_COVERAGE` 17.5, actual 24.48%) to ~24 and ratchet it.
+   - Move `npm audit` out of the required job (weekly schedule or warning only): a new advisory would block every PR.
+   - Try a DerivedData cache (measure first).
+   - Decide whether "UI tests" becomes a required check (today only "Build, unit tests, coverage, Release build"
+     and "Cloud Function tests" are required, so a red UI job does not block a merge, and after #171 the UI tests
+     run only on PRs). Recommended once #171 merged and the UI job stays green.
+   - Turn on Dependabot security updates in the repo settings (disabled today).
 
 ## Waits for the owner
+
+- Merge PR #155 (#142 reminder snoozes) and PR #171 (CI quick pack) once their UI jobs are green.
+- Whether "UI tests" becomes a required check (Next step 7).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).

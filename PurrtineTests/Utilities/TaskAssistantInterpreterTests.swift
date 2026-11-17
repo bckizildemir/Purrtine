@@ -286,11 +286,9 @@ struct TaskAssistantInterpreterTests {
         #expect(disambiguation.choices.count > 1)
     }
 
-    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
-    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne(
-        completion: WaterRefreshCompletion
-    ) throws {
-        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: completion)
+    @Test
+    func completeRequestSkipsTaskAlreadyDoneTodayAndConfirmsTheOpenOne() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: .onTime)
         let result = fixture.interpreter.interpret(
             text: "complete water refresh",
             tasks: fixture.tasks,
@@ -306,9 +304,9 @@ struct TaskAssistantInterpreterTests {
         #expect(task === fixture.tasks[1])
     }
 
-    @Test(arguments: [WaterRefreshCompletion.onTime, .overdueCaughtUp])
-    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone(completion: WaterRefreshCompletion) throws {
-        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1], completion: completion)
+    @Test
+    func completeRequestWithEveryMatchDoneTodaySaysAlreadyDone() throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1], completion: .onTime)
         let result = fixture.interpreter.interpret(
             text: "complete water refresh",
             tasks: fixture.tasks,
@@ -346,7 +344,7 @@ struct TaskAssistantInterpreterTests {
     func weakSingleOpenMatchFallsBackToACardWithThatTask() throws {
         let fixture = try makeWaterRefreshFixture(
             doneIndices: [0],
-            completion: .overdueCaughtUp,
+            completion: .onTime,
             titles: ["Water bowl", "Fresh water"]
         )
         let result = fixture.interpreter.interpret(
@@ -365,7 +363,7 @@ struct TaskAssistantInterpreterTests {
 
     @Test
     func openMatchBeyondTheFirstThreeIsNotHiddenByDoneOnes() throws {
-        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], completion: .overdueCaughtUp, taskCount: 4)
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0, 1, 2], completion: .onTime, taskCount: 4)
         let result = fixture.interpreter.interpret(
             text: "complete water refresh",
             tasks: fixture.tasks,
@@ -398,9 +396,11 @@ struct TaskAssistantInterpreterTests {
         #expect(clarification.suggestions.count == 2)
     }
 
-    @Test
-    func completionFromYesterdayDoesNotCountAsDoneToday() throws {
-        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: .yesterday)
+    /// "Done today" means a completion FOR today. A completion recorded yesterday, or one recorded
+    /// today for yesterday's occurrence (caught up late, or filled in), leaves today's occurrence open.
+    @Test(arguments: [WaterRefreshCompletion.yesterday, .overdueCaughtUp])
+    func completionForAnEarlierDayDoesNotCountAsDoneToday(completion: WaterRefreshCompletion) throws {
+        let fixture = try makeWaterRefreshFixture(doneIndices: [0], completion: completion)
         let result = fixture.interpreter.interpret(
             text: "complete water refresh",
             tasks: fixture.tasks,
