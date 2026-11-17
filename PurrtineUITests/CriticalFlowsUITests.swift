@@ -1302,12 +1302,12 @@ final class CriticalFlowsUITests: XCTestCase {
         let saveButton = app.buttons["taskEdit.saveButton"]
         XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
 
-        // No wait between the taps. The stubbed notification layer resolves almost immediately, so
-        // the sheet is usually gone before the second tap lands; `tapAgainIfStillPresent` keeps the
-        // test deterministic. That makes this a regression guard on the update path, not a proof
-        // that the `isSaving` guard holds under a real race. A real proof needs an injected delay.
-        saveButton.tap()
-        tapAgainIfStillPresent(saveButton)
+        // Both taps go out as one `doubleTap()` event, resolved against the button once (#152). Two
+        // separate taps had to look the button up again for the second tap, and on CI the sheet was
+        // already closing then: "No matches found for taskEdit.saveButton" (PR #159 run 1). This
+        // is a regression guard on the update path; a real race proof needs an injected delay.
+        waitUntilHittable(saveButton)
+        saveButton.doubleTap()
 
         let updatedRow = app.buttons["taskRow.\(updatedTitle)"]
         XCTAssertTrue(updatedRow.waitForExistence(timeout: uiTimeout))
@@ -1335,9 +1335,9 @@ final class CriticalFlowsUITests: XCTestCase {
         let saveButton = app.buttons["taskAdd.saveButton"]
         XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
 
-        // Same timing caveat as the edit-sheet double-tap test above.
-        saveButton.tap()
-        tapAgainIfStillPresent(saveButton)
+        // Same one-event double tap and timing caveat as the edit-sheet test above.
+        waitUntilHittable(saveButton)
+        saveButton.doubleTap()
 
         XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.buttons.matching(identifier: "taskRow.\(taskTitle)").count, 1)
@@ -1662,16 +1662,6 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["cats.card.UI Test Cat"].exists)
-    }
-
-    /// Taps an element a second time, but only while it is still on screen.
-    ///
-    /// A save button whose sheet has already closed is not a test failure: the sheet closing is the
-    /// wanted outcome. The assertion that matters is the row count after the taps.
-    private func tapAgainIfStillPresent(_ element: XCUIElement) {
-        guard isTappableNow(element) else { return }
-
-        element.tap()
     }
 
     /// Whether `element` can take a tap right now, read without raising (#152).
