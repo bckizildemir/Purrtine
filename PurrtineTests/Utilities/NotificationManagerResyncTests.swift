@@ -113,6 +113,27 @@ struct NotificationManagerResyncTests {
         #expect(careTaskTitles == ["Renamed", "Renamed"])
     }
 
+    /// A reminder names the occurrence it was made for, so its Complete action cannot credit another
+    /// day. The identifier already ends in that due date; the content carries the same one.
+    @Test(arguments: [true, false])
+    func everyReminderCarriesTheOccurrenceItWasMadeFor(showsTaskDetails: Bool) async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        var settings = sut.settings
+        settings.showTaskDetails = showsTaskDetails
+        sut.applySettings(settings)
+
+        try await sut.resyncCareTaskNotifications(with: [makeInfo(taskId: UUID(), frequency: .daily)])
+
+        let reminders = fakeCenter.pendingRequests.filter { $0.content.userInfo["taskId"] != nil }
+        #expect(reminders.count > 2)
+        for request in reminders {
+            let dueTimestamp = try #require(request.identifier.split(separator: "_").last.flatMap { Int($0) })
+            let occurrence = request.content.userInfo["occurrenceDate"] as? Double
+            #expect(occurrence.map(Int.init) == dueTimestamp, "\(request.identifier)")
+        }
+    }
+
     @Test(arguments: [false, true])
     func turningRemindersOffRemovesEveryCareTaskReminderAndSnooze(viaPermission: Bool) async throws {
         let taskId = UUID()

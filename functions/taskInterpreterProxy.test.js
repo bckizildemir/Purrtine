@@ -142,6 +142,40 @@ test("catIds are filtered to only ids belonging to the matched task", async () =
   assert.deepEqual(result.catIds, ["cat-luna"]);
 });
 
+test("completedForDate passes yesterday and today through and drops anything else", async () => {
+  const run = async (completedForDate, command = "complete") => {
+    const result = await interpretTaskAssistantRequest({
+      ...baseOptions,
+      data: { text: "I fed Luna", tasks: [feedLuna] },
+      fetchImpl: successFetch(
+        JSON.stringify({ match: "confirmed", command, taskId: "task-luna", completedForDate })
+      ),
+    });
+    return result.completedForDate;
+  };
+
+  assert.equal(await run("yesterday"), "yesterday");
+  assert.equal(await run("today"), "today");
+  assert.equal(await run("tomorrow"), null);
+  assert.equal(await run(null), null);
+  assert.equal(await run("today", "open"), null);
+});
+
+test("the prompt tells the model it may answer today", async () => {
+  await interpretTaskAssistantRequest({
+    ...baseOptions,
+    data: { text: "I fed Luna today", tasks: [feedLuna] },
+    fetchImpl: successFetch(
+      JSON.stringify({ match: "none" }),
+      (url, options) => {
+        const system = JSON.parse(options.body).messages[0].content;
+        assert.match(system, /"today" only if the user explicitly says today/);
+        assert.match(system, /yesterday\|today\|null/);
+      }
+    ),
+  });
+});
+
 test("postpone command defaults minutes and clamps out-of-range values", async () => {
   const withoutDuration = await interpretTaskAssistantRequest({
     ...baseOptions,

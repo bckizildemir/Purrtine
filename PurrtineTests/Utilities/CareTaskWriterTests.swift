@@ -354,6 +354,31 @@ struct CareTaskWriterTests {
 
     // MARK: - snooze
 
+    /// The snooze carries the due date of the reminder it postpones, so its Complete action cannot
+    /// credit another day (#141).
+    @Test
+    func aSnoozeCarriesTheOccurrenceOfTheReminderItPostpones() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        try await sut.save(task, in: context)
+        let occurrence = Date(timeIntervalSince1970: 1_800_000_000)
+
+        try await sut.snooze(task, minutes: 10, occurrence: occurrence)
+
+        #expect(spy.snoozedOccurrences == [occurrence])
+    }
+
+    /// A postpone with no reminder behind it (Whiskers) postpones the occurrence open now.
+    @Test
+    func aSnoozeWithoutAnOccurrenceCarriesTheOpenOne() async throws {
+        let (task, _) = makeTask(title: "Feed Mochi")
+        try await sut.save(task, in: context)
+        let open = try #require(TaskActionService.openOccurrence(of: task))
+
+        try await sut.snooze(task, minutes: 10)
+
+        #expect(spy.snoozedOccurrences == [open])
+    }
+
     @Test
     func snoozingSchedulesAOneOffReminderAndWritesNothing() async throws {
         let (task, _) = makeTask(title: "Feed Mochi")
