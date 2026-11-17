@@ -6,9 +6,11 @@ Hand-off file: where the work stands. Read it at session start; update it before
 
 Robustness first (owner, 2026-11-17): a red CI blocks every merge, and bugs damage user data while polish can wait.
 Items, in this order:
-- #152 (CI UI tests are flaky), PR #159: in work
-- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off), PR #155: rebase on main, then CI
-- #149 (build number 14): merge once the UI tests pass
+- #152 (CI UI tests are flaky): done, #159 merged 2026-11-17
+- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off), PR #155: main merged in
+  (`8caf1fc`, 2026-11-17), unit job green, UI job was running when work paused; then the owner's merge
+- CI quick pack, PR #171 (see "Next step" 7): waits for its UI job, then the owner's merge
+- #149 (build number 14): update the branch and merge once the UI tests pass
 - #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
   #1, #164, #165 (see "Next step" 5)
 
@@ -27,6 +29,21 @@ decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now
 2026-11-17
 
 Last session:
+- 2026-11-17 (paused by the owner mid-run; resume from here):
+  - #159 merged (owner's go): a failed UI test now really retries (sync tearDown), safer taps and waits, the
+    double-save tests send one `doubleTap()`, and a test that passes only on retry shows as a `::warning`
+    annotation and in the job's step summary. Last two CI runs: 50/50 UI tests, no retry needed.
+  - CI audit of both apps (read-only, last 60 runs). The owner approved a quick pack now and the rest later
+    ("Next step" 7). Purrtine quick pack is PR #171 (branch `ci/ci-pack`, worktree `../wt-p-ci`): cancel in progress
+    only on PRs; push to main runs the UI tests only when app paths changed; the `app` job skips docs-only changes
+    (job names unchanged, a skipped job passes a required check); shared `Scripts/ci-pick-simulator.sh` (identical to
+    TriQ's) in the `app` job; Xcode pinned to 26.6; actions pinned to SHAs; `.github/dependabot.yml`. Unit job green
+    (8.5 min, was ~12.7). UI job run 44085128337 was still running. Not proven until the next docs-only merge: the
+    skip on push. Dependabot security updates are disabled in the repo settings (needs the owner).
+  - Tried in TriQ and dropped: booting the simulator during the build made the build 2-3x slower.
+  - #155: main merged in, conflicts resolved, pushed; its UI job was still running.
+  - To resume: `gh pr checks 171` and `gh pr checks 155`; if UI tests are red, read the failing test from the log
+    before changing anything; then ask the owner to merge #171 and #155, then update and merge #149.
 - 2026-11-17 (later): the owner reordered the focus: robustness (#152 flaky CI UI tests, #142 snoozes, #149
   build 14, #163) before the polish items. PR #159 CI run 43793613651: the retry now runs, but
   `testTaskEditDoubleSaveTapUpdatesTaskOnce` failed on both attempts ("No matches found for taskEdit.saveButton"
@@ -127,8 +144,25 @@ Last session:
    enough for now): an interactive preview, and centering the image in Yazi. `docs/swiftui-preview-interaction-research.md`
    holds what is possible (no mod can drive a `#Preview` today; nearest: an "open in Xcode" button, or a pisim-style
    simulator stream in a herdr pane; Yazi centering only by padding the PNG). Start trigger: the owner picks one.
+7. CI improvements from the 2026-11-17 audit (both apps). The quick pack is PR #171 (Purrtine) and TriQ #192.
+   The owner chose the quick pack now and the bigger items later (2026-11-17); start trigger: #171 merged and the
+   owner picks one:
+   - Split the 50 UI tests (one class, ~26 min serial) into 3-4 parallel jobs: ~35 min → ~12-15 min. Free on a
+     public repo; the free plan runs about 5 macOS jobs at once, so a TriQ run may queue.
+   - A test summary on the PR page (failed tests, slowest tests, coverage per target) from `xcresulttool`, plus
+     `::error` annotations for failed tests; artifact `retention-days`.
+   - Raise the coverage floor (`MINIMUM_LINE_COVERAGE` 17.5, actual 24.48%) to ~24 and ratchet it.
+   - Move `npm audit` out of the required job (weekly schedule or warning only): a new advisory would block every PR.
+   - Try a DerivedData cache (measure first).
+   - Decide whether "UI tests" becomes a required check (today only "Build, unit tests, coverage, Release build"
+     and "Cloud Function tests" are required, so a red UI job does not block a merge, and after #171 the UI tests
+     run only on PRs). Recommended once #171 merged and the UI job stays green.
+   - Turn on Dependabot security updates in the repo settings (disabled today).
 
 ## Waits for the owner
+
+- Merge PR #155 (#142 reminder snoozes) and PR #171 (CI quick pack) once their UI jobs are green.
+- Whether "UI tests" becomes a required check (Next step 7).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
