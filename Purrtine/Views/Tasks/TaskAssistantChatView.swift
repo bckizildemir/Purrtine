@@ -73,6 +73,7 @@ struct TaskAssistantChatView: View {
                     notes: notes,
                     photos: photos,
                     completedForDate: completedForDate,
+                    expectedOccurrence: request.expectedOccurrence,
                     in: modelContext
                 )
             }

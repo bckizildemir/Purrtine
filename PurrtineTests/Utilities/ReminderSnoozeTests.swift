@@ -228,7 +228,8 @@ struct ReminderSnoozeTests {
         let task = try insertStoredTask(in: container.mainContext)
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
-            taskWriter: CareTaskWriter(scheduler: manager)
+            taskWriter: CareTaskWriter(scheduler: manager),
+            refusalNotice: SilentCompletionRefusalNotice()
         )
         let gate = PermissionGate()
         fakeCenter.authorizationStatusHandler = { await gate.hold() }

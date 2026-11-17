@@ -118,6 +118,9 @@ struct NotificationScheduleInfo: Sendable {
     let endDate: Date?
     let customDays: [Int]?
     let reminderMinutes: Int?
+    /// A snooze only: the due date of the reminder it postpones, written to its content as
+    /// `NotificationManager.occurrenceDateKey` so its Complete action completes that day (#141).
+    var occurrenceDate: Date?
 }
 
 enum NotificationDelayError: Error, Equatable {
@@ -156,6 +159,7 @@ enum NotificationSchedulingEligibility {
 final class NotificationManager:
     NSObject,
     TaskNotificationScheduling,
+    CompletionRefusalNoticePosting,
     NotificationResyncing
 {
     nonisolated static let shared: NotificationManager = MainActor.assumeIsolated {
@@ -515,7 +519,11 @@ final class NotificationManager:
     private func reminderRequest(for candidate: CareTaskReminderCandidate) -> UNNotificationRequest {
         UNNotificationRequest(
             identifier: candidate.identifier,
-            content: createNotificationContent(for: candidate.info, isOverdue: candidate.isOverdue),
+            content: createNotificationContent(
+                for: candidate.info,
+                isOverdue: candidate.isOverdue,
+                occurrenceDate: candidate.occurrenceDate
+            ),
             trigger: calendarTrigger(firedAt: candidate.fireDate)
         )
     }
@@ -557,7 +565,8 @@ final class NotificationManager:
                     identifier: "\(identifierPrefix)_\(Int(occurrence.dueDate.timeIntervalSince1970))",
                     fireDate: occurrence.fireDate,
                     info: info,
-                    isOverdue: false
+                    isOverdue: false,
+                    occurrenceDate: occurrence.dueDate
                 )
             }
 
@@ -573,7 +582,8 @@ final class NotificationManager:
                         identifier: "\(identifierPrefix)_overdue_\(Int(dueDate.timeIntervalSince1970))",
                         fireDate: overdueDate,
                         info: info,
-                        isOverdue: true
+                        isOverdue: true,
+                        occurrenceDate: dueDate
                     )
                 )
             }
@@ -624,7 +634,15 @@ final class NotificationManager:
             && NSDictionary(dictionary: old.userInfo).isEqual(to: new.userInfo)
     }
 
-    private func createNotificationContent(for info: NotificationScheduleInfo, isOverdue: Bool = false) -> UNMutableNotificationContent {
+    /// `userInfo` key of the due date a reminder was made for (seconds since 1970), so its Complete
+    /// action completes that occurrence and no other.
+    static let occurrenceDateKey = "occurrenceDate"
+
+    private func createNotificationContent(
+        for info: NotificationScheduleInfo,
+        isOverdue: Bool = false,
+        occurrenceDate: Date? = nil
+    ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         if settings.showTaskDetails {
             let categoryEmoji = emojiForCategory(info.category)
@@ -663,6 +681,9 @@ final class NotificationManager:
             ]
         } else {
             content.userInfo = ["taskId": info.taskId.uuidString]
+        }
+        if let occurrenceDate {
+            content.userInfo[Self.occurrenceDateKey] = occurrenceDate.timeIntervalSince1970
         }
         return content
     }
@@ -798,7 +819,7 @@ final class NotificationManager:
         guard snoozeGenerations[info.taskId, default: 0] == generation else { return }
         guard areRemindersOn else { throw NotificationSchedulingError.remindersOff }
 
-        let content = createNotificationContent(for: info)
+        let content = createNotificationContent(for: info, occurrenceDate: info.occurrenceDate)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delayInterval, repeats: false)
         let request = UNNotificationRequest(
             identifier: "snooze_\(info.taskId.uuidString)_\(Int(Date().timeIntervalSince1970 * 1_000))",
@@ -838,6 +859,37 @@ final class NotificationManager:
     /// The creation stamp at the end of a snooze identifier, `snooze_<taskId>_<stamp>`.
     private static func snoozeCreationStamp(_ request: UNNotificationRequest) -> Int {
         request.identifier.split(separator: "_").last.flatMap { Int($0) } ?? 0
+    }
+
+    // MARK: - Refused completion notice (#141)
+
+    /// Stable identifier of a task's "not recorded" notice, so repeated refusals replace it.
+    nonisolated static func completionRefusalNoticeIdentifier(forTaskId taskId: UUID) -> String {
+        "completion_refused_\(taskId.uuidString)"
+    }
+
+    /// Posts the notice right away. It honours the Reminders setting and the system permission like
+    /// every other notification. It carries no `taskId`, so a tap opens the app and resyncs,
+    /// completions and reminder cleanup never touch it.
+    func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async {
+        guard AppLaunchConfiguration.current.disablesRealNotifications == false else { return }
+        let status = await refreshAuthorizationStatusFromSystem()
+        guard settings.isEnabled, status.allowsReminderConfiguration else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: .notificationCompletionRefusedTitle)
+        content.body = String(localized: .notificationCompletionRefusedBody)
+        content.sound = settings.soundEnabled ? .default : nil
+        let request = UNNotificationRequest(
+            identifier: Self.completionRefusalNoticeIdentifier(forTaskId: taskId),
+            content: content,
+            trigger: nil
+        )
+        do {
+            try await notificationCenter.add(request)
+        } catch {
+            print("❌ Failed to post the not-recorded notice for task \(taskId): \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Cancel Notifications
@@ -998,8 +1050,10 @@ extension NotificationManager: @preconcurrency UNUserNotificationCenterDelegate 
         }
 
         if let action = NotificationActionCommand(identifier: response.actionIdentifier) {
+            // Absent on a reminder scheduled before it was added; the action then acts on the open occurrence.
+            let occurrence = (userInfo[Self.occurrenceDateKey] as? Double).map(Date.init(timeIntervalSince1970:))
             _Concurrency.Task {
-                _ = await self.actionCoordinator?.handle(action, taskId: taskId)
+                _ = await self.actionCoordinator?.handle(action, taskId: taskId, occurrence: occurrence)
                 completionHandler()
             }
             return

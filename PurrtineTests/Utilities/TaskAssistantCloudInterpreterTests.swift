@@ -43,6 +43,53 @@ struct TaskAssistantCloudInterpreterTests {
         #expect(cats.map(\.id) == [fixture.luna.id])
     }
 
+    /// "yesterday" and "today" map to a day; anything else (or nothing) means the open day (nil).
+    @Test(arguments: [("yesterday", -1), ("today", 0)] as [(String, Int)])
+    func completedForDateMapsYesterdayAndToday(value: String, dayOffset: Int) throws {
+        let fixture = try makeFixture()
+        let sut = FirebaseTaskAssistantCloudInterpreter()
+        let referenceDate = Date()
+        let response: [String: Any] = [
+            "match": "confirmed",
+            "command": "complete",
+            "taskId": fixture.feedLuna.id.uuidString,
+            "completedForDate": value
+        ]
+
+        let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: referenceDate)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, let completedForDate, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        let expected = try #require(Calendar.current.date(byAdding: .day, value: dayOffset, to: referenceDate))
+        #expect(completedForDate == expected)
+    }
+
+    @Test
+    func aMissingOrUnknownCompletedForDateMeansTheOpenDay() throws {
+        let fixture = try makeFixture()
+        let sut = FirebaseTaskAssistantCloudInterpreter()
+        for value in [nil, "tomorrow"] as [String?] {
+            var response: [String: Any] = [
+                "match": "confirmed",
+                "command": "complete",
+                "taskId": fixture.feedLuna.id.uuidString
+            ]
+            response["completedForDate"] = value
+
+            let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
+
+            guard case .confirmation(let confirmation) = result,
+                  case .complete(_, let completedForDate, _, _) = confirmation.action else {
+                Issue.record("Expected a completion confirmation.")
+                return
+            }
+            #expect(completedForDate == nil)
+        }
+    }
+
     @Test
     func hallucinatedTaskIdIsRejected() throws {
         let fixture = try makeFixture()

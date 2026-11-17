@@ -22,11 +22,30 @@ what time of day, and until when. A task with no repetition has a one-time rule.
 answers "when is this task next due"; reminders are derived from its answers.
 _Avoid_: schedule (it also means "schedule a reminder"), repeat configuration, frequency (one part of the rule)
 
+**Occurrence**:
+One due day of a care task under its recurrence rule. A task with no repetition has one occurrence.
+_Avoid_: instance, due date (a due date also carries a time of day)
+
+**Open Occurrence**:
+The occurrence a care task is waiting on now: the first one nobody has completed.
+_Avoid_: current day, active day, next due
+
+**Missed Occurrence**:
+An occurrence on an earlier day that nobody completed. It is not overdue: overdue is about the due
+time of the open occurrence, while a missed occurrence names an earlier day. A task that counts its
+next day from the day it was done has no missed occurrences; it is only overdue.
+_Avoid_: skipped (a skip is chosen on purpose), late
+
+**Fill-in**:
+A completion recorded for an earlier day when the time of care is not known ("I did it yesterday").
+It counts for that day and shows no time of day.
+_Avoid_: backfill, late completion (a late completion has a real time)
+
 **Overdue**:
 A care task is overdue when its due time has passed and the work is still open (pending or in
 progress). The due time counts, not the due day: a task due today at 09:00 is overdue at 09:01.
 One clock decides it, the same for every screen.
-_Avoid_: late, missed, past due (one word for one rule)
+_Avoid_: late, past due (one word for one rule); "missed" now names a different thing, see **Missed Occurrence**
 
 **Reminder**:
 A scheduled alert that tells a caregiver a care task is due. The app delivers a reminder as a local

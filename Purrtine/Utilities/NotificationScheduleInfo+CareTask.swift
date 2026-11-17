@@ -32,7 +32,8 @@ extension NotificationScheduleInfo {
 
     /// A one-off reminder for `task` that fires at `fireDate`. A snooze belongs to no stored
     /// schedule, so it gets a fresh `scheduleId` and repeats nowhere.
-    init(snoozing task: CareTask, firingAt fireDate: Date) {
+    /// `occurrence` is the due date the snoozed reminder was for.
+    init(snoozing task: CareTask, firingAt fireDate: Date, occurrence: Date? = nil) {
         self.init(
             scheduleId: UUID(),
             taskId: task.id,
@@ -48,7 +49,8 @@ extension NotificationScheduleInfo {
             frequencyInterval: 1,
             endDate: nil,
             customDays: nil,
-            reminderMinutes: 0
+            reminderMinutes: 0,
+            occurrenceDate: occurrence
         )
     }
 }
