@@ -39,6 +39,7 @@ VARIABLES
     launched,       \* PurrtineApp's launch-time checkAuthorizationStatus has run
     pending,        \* iOS pending notification requests
     snoozeSeq,
+    gen,            \* NotificationManager.snoozeGenerations: bumped per task by cancelSnoozedNotifications
     \* NotificationResyncCoordinator
     queued,         \* scheduleResync() was called; a pass is owed
     cancelled,      \* the pass in flight was cancelled by a newer request
@@ -50,7 +51,7 @@ VARIABLES
     events, fetchFails
 
 vars == <<alive, occ, ver, staged, catGone, settingsOn, perm, sysPerm, launched,
-          pending, snoozeSeq, queued, cancelled, passPc, passInfo, passOn, passSnap,
+          pending, snoozeSeq, gen, queued, cancelled, passPc, passInfo, passOn, passSnap,
           passToAdd, lastPass, remAtPassStart, act, events, fetchFails>>
 
 Rec(k, t, o, v, n) == [kind |-> k, task |-> t, occ |-> o, ver |-> v, n |-> n]
@@ -74,7 +75,7 @@ Derived(info, on) ==
 
 Store == [alive |-> alive, occ |-> occ, ver |-> ver]
 
-Idle == [pc |-> "idle", task |-> 0, occ |-> 0, snap |-> {}, then |-> "none"]
+Idle == [pc |-> "idle", task |-> 0, tasks |-> {}, occ |-> 0, gen |-> 0, snap |-> {}, then |-> "none"]
 
 \* NotificationResyncCoordinator.scheduleResync(): cancel the pass in flight, owe a new one.
 Request == queued' = TRUE /\ cancelled' = TRUE
@@ -82,7 +83,11 @@ Request == queued' = TRUE /\ cancelled' = TRUE
 NoRequest == UNCHANGED <<queued, cancelled>>
 
 PassVars == <<passPc, passInfo, passOn, passSnap, passToAdd, lastPass, remAtPassStart, fetchFails>>
-StoreVars == <<alive, occ, ver, staged, catGone>>
+\* gen rides along: only Complete and DeleteTask (through cancelSnoozedNotifications) change it.
+StoreVars == <<alive, occ, ver, staged, catGone, gen>>
+
+\* NotificationManager.inSnoozeQueue: one snooze add or cancel body at a time. The pcs that hold it.
+LockHeld == \E a \in Actors : act[a].pc \in {"cs_remove", "sz_commit"}
 
 -----------------------------------------------------------------------------
 Init ==
@@ -98,6 +103,7 @@ Init ==
     \* the set the previous run of the app left behind
     /\ pending = Derived([alive |-> alive, occ |-> occ, ver |-> ver], TRUE)
     /\ snoozeSeq = 0
+    /\ gen = [t \in Tasks |-> 0]
     /\ queued = FALSE
     /\ cancelled = FALSE
     /\ passPc = "idle"
@@ -152,13 +158,15 @@ PassRead ==
                    passInfo, passToAdd, lastPass, remAtPassStart, act, events, fetchFails>>
 
 \* Resume: checkCancellation, compute the wanted set, remove the stale ids (:395-416).
-\* Owned = care-task reminders and the nudge, and snoozes only when reminders are off.
+\* Owned = care-task reminders and the nudge, and snoozes when reminders are off or their task has
+\* no active schedule in the infos (liveTaskIds, #142).
 PassApply ==
     /\ passPc = "apply"
     /\ IF cancelled
        THEN /\ passPc' = "idle" /\ lastPass' = "cancelled"
             /\ UNCHANGED <<pending, passToAdd>>
-       ELSE LET owned  == {r \in passSnap : r.kind \in {"rem", "nudge"} \/ (~passOn /\ r.kind = "snooze")}
+       ELSE LET owned  == {r \in passSnap : r.kind \in {"rem", "nudge"}
+                                       \/ (r.kind = "snooze" /\ (~passOn \/ ~passInfo.alive[r.task]))}
                 wanted == Derived(passInfo, passOn /\ RemindersOn)
             IN /\ pending' = pending \ (owned \ wanted)
                /\ passToAdd' = wanted \ owned
@@ -189,11 +197,13 @@ PassAdd ==
 
 CanAct(a) == act[a].pc = "idle" /\ events < MaxEvents
 
-\* CareTaskWriter.complete: commit (recordCompletion + save), then cancelSnoozedNotifications (:88-96)
+\* CareTaskWriter.complete: commit (recordCompletion + save), then cancelSnoozedNotifications, whose
+\* first line bumps the task's snooze generation before any await (#142).
 Complete(a, t) ==
     /\ CanAct(a) /\ alive[t] /\ ~staged[t]
     /\ occ' = [occ EXCEPT ![t] = @ + 1]
-    /\ act' = [act EXCEPT ![a] = [Idle EXCEPT !.pc = "cs_read", !.task = t, !.then = "resync"]]
+    /\ gen' = [gen EXCEPT ![t] = @ + 1]
+    /\ act' = [act EXCEPT ![a] = [Idle EXCEPT !.pc = "cs_read", !.tasks = {t}, !.then = "resync"]]
     /\ events' = events + 1
     /\ UNCHANGED <<alive, ver, staged, catGone, settingsOn, perm, sysPerm, launched, pending, snoozeSeq,
                    queued, cancelled, PassVars>>
@@ -202,24 +212,26 @@ Complete(a, t) ==
 DeleteTask(t) ==
     /\ CanAct("app") /\ alive[t] /\ ~staged[t]
     /\ \/ /\ alive' = [alive EXCEPT ![t] = FALSE]
-          /\ act' = [act EXCEPT !["app"] = [Idle EXCEPT !.pc = "cs_read", !.task = t, !.then = "resync"]]
+          /\ act' = [act EXCEPT !["app"] = [Idle EXCEPT !.pc = "cs_read", !.tasks = {t}, !.then = "resync"]]
           /\ UNCHANGED staged
        \/ /\ staged' = [staged EXCEPT ![t] = TRUE]
-          /\ act' = [act EXCEPT !["app"] = [Idle EXCEPT !.pc = "cs_read", !.task = t, !.then = "none"]]
+          /\ act' = [act EXCEPT !["app"] = [Idle EXCEPT !.pc = "cs_read", !.tasks = {t}, !.then = "none"]]
           /\ UNCHANGED alive
+    /\ gen' = [gen EXCEPT ![t] = @ + 1]      \* cancelSnoozedNotifications, on both paths
     /\ events' = events + 1
     /\ UNCHANGED <<occ, ver, catGone, settingsOn, perm, sysPerm, launched, pending, snoozeSeq,
                    queued, cancelled, PassVars>>
 
-\* NotificationManager.cancelSnoozedNotifications: `await pendingNotificationRequests()` (:355)
+\* NotificationManager.cancelSnoozedNotifications: its turn in the snooze queue, then
+\* `await pendingNotificationRequests()`.
 CancelSnoozesRead(a) ==
-    /\ act[a].pc = "cs_read"
+    /\ act[a].pc = "cs_read" /\ ~LockHeld
     /\ act' = [act EXCEPT ![a].pc = "cs_remove",
-                          ![a].snap = {r \in Snoozes(pending) : r.task = act[a].task}]
+                          ![a].snap = {r \in Snoozes(pending) : r.task \in act[a].tasks}]
     /\ UNCHANGED <<StoreVars, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, queued, cancelled,
                    PassVars, events>>
 
-\* ...removePendingNotificationRequests (:359), then the verb's resyncReminders (CareTaskWriter :79, :99)
+\* ...removePendingNotificationRequests, leaving the queue, then the verb's resyncReminders (CareTaskWriter :79, :99)
 CancelSnoozesRemove(a) ==
     /\ act[a].pc = "cs_remove"
     /\ pending' = pending \ act[a].snap
@@ -236,17 +248,21 @@ EditSchedule(t) ==
     /\ staged' = [u \in Tasks |-> FALSE]
     /\ Request
     /\ events' = events + 1
-    /\ UNCHANGED <<occ, catGone, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, act, PassVars>>
+    /\ UNCHANGED <<occ, catGone, gen, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, act, PassVars>>
 
 \* CatDeletionService.delete: commit (the cascade deletes the cat's own tasks), then
-\* taskWriter.refreshReminders, a full resync (:96-116).
+\* taskWriter.refreshReminders: CareTaskWriter cancels the snoozes of every touched task the store no
+\* longer holds (cancelSnoozedNotifications: generation bump, queued removal; #142), then a full resync.
 DeleteCat ==
     /\ CanAct("app") /\ ~catGone
     /\ catGone' = TRUE
     /\ alive' = [t \in Tasks |-> IF t \in CatOnlyTasks THEN FALSE ELSE alive[t]]
-    /\ Request
+    /\ gen' = [t \in Tasks |-> IF t \in CatOnlyTasks /\ alive[t] THEN gen[t] + 1 ELSE gen[t]]
+    /\ act' = [act EXCEPT !["app"] = [Idle EXCEPT !.pc = "cs_read", !.tasks = {t \in CatOnlyTasks : alive[t]},
+                                                 !.then = "resync"]]
     /\ events' = events + 1
-    /\ UNCHANGED <<occ, ver, staged, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, act, PassVars>>
+    /\ UNCHANGED <<occ, ver, staged, settingsOn, perm, sysPerm, launched, pending, snoozeSeq,
+                   queued, cancelled, PassVars>>
 
 \* NotificationManager.applySettings -> requestFullReminderResync
 ToggleSettings ==
@@ -284,36 +300,51 @@ RefreshPerm ==
     /\ perm' = sysPerm
     /\ IF (perm = "on") # (sysPerm = "on") THEN Request ELSE NoRequest
 
-\* A "Remind me" button on a delivered reminder: handle(.snooze) awaits the permission refresh
-\* (NotificationActionCoordinator.swift:65).
+\* A "Remind me" button on a delivered reminder: NotificationActionCoordinator.handle(.snooze) fetches
+\* the task in a fresh context (committed store) with no await before it (#142 dropped the
+\* coordinator's own permission await), then CareTaskWriter.snooze refuses a task whose delete is
+\* staged in the main context, and scheduleSnoozedNotification reads the task's snooze generation
+\* before its first await. A tap for a task the store no longer holds, or a staged delete, does nothing.
+\* `occ` is a ghost: the occurrence the tapped reminder is for.
 SnoozeTap(t) ==
-    /\ CanAct("notif") /\ snoozeSeq < MaxSnoozes 
-    /\ act' = [act EXCEPT !["notif"] = [Idle EXCEPT !.pc = "sz_fetch", !.task = t]]
+    /\ CanAct("notif") /\ snoozeSeq < MaxSnoozes
+    /\ alive[t] /\ ~staged[t]
+    /\ act' = [act EXCEPT !["notif"] = [Idle EXCEPT !.pc = "sz_add", !.task = t, !.occ = occ[t], !.gen = gen[t]]]
     /\ events' = events + 1
     /\ UNCHANGED <<StoreVars, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, queued, cancelled, PassVars>>
 
-\* Resume: the permission guard, fetchTask in a fresh context (committed store), then
-\* CareTaskWriter.snooze -> scheduleSnoozedNotification awaits the permission again (:66-70).
-SnoozeFetch ==
-    /\ act["notif"].pc = "sz_fetch"
-    /\ RefreshPerm
-    /\ LET t == act["notif"].task IN
-       act' = IF sysPerm = "on" /\ alive[t]
-              THEN [act EXCEPT !["notif"].pc = "sz_add", !["notif"].occ = occ[t]]
-              ELSE [act EXCEPT !["notif"] = Idle]
-    /\ UNCHANGED <<StoreVars, settingsOn, sysPerm, launched, pending, snoozeSeq, PassVars, events>>
-
-\* scheduleSnoozedNotification: permission check, then `try await notificationCenter.add(request)`
-\* (NotificationManager.swift:753-765). No check of settings.isEnabled, of the task, or of a cap.
+\* scheduleSnoozedNotification: `await refreshAuthorizationStatusFromSystem()`, then
+\* `guard settings.isEnabled, snoozeGenerations[...] == generation` (#142), then it waits for its turn.
 SnoozeAdd ==
     /\ act["notif"].pc = "sz_add"
     /\ RefreshPerm
-    /\ IF sysPerm = "on"
-       THEN /\ pending' = pending \cup {Snooze(act["notif"].task, act["notif"].occ, snoozeSeq)}
-            /\ snoozeSeq' = snoozeSeq + 1
-       ELSE UNCHANGED <<pending, snoozeSeq>>
+    /\ act' = IF sysPerm = "on" /\ settingsOn /\ gen[act["notif"].task] = act["notif"].gen
+              THEN [act EXCEPT !["notif"].pc = "sz_q"]
+              ELSE [act EXCEPT !["notif"] = Idle]
+    /\ UNCHANGED <<StoreVars, settingsOn, sysPerm, launched, pending, snoozeSeq, PassVars, events>>
+
+\* The queued body: `guard generation, areRemindersOn` (settings and the permission as the app last
+\* read it, the resync's own test), then `await pendingNotificationRequests()`.
+SnoozeRead ==
+    /\ act["notif"].pc = "sz_q" /\ ~LockHeld
+    /\ act' = IF RemindersOn /\ gen[act["notif"].task] = act["notif"].gen
+              THEN [act EXCEPT !["notif"].pc = "sz_commit", !["notif"].snap = Snoozes(pending)]
+              ELSE [act EXCEPT !["notif"] = Idle]
+    /\ UNCHANGED <<StoreVars, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, queued, cancelled,
+                   PassVars, events>>
+
+\* Resume: remove the oldest snoozes past SnoozeSlots - 1 (from the read), check the generation and
+\* areRemindersOn again, `try await notificationCenter.add(request)`; the queue is free after.
+SnoozeCommit ==
+    /\ act["notif"].pc = "sz_commit"
+    /\ LET a    == act["notif"]
+           S    == a.snap
+           drop == {x \in S : Cardinality({u \in S : u.n > x.n}) >= SnoozeSlots - 1}
+           ok   == gen[a.task] = a.gen /\ RemindersOn
+       IN /\ pending' = (pending \ drop) \cup (IF ok THEN {Snooze(a.task, a.occ, snoozeSeq)} ELSE {})
+          /\ snoozeSeq' = IF ok THEN snoozeSeq + 1 ELSE snoozeSeq
     /\ act' = [act EXCEPT !["notif"] = Idle]
-    /\ UNCHANGED <<StoreVars, settingsOn, sysPerm, launched, PassVars, events>>
+    /\ UNCHANGED <<StoreVars, settingsOn, perm, sysPerm, launched, queued, cancelled, PassVars, events>>
 
 Quiet ==
     /\ passPc = "idle" /\ ~queued
@@ -335,8 +366,9 @@ Next ==
     \/ LaunchPermissionCheck
     \/ AppActivation
     \/ \E t \in Tasks : SnoozeTap(t)
-    \/ SnoozeFetch
     \/ SnoozeAdd
+    \/ SnoozeRead
+    \/ SnoozeCommit
     \/ Done
 
 Spec == Init /\ [][Next]_vars
@@ -344,7 +376,7 @@ Spec == Init /\ [][Next]_vars
 \* What TLC compares to tell two states apart: a pass's scratch values stop mattering once it is
 \* idle (PassFetch overwrites them), and the ghost only matters after a failed read.
 StateView ==
-    <<alive, occ, ver, staged, catGone, settingsOn, perm, sysPerm, launched, pending, snoozeSeq,
+    <<alive, occ, ver, staged, catGone, settingsOn, perm, sysPerm, launched, pending, snoozeSeq, gen,
       queued, passPc,
       IF passPc = "idle" THEN <<>> ELSE <<cancelled, passInfo, passOn, passSnap, passToAdd>>,
       lastPass, IF lastPass = "failed" THEN remAtPassStart ELSE {},

@@ -9,7 +9,7 @@ import UserNotifications
 struct NotificationActionCoordinatorTests {
     @Test
     func completeActionSilentlyCompletesPendingTask() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -26,7 +26,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func completeActionForRecurringTaskCreatesNextOccurrenceAndReschedules() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -49,7 +49,7 @@ struct NotificationActionCoordinatorTests {
     /// occurrence. Stale reminders are the next resync's job.
     @Test
     func completeActionWithStaleRemindersStillReportsThePerformedAction() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         fixture.spy.resyncError = .forcedFailure
 
         let result = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
@@ -65,7 +65,7 @@ struct NotificationActionCoordinatorTests {
     /// Today's occurrence is open now, and the stale Complete must not record it.
     @Test
     func completeActionForAnOccurrenceAlreadyCompletedRecordsNothing() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let yesterdaysOccurrence = fixture.schedule.scheduledDate
         _ = await fixture.coordinator.handle(.complete, taskId: fixture.task.id)
         let resyncsBefore = fixture.spy.resyncCount
@@ -87,7 +87,7 @@ struct NotificationActionCoordinatorTests {
     /// Recording today would skip yesterday, and recording yesterday credits the wrong day.
     @Test
     func completeActionForALaterOccurrenceThanTheOpenOneRecordsNothing() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let laterOccurrence = try #require(
             Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate)
         )
@@ -107,7 +107,7 @@ struct NotificationActionCoordinatorTests {
     /// After a missed day the reminder's Complete stays refused, but the caregiver is told (#141).
     @Test
     func aRefusedReminderCompleteTellsTheCaregiverAndRecordsNothing() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let laterOccurrence = try #require(
             Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate)
         )
@@ -127,7 +127,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func anAcceptedOrFailedForOtherReasonsActionPostsNoNotice() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
 
         _ = await fixture.coordinator.handle(
             .complete,
@@ -171,7 +171,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func completeActionForTheOpenOccurrenceRecordsIt() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
 
         let result = await fixture.coordinator.handle(
             .complete,
@@ -187,7 +187,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func snoozeActionCreatesExpectedDelayedRequest() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
 
@@ -202,7 +202,7 @@ struct NotificationActionCoordinatorTests {
 
     @Test
     func invalidTaskIdentifierIsNoOpAndKeepsDeliveredNotification() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .once)
 
         let result = await fixture.coordinator.handle(.complete, taskId: UUID())
         let refreshedTask = try fetchTask(id: fixture.task.id, in: fixture.container)
@@ -220,7 +220,7 @@ struct NotificationActionCoordinatorTests {
     /// the occurrence open now.
     @Test
     func snoozeActionPassesTheReminderOccurrenceOrTheOpenOne() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
 
         _ = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id, occurrence: tomorrow)
@@ -233,7 +233,7 @@ struct NotificationActionCoordinatorTests {
     /// earlier day still open, that Complete records nothing.
     @Test
     func aSnoozedReminderCarriesItsDayAndCannotCompleteAnotherOne() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let reminderDay = try #require(Calendar.current.date(byAdding: .day, value: 1, to: fixture.schedule.scheduledDate))
         let center = FakeUserNotificationCenterClient()
         let manager = try await makeManager(center: center)
@@ -293,7 +293,6 @@ struct NotificationActionCoordinatorTests {
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
             taskWriter: CareTaskWriter(scheduler: NotificationSchedulerSpy()),
-            authorizationChecker: NotificationAuthorizationCheckerSpy(status: .authorized),
             refusalNotice: RefusalNoticeSpy()
         )
 
@@ -321,7 +320,7 @@ struct NotificationActionCoordinatorTests {
     /// completion for the same day is refused instead of recording that day twice (#141).
     @Test
     func aCompletionSavedInAnotherContextRefusesTheSameDayInTheMainContext() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let day = fixture.schedule.scheduledDate
         let mainContext = fixture.container.mainContext
         let writer = CareTaskWriter(scheduler: NotificationSchedulerSpy())
@@ -342,7 +341,7 @@ struct NotificationActionCoordinatorTests {
     /// day D again.
     @Test
     func anInAppCompletionAfterAReminderCompletionRecordsTheNextDayOnce() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let calendar = Calendar.current
         let day = calendar.startOfDay(for: fixture.schedule.scheduledDate)
         let nextDay = try #require(calendar.date(byAdding: .day, value: 1, to: day))
@@ -362,7 +361,7 @@ struct NotificationActionCoordinatorTests {
     /// not saved. The next commit still carries it.
     @Test
     func theRefreshKeepsAStagedChangeOfTheMainContext() async throws {
-        let fixture = try makeFixture(frequency: .daily, authorizationStatus: .authorized)
+        let fixture = try makeFixture(frequency: .daily)
         let day = fixture.schedule.scheduledDate
         let mainContext = fixture.container.mainContext
         let writer = CareTaskWriter(scheduler: NotificationSchedulerSpy())
@@ -380,28 +379,35 @@ struct NotificationActionCoordinatorTests {
         #expect(stored.completions.count == 2)
     }
 
+    /// The scheduler checks the permission itself and throws; the coordinator reports no action.
     @Test
-    func coldLaunchSnoozeRefreshesAuthorizationBeforeScheduling() async throws {
-        let fixture = try makeFixture(frequency: .once, authorizationStatus: .authorized)
+    func snoozeActionWithoutPermissionReportsNoActionAndKeepsDeliveredNotification() async throws {
+        let fixture = try makeFixture(frequency: .once)
+        fixture.spy.snoozeError = NotificationSchedulingError.unauthorized
 
         let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
 
-        #expect(result.didPerformAction)
-        #expect(fixture.authorizationChecker.refreshCallCount == 1)
-        #expect(fixture.spy.snoozedRequests.first?.delayMinutes == 10)
-        #expect(fixture.spy.removedDeliveredTaskIds == [fixture.task.id])
-        #expect(fixture.spy.syncBadgeCallCount == 1)
+        #expect(result.didPerformAction == false)
+        #expect(fixture.spy.snoozedRequests.isEmpty)
+        #expect(fixture.spy.removedDeliveredTaskIds.isEmpty)
     }
 
-    private func makeFixture(
-        frequency: CareTaskFrequency,
-        authorizationStatus: UNAuthorizationStatus
-    ) throws -> (
+    @Test
+    func snoozeActionWithRemindersOffReportsNoAction() async throws {
+        let fixture = try makeFixture(frequency: .once)
+        fixture.spy.snoozeError = NotificationSchedulingError.remindersOff
+
+        let result = await fixture.coordinator.handle(.snooze(minutes: 10), taskId: fixture.task.id)
+
+        #expect(result.didPerformAction == false)
+        #expect(fixture.spy.removedDeliveredTaskIds.isEmpty)
+    }
+
+    private func makeFixture(frequency: CareTaskFrequency) throws -> (
         container: ModelContainer,
         task: CareTask,
         schedule: CareTaskSchedule,
         spy: NotificationSchedulerSpy,
-        authorizationChecker: NotificationAuthorizationCheckerSpy,
         coordinator: NotificationActionCoordinator,
         refusalNotice: RefusalNoticeSpy
     ) {
@@ -410,11 +416,9 @@ struct NotificationActionCoordinatorTests {
         let context = container.mainContext
         let spy = NotificationSchedulerSpy()
         spy.observe(container)
-        let authorizationChecker = NotificationAuthorizationCheckerSpy(status: authorizationStatus)
         let coordinator = NotificationActionCoordinator(
             modelContainer: container,
             taskWriter: CareTaskWriter(scheduler: spy),
-            authorizationChecker: authorizationChecker,
             refusalNotice: refusalNotice
         )
 
@@ -440,7 +444,7 @@ struct NotificationActionCoordinatorTests {
         context.insert(schedule)
         try context.save()
 
-        return (container, task, schedule, spy, authorizationChecker, coordinator, refusalNotice)
+        return (container, task, schedule, spy, coordinator, refusalNotice)
     }
 
     private func makeManager(center: FakeUserNotificationCenterClient) async throws -> NotificationManager {
@@ -467,20 +471,5 @@ private final class RefusalNoticeSpy: CompletionRefusalNoticePosting {
 
     func postCompletionNotRecordedNotice(forTaskId taskId: UUID) async {
         postedTaskIds.append(taskId)
-    }
-}
-
-@MainActor
-private final class NotificationAuthorizationCheckerSpy: NotificationAuthorizationChecking {
-    private(set) var refreshCallCount = 0
-    private let status: UNAuthorizationStatus
-
-    init(status: UNAuthorizationStatus) {
-        self.status = status
-    }
-
-    func refreshAuthorizationStatusFromSystem() async -> UNAuthorizationStatus {
-        refreshCallCount += 1
-        return status
     }
 }

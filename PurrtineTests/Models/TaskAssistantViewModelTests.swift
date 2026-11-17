@@ -313,6 +313,33 @@ struct TaskAssistantViewModelTests {
         #expect(message.offersOpenSettings == false)
     }
 
+    /// With Reminders switched off in the app's settings no snooze is scheduled (#142), so the chat must
+    /// not say "Postponed". Settings cannot fix it from the chat, so no button is offered.
+    @Test(.bug("https://github.com/bckizildemir/Purrtine/issues/142", id: 142))
+    func postponeWithRemindersOffInTheAppReportsFailureInsteadOfSuccess() async throws {
+        let fixture = try makeFixture()
+        let defaults = try #require(UserDefaults(suiteName: "TaskAssistantViewModelTests.\(UUID().uuidString)"))
+        let store = NotificationSettingsStore(userDefaults: defaults, key: "settings")
+        var settings = NotificationSettings.default
+        settings.isEnabled = false
+        store.save(settings)
+        let manager = NotificationManager(notificationCenter: FakeUserNotificationCenterClient(), settingsStore: store)
+        await manager.checkAuthorizationStatus()
+        let sut = TaskAssistantViewModel(taskWriter: CareTaskWriter(scheduler: manager))
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Postpone?",
+            action: .postpone(task: fixture.task, minutes: 30)
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.container.mainContext)
+
+        let message = try #require(sut.messages.last)
+        #expect(message.style == .failure)
+        #expect(message.text == String(localized: .errorReminderSchedule))
+        #expect(message.offersOpenSettings == false)
+    }
+
     /// The completion sheet stays open on a failed save, so the request must survive and the sheet
     /// must learn that nothing was saved.
     @Test
