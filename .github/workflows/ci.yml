@@ -9,10 +9,11 @@ name: CI
 # changed tests and the suites of the changed files, and `cd functions && npm test`.
 # The `app` job runs the unit tests with coverage. The `ui-tests` job runs the UI tests, on the
 # iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
-# pass in CI). It runs in parallel with `app` on every manual run. On a PR and on a push to main it
-# runs only when the change (the PR against its base, the push against the commit before it) touches
-# Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or .github/workflows/** (the `changes` job decides);
-# a docs-only PR or docs-only merge skips it. The job has a 60 minute
+# pass in CI). The `changes` job decides which of the two run (its comment has the rules). A manual
+# run runs both. On a PR and on a push to main (diffed against the commit before it), `app` is
+# skipped when only docs, agent files or Cloud Function files changed, and `ui-tests` is skipped
+# unless Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or .github/workflows/** changed. The
+# `ui-tests` job runs in parallel with `app`. It has a 60 minute
 # limit: green runs took 32-38 minutes (2026-11-13..15), and a run that retries tests needs room
 # (#152). The run step prints a retry summary: which tests passed only on retry, and which failed
 # without recovering (#97). The retry flags work; a test suite whose runner exits after a failure
@@ -33,52 +34,81 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect UI-test paths
+    name: Detect changed paths
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       ui: ${{ steps.filter.outputs.ui }}
+      app: ${{ steps.filter.outputs.app }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # A pull request is compared with its base, a push to main with the commit before it, so a
-      # docs-only merge skips the UI tests like a docs-only PR. A manual run, a push whose previous
-      # commit is not in the clone (a force push) and any failure to diff run everything.
-      - name: Decide if the UI tests must run
+      # A pull request is compared with its base, a push to main with the commit before it. A manual
+      # run, a push whose previous commit is not in the clone (a force push) and any failure to diff
+      # run everything.
+      #
+      # ui:  the UI tests run when the change touches the app, the UI tests, the project or a workflow.
+      # app: the `app` job runs unless every changed file is one the build and unit tests cannot see:
+      #      Markdown at the root, docs/, documentation/, .claude/, the Cloud Function folder and the
+      #      Firebase config, LICENSE, skills-lock.json and the Dependabot config. This is a deny-list on purpose: a new kind
+      #      of file builds until it is added here. Markdown under Purrtine/ or Scripts/ can still be a
+      #      bundle resource or script input, so only root Markdown is excluded.
+      #
+      # `app` is a required check. A job skipped by its `if:` reports "Success" to a required check
+      # (GitHub docs, "Troubleshooting required status checks": a job skipped by a conditional
+      # "reports Success"; a whole workflow skipped by path filtering stays Pending and blocks
+      # merging, so keep the path filter inside the jobs and never on the `on:` triggers).
+      - name: Decide which jobs must run
         id: filter
         env:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BEFORE_SHA: ${{ github.event.before }}
         run: |
+          write() {
+            echo "ui=$1" >> "$GITHUB_OUTPUT"
+            echo "app=$2" >> "$GITHUB_OUTPUT"
+          }
           if [ "$EVENT" = "pull_request" ]; then
             range="$BASE_SHA...HEAD"
           elif [ "$EVENT" = "push" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
             range="$BEFORE_SHA..HEAD"
           else
-            echo "No diff base for a $EVENT event: UI tests run."
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "No diff base for a $EVENT event: everything runs."
+            write true true
             exit 0
           fi
           if ! git diff --name-only "$range" > changed.txt; then
-            echo "git diff $range failed: UI tests run."
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "git diff $range failed: everything runs."
+            write true true
             exit 0
           fi
           cat changed.txt
+
           if grep -qE '^(Purrtine/|PurrtineUITests/|[^/]+\.xcodeproj/|\.github/workflows/)' changed.txt; then
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            ui=true
           else
-            echo "ui=false" >> "$GITHUB_OUTPUT"
+            ui=false
             echo "No app, UI-test, project or workflow change: UI tests skipped."
           fi
 
+          if grep -vE '^([^/]+\.md|docs/|documentation/|\.claude/|functions/|firebase\.json|\.firebaserc|LICENSE|skills-lock\.json|\.github/dependabot\.yml)' changed.txt | grep -q .; then
+            app=true
+          else
+            app=false
+            echo "Only docs, agent files or Cloud Function files changed: build and unit tests skipped."
+          fi
+          write "$ui" "$app"
+
   app:
     name: Build, unit tests, coverage, Release build
-    if: ${{ !github.event.repository.private }}
+    needs: changes
+    # Required check: a skip through this `if:` counts as passing. If the `changes` job itself fails,
+    # run: a broken filter must not skip the build.
+    if: ${{ !cancelled() && !github.event.repository.private && (needs.changes.result != 'success' || needs.changes.outputs.app == 'true') }}
     runs-on: macos-26
     timeout-minutes: 60
     env:
