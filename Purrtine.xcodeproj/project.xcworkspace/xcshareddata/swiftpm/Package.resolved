@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/GoogleAppMeasurement.git",
       "state" : {
-        "revision" : "45ce435e9406d3c674dd249a042b932bee006f60",
-        "version" : "11.15.0"
+        "revision" : "abc3a85c786aa7077d93ab7f6709dfc9e1b6d557",
+        "version" : "13.2.0"
       }
     },
     {
