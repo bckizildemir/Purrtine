@@ -409,10 +409,12 @@ extension CareTask {
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: referenceDate)
+        let dueDay = calendar.startOfDay(for: dueDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)
 
-        if calendar.isDateInToday(dueDate) {
+        if dueDay == today {
             return String(localized: .generalToday)
-        } else if calendar.isDateInTomorrow(dueDate) {
+        } else if dueDay == tomorrow {
             return String(localized: .timeTomorrow)
         } else {
             let days = calendar.dateComponents([.day], from: today, to: dueDate).day ?? 0
@@ -428,10 +430,13 @@ extension CareTask {
         let calendar = Calendar.current
 
         let completedAt = lastCompletion.performedAt()
+        let completedDay = calendar.startOfDay(for: completedAt)
+        let today = calendar.startOfDay(for: referenceDate)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
         let dateText: String
-        if calendar.isDateInToday(completedAt) {
+        if completedDay == today {
             dateText = String(localized: .generalToday)
-        } else if calendar.isDateInYesterday(completedAt) {
+        } else if completedDay == yesterday {
             dateText = String(localized: .timeYesterday)
         } else {
             // Note: legacy `.short` used a locale-dependent 2-digit year for en_US;

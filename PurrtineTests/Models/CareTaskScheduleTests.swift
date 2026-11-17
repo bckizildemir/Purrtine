@@ -56,6 +56,29 @@ struct CareTaskScheduleTests {
         #expect(task.dueDisplayText(relativeTo: referenceDate) == String(localized: .tasksRowJustOverdue))
     }
 
+    @Test
+    func dueDisplayDecidesTodayAndTomorrowFromTheReferenceDate() throws {
+        // A fixed past day: the real clock must not matter.
+        let calendar = Calendar.current
+        let referenceDate = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 11, day: 16, hour: 12))
+        )
+        let referenceDay = calendar.startOfDay(for: referenceDate)
+
+        func dueText(daysAfterReference offset: Int) throws -> String {
+            let scheduledDate = try #require(calendar.date(byAdding: .day, value: offset, to: referenceDay))
+            let schedule = CareTaskSchedule(scheduledDate: scheduledDate, frequency: .once)
+            let task = CareTask(title: "Fixed Date Feeding")
+            schedule.task = task
+            task.schedules = [schedule]
+            return task.dueDisplayText(relativeTo: referenceDate)
+        }
+
+        #expect(try dueText(daysAfterReference: 0) == String(localized: .generalToday))
+        #expect(try dueText(daysAfterReference: 1) == String(localized: .timeTomorrow))
+        #expect(try dueText(daysAfterReference: 3) == String(localized: .tasksRowDaysLater(3)))
+    }
+
     @Test(arguments: [
         (CareTaskFrequency.daily, 2, DateComponents(day: 2)),
         (CareTaskFrequency.weekly, 3, DateComponents(weekOfYear: 3)),
