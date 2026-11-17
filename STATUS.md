@@ -103,11 +103,11 @@ Last session:
    apps. Step A is done (2026-11-17): the global `preview` skill (`~/.claude/skills/preview/`) renders a `#Preview` to
    `~/preview-renders/<app>/` and shows it with `show-in-yazi`; `decision-check` step 4 now uses it for screens a
    decision changes. Proved on `CustomRepeatSheet.swift` in Turkish dark and English light. It must name the render
-   device: left to Xcode it drew on the work project's `iPhone 12 slim (CWA)`. Step B, postponed by the owner: a
-   Claude Code mod with its own pane (https://code.claude.com/docs/en/plugins/mods/overview; idea from
-   https://www.natashatherobot.com/p/faster-swiftui-development-in-claude, whose mod is paid with no repo, so build
-   our own). Start trigger for B: the owner picks it. A preview shows layout with sample data only; behavior still
-   needs `verify-purrtine`.
+   device: left to Xcode it drew on the work project's `iPhone 12 slim (CWA)`. Step B is done (2026-11-17): the
+   `swiftui-preview` mod (`~/.claude/mods/swiftui-preview/`, loaded in every session through
+   `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`) keeps each render's PNG, draws it in a "SwiftUI Preview"
+   pane (`/preview-pane` reopens it), and refuses a render that names no device. A preview shows layout with sample
+   data only; behavior still needs `verify-purrtine`.
 
 ## Waits for the owner
 
