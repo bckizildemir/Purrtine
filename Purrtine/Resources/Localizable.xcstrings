@@ -9286,13 +9286,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Event will occur %@."
+            "value" : "Repeats: %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etkinlik %@ gerçekleşecek."
+            "value" : "Tekrar: %@"
           }
         }
       }
