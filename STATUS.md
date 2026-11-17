@@ -19,6 +19,10 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
+- 2026-11-17: #169 merged (owner's go). `lastCompletionDisplayText(relativeTo:)` and `dueDisplayText(relativeTo:)`
+  read the clock instead of their reference date, so the #156 test pinned to 2026-11-16 failed from 2026-11-17 and
+  turned CI red; both now compare start-of-day values with the reference date. Same PR: the custom repeat summary
+  reads "Repeats: %@" / "Tekrar: %@". Preview tooling steps A and B done (item 6).
 - 2026-11-16 (night, lessons): `session-lessons` after the #1 grilling. Written: owner preferences that must hold in
   every folder go in `~/.claude/CLAUDE.md` or a skill, not project memory; keep a recommendation stable between
   rounds; `decision-check` shows the owner the real screens; `verify-purrtine` gotcha: an open sheet does not hide
