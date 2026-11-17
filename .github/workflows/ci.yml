@@ -11,8 +11,11 @@ name: CI
 # iOS runtime that matches the runner's simulator SDK only (owner decision, 2026-10-12; no iOS 18.5
 # pass in CI). It runs in parallel with `app` on every push to main and manual run. On a PR it runs
 # only when the PR changes Purrtine/**, PurrtineUITests/**, *.xcodeproj/** or
-# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. The run step prints
-# a retry summary: which tests passed only on retry, and which failed without recovering (#97).
+# .github/workflows/** (the `changes` job decides); a docs-only PR skips it. The job has a 60 minute
+# limit: green runs took 32-38 minutes (2026-11-13..15), and a run that retries tests needs room
+# (#152). The run step prints a retry summary: which tests passed only on retry, and which failed
+# without recovering (#97). The retry flags work; a test suite whose runner exits after a failure
+# defeats them (an `async` tearDown did, #152).
 on:
   push:
     branches: [main]
@@ -135,7 +138,7 @@ jobs:
     needs: changes
     if: ${{ !github.event.repository.private && needs.changes.outputs.ui == 'true' }}
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 

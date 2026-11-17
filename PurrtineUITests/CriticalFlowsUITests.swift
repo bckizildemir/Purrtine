@@ -8,11 +8,19 @@ final class CriticalFlowsUITests: XCTestCase {
     /// `sheet.discard.confirm`, the destructive button of `SheetDismissButton`'s dialog.
     private let discardChangesButtonTitle = "Discard Changes"
 
+    /// Ceiling for a wait on an element that must appear (#152). `waitForExistence` returns as soon
+    /// as the element is there, so a passing test pays nothing extra. On a slow CI runner a single
+    /// accessibility query took 8-13 s (build-14 run 43761755575), longer than the old 5 s ceiling.
+    private let uiTimeout: TimeInterval = 15
+
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
-    override func tearDown() async throws {
+    /// Synchronous on purpose (#152). With `continueAfterFailure = false`, an `async` tearDown made
+    /// the test runner exit after every failed test; xcodebuild then restarted it on the remaining
+    /// tests, and `-retry-tests-on-failure` never ran the failed test again.
+    override func tearDownWithError() throws {
         guard let testRun, testRun.failureCount > 0 else { return }
         attachScreenshot(named: "\(name)-failure-screenshot")
     }
@@ -21,30 +29,29 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = makeApp(additionalArguments: ["-reset-onboarding"])
         app.launch()
 
-        XCTAssertTrue(app.buttons["onboarding.welcome.continueButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["onboarding.welcome.continueButton"].waitForExistence(timeout: uiTimeout))
         app.buttons["onboarding.welcome.continueButton"].tap()
 
-        XCTAssertTrue(app.buttons["onboarding.notification.skipButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["onboarding.notification.skipButton"].waitForExistence(timeout: uiTimeout))
         app.buttons["onboarding.notification.skipButton"].tap()
 
         let nameField = app.textFields["catForm.nameField"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-        nameField.tap()
-        nameField.typeText("Mochi")
+        XCTAssertTrue(nameField.waitForExistence(timeout: uiTimeout))
+        typeText("Mochi", into: nameField)
 
         app.buttons["onboarding.firstCat.continueButton"].tap()
 
         let feedingDemo = app.buttons["onboarding.taskDemo.feeding"]
-        XCTAssertTrue(feedingDemo.waitForExistence(timeout: 5))
+        XCTAssertTrue(feedingDemo.waitForExistence(timeout: uiTimeout))
         feedingDemo.tap()
 
         app.buttons["onboarding.taskSetup.continueButton"].tap()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
-        XCTAssertTrue(app.buttons["taskRow.Daily Feeding"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.Daily Feeding"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskRow.Refresh Water"].waitForExistence(timeout: 1))
         XCTAssertFalse(app.buttons["taskRow.Litter Box Cleaning"].waitForExistence(timeout: 1))
     }
@@ -53,26 +60,25 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = makeApp(additionalArguments: ["-reset-onboarding"])
         app.launch()
 
-        XCTAssertTrue(app.buttons["onboarding.welcome.continueButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["onboarding.welcome.continueButton"].waitForExistence(timeout: uiTimeout))
         app.buttons["onboarding.welcome.continueButton"].tap()
-        XCTAssertTrue(app.buttons["onboarding.notification.skipButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["onboarding.notification.skipButton"].waitForExistence(timeout: uiTimeout))
         app.buttons["onboarding.notification.skipButton"].tap()
 
         let nameField = app.textFields["catForm.nameField"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-        nameField.tap()
-        nameField.typeText("Mochi")
+        XCTAssertTrue(nameField.waitForExistence(timeout: uiTimeout))
+        typeText("Mochi", into: nameField)
         app.buttons["onboarding.firstCat.continueButton"].tap()
 
         let startButton = app.buttons["onboarding.taskSetup.continueButton"]
-        XCTAssertTrue(startButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(startButton.waitForExistence(timeout: uiTimeout))
         startButton.tap()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
-        XCTAssertTrue(app.staticTexts["No Tasks Found"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No Tasks Found"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'taskRow.'")).firstMatch.exists)
     }
 
@@ -81,13 +87,13 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let welcomeContinue = app.buttons["onboarding.welcome.continueButton"]
-        XCTAssertTrue(welcomeContinue.waitForExistence(timeout: 5))
+        XCTAssertTrue(welcomeContinue.waitForExistence(timeout: uiTimeout))
         let primaryActionY = welcomeContinue.frame.minY
         welcomeContinue.tap()
 
         let notificationContinue = app.buttons["onboarding.notification.enableButton"]
         let notificationSkip = app.buttons["onboarding.notification.skipButton"]
-        XCTAssertTrue(notificationContinue.waitForExistence(timeout: 5))
+        XCTAssertTrue(notificationContinue.waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(notificationSkip.exists)
         XCTAssertEqual(notificationContinue.frame.minY, primaryActionY, accuracy: 1)
         let secondaryActionY = notificationSkip.frame.minY
@@ -95,7 +101,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
         let firstCatContinue = app.buttons["onboarding.firstCat.continueButton"]
         let firstCatSkip = app.buttons["onboarding.firstCat.skipButton"]
-        XCTAssertTrue(firstCatContinue.waitForExistence(timeout: 5))
+        XCTAssertTrue(firstCatContinue.waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(firstCatSkip.exists)
         XCTAssertEqual(firstCatContinue.frame.minY, primaryActionY, accuracy: 1)
         XCTAssertEqual(firstCatSkip.frame.minY, secondaryActionY, accuracy: 1)
@@ -103,7 +109,7 @@ final class CriticalFlowsUITests: XCTestCase {
         firstCatSkip.tap()
 
         let taskContinue = app.buttons["onboarding.taskSetup.continueButton"]
-        XCTAssertTrue(taskContinue.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskContinue.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(taskContinue.frame.minY, primaryActionY, accuracy: 1)
     }
 
@@ -113,50 +119,45 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
         let addMenuButton = app.buttons["taskManagement.addMenuButton"]
-        XCTAssertTrue(addMenuButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(addMenuButton.waitForExistence(timeout: uiTimeout))
         addMenuButton.tap()
 
         let customTaskButton = app.buttons["taskManagement.customTaskButton"]
-        XCTAssertTrue(customTaskButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(customTaskButton.waitForExistence(timeout: uiTimeout))
         customTaskButton.tap()
 
         let titleField = app.textFields["taskAdd.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
-        titleField.tap()
-        titleField.typeText(taskTitle)
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout))
+        typeText(taskTitle, into: titleField)
 
         // Dismiss the keyboard before tapping rows near its edge; on iOS 26 the
         // keyboard-avoidance layout shift can otherwise swallow the tap.
-        let keyboardDoneButton = app.toolbars.buttons["Done"]
-        if keyboardDoneButton.waitForExistence(timeout: 2) {
-            keyboardDoneButton.tap()
-            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
-        }
+        dismissKeyboardIfPresent(in: app)
 
         let catsButton = app.buttons["taskAdd.catsButton"]
-        XCTAssertTrue(catsButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(catsButton.waitForExistence(timeout: uiTimeout))
         catsButton.tap()
 
         let catOption = app.buttons["taskCatsSelection.cat.UI Test Cat"]
-        XCTAssertTrue(catOption.waitForExistence(timeout: 5))
+        XCTAssertTrue(catOption.waitForExistence(timeout: uiTimeout))
         catOption.tap()
 
         let doneButton = app.buttons["taskCatsSelection.doneButton"]
-        XCTAssertTrue(doneButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(doneButton.waitForExistence(timeout: uiTimeout))
         doneButton.tap()
 
         let saveButton = app.buttons["taskAdd.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
-        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: uiTimeout))
 
         let completeButton = app.buttons["taskRow.complete.\(taskTitle)"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
         completeButton.tap()
 
         let completedValue = NSPredicate(format: "value CONTAINS %@", "Completed")
@@ -169,11 +170,11 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let customTaskQuickAction = app.buttons["Custom Task"]
-        XCTAssertTrue(customTaskQuickAction.waitForExistence(timeout: 5))
+        XCTAssertTrue(customTaskQuickAction.waitForExistence(timeout: uiTimeout))
         customTaskQuickAction.tap()
 
         let catsButton = app.buttons["taskAdd.catsButton"]
-        XCTAssertTrue(catsButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(catsButton.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(catsButton.value as? String, "Add a cat first to assign this task")
     }
 
@@ -182,32 +183,32 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
         let addMenuButton = app.buttons["taskManagement.addMenuButton"]
-        XCTAssertTrue(addMenuButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(addMenuButton.waitForExistence(timeout: uiTimeout))
         addMenuButton.tap()
 
         let templateTaskButton = app.buttons["taskManagement.templateTaskButton"]
-        XCTAssertTrue(templateTaskButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(templateTaskButton.waitForExistence(timeout: uiTimeout))
         templateTaskButton.tap()
 
         let feedingTemplate = app.buttons["taskTemplate.morningFeeding"].firstMatch
-        XCTAssertTrue(feedingTemplate.waitForExistence(timeout: 5))
+        XCTAssertTrue(feedingTemplate.waitForExistence(timeout: uiTimeout))
         feedingTemplate.swipeUp()
 
-        XCTAssertTrue(feedingTemplate.waitForExistence(timeout: 5))
+        XCTAssertTrue(feedingTemplate.waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.textFields["taskAdd.titleField"].exists)
 
         let veterinaryCategory = app.buttons["taskTemplate.category.vet"]
-        XCTAssertTrue(veterinaryCategory.waitForExistence(timeout: 5))
+        XCTAssertTrue(veterinaryCategory.waitForExistence(timeout: uiTimeout))
         veterinaryCategory.tap()
 
         let vaccinationTemplate = app.buttons["taskTemplate.vaccination"].firstMatch
-        XCTAssertTrue(vaccinationTemplate.waitForExistence(timeout: 5))
+        XCTAssertTrue(vaccinationTemplate.waitForExistence(timeout: uiTimeout))
         vaccinationTemplate.tap()
-        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: uiTimeout))
     }
 
     func testTaskListTabBarAndAssistantPlacement() {
@@ -227,13 +228,13 @@ final class CriticalFlowsUITests: XCTestCase {
         let assistantTab = app.tabBars.buttons["Whiskers"]
         let firstTask = app.buttons["taskRow.UI Test Long Task 01"]
 
-        XCTAssertTrue(taskList.waitForExistence(timeout: 5))
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
-        XCTAssertTrue(viewModeButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskList.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(tabBar.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(viewModeButton.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(addButton.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskManagement.assistantButton"].exists)
-        XCTAssertTrue(firstTask.waitForExistence(timeout: 5))
+        XCTAssertTrue(firstTask.waitForExistence(timeout: uiTimeout))
 
         if #available(iOS 26.0, *) {
             XCTAssertGreaterThanOrEqual(taskList.frame.maxY, tabBar.frame.minY)
@@ -246,7 +247,7 @@ final class CriticalFlowsUITests: XCTestCase {
             // instead of 64 pt under the list top; what stays true on any device is that the
             // chrome is above the first row and the row is clear of the floating tab bar.
             let taskSearchField = app.searchFields.firstMatch
-            XCTAssertTrue(taskSearchField.waitForExistence(timeout: 5))
+            XCTAssertTrue(taskSearchField.waitForExistence(timeout: uiTimeout))
             XCTAssertGreaterThan(firstTask.frame.minY, taskSearchField.frame.maxY)
             XCTAssertLessThan(firstTask.frame.maxY, tabBar.frame.minY)
 
@@ -259,7 +260,7 @@ final class CriticalFlowsUITests: XCTestCase {
                 taskList.swipeUp()
             }
 
-            XCTAssertTrue(lastTask.waitForExistence(timeout: 5))
+            XCTAssertTrue(lastTask.waitForExistence(timeout: uiTimeout))
             XCTAssertTrue(lastTask.isHittable)
             XCTAssertLessThan(viewModeButton.frame.midX, addButton.frame.midX)
 
@@ -279,12 +280,12 @@ final class CriticalFlowsUITests: XCTestCase {
             for _ in 0..<12 where !assistantTab.exists {
                 taskList.swipeDown()
             }
-            XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+            XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
 
             viewModeButton.tap()
 
             let calendar = app.descendants(matching: .any)["taskManagement.calendar"]
-            XCTAssertTrue(calendar.waitForExistence(timeout: 5))
+            XCTAssertTrue(calendar.waitForExistence(timeout: uiTimeout))
 
             // Calendar mode scrolls through the month header/grid before reaching the task
             // list, and calendar task rows are taller than list-mode rows, so it needs more
@@ -294,7 +295,7 @@ final class CriticalFlowsUITests: XCTestCase {
                 calendar.swipeUp()
             }
 
-            XCTAssertTrue(lastTask.waitForExistence(timeout: 5))
+            XCTAssertTrue(lastTask.waitForExistence(timeout: uiTimeout))
             XCTAssertTrue(lastTask.isHittable)
             XCTAssertLessThanOrEqual(lastTask.frame.maxY, tabBar.frame.minY + 2)
             attachScreenshot(named: "Tasks-iOS26-calendar-clearance")
@@ -304,28 +305,28 @@ final class CriticalFlowsUITests: XCTestCase {
             for _ in 0..<24 where !assistantTab.exists {
                 calendar.swipeDown()
             }
-            XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+            XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         } else {
             XCTAssertEqual(viewModeButton.frame.midY, addButton.frame.midY, accuracy: 2)
             XCTAssertLessThan(viewModeButton.frame.midX, addButton.frame.midX)
         }
 
         assistantTab.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.textFields["taskAssistant.input"].exists)
 
         let selectedTasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(selectedTasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectedTasksTab.waitForExistence(timeout: uiTimeout))
         selectedTasksTab.tap()
 
         let homeTab = app.tabBars.buttons["Home"]
-        XCTAssertTrue(homeTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(homeTab.waitForExistence(timeout: uiTimeout))
         homeTab.tap()
         XCTAssertFalse(app.buttons["taskManagement.assistantButton"].waitForExistence(timeout: 1))
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
         XCTAssertFalse(app.buttons["taskManagement.assistantButton"].exists)
     }
@@ -342,21 +343,21 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: uiTimeout))
     }
 
     func testTaskAssistantTabIsAvailableWithoutCats() {
         let app = makeApp(additionalArguments: ["-complete-onboarding", "-launch-route", "tasks"])
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["taskManagement.view"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskManagement.view"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskManagement.assistantButton"].exists)
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.textFields["taskAssistant.input"].exists)
     }
 
@@ -365,33 +366,32 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.textFields["taskAssistant.input"].exists)
 
         app.buttons["taskAssistant.startChatButton"].tap()
         dismissAssistantCloudConsentIfNeeded(in: app)
 
         let input = app.textFields["taskAssistant.input"]
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertTrue(input.waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.tabBars.firstMatch.exists)
-        input.tap()
-        input.typeText("unfinished task request")
+        typeText("unfinished task request", into: input)
 
         let endChatButton = app.buttons["taskAssistant.endChatButton"]
-        XCTAssertTrue(endChatButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(endChatButton.waitForExistence(timeout: uiTimeout))
         endChatButton.tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskAssistant.continueChatButton"].exists)
 
         app.buttons["taskAssistant.startChatButton"].tap()
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertTrue(input.waitForExistence(timeout: uiTimeout))
         XCTAssertNotEqual(input.value as? String, "unfinished task request")
         XCTAssertFalse(app.tabBars.firstMatch.exists)
     }
@@ -407,16 +407,16 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
 
         let suggestion = app.buttons["taskAssistant.quickAction.UI Test Task"]
-        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        XCTAssertTrue(suggestion.waitForExistence(timeout: uiTimeout))
         suggestion.tap()
         dismissAssistantCloudConsentIfNeeded(in: app)
 
-        XCTAssertTrue(app.textFields["taskAssistant.input"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskAssistant.confirmButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskAssistant.input"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskAssistant.confirmButton"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.tabBars.firstMatch.exists)
     }
 
@@ -431,28 +431,27 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
         app.buttons["taskAssistant.startChatButton"].tap()
 
         dismissAssistantCloudConsentIfNeeded(in: app)
 
         let input = app.textFields["taskAssistant.input"]
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
-        input.tap()
-        app.typeText("open UI Test Task")
+        XCTAssertTrue(input.waitForExistence(timeout: uiTimeout))
+        typeText("open UI Test Task", into: input)
 
         let sendButton = app.buttons["Send task message"]
-        XCTAssertTrue(sendButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(sendButton.waitForExistence(timeout: uiTimeout))
         sendButton.tap()
 
         let confirmButton = app.buttons["Confirm"]
-        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: uiTimeout))
         confirmButton.tap()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(tasksTab.isSelected)
         XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForExistence(timeout: 10))
     }
@@ -472,10 +471,10 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: uiTimeout))
         app.buttons["taskAssistant.startChatButton"].tap()
 
         // First launch presents the cloud-consent sheet over the assistant. The heuristic
@@ -485,19 +484,18 @@ final class CriticalFlowsUITests: XCTestCase {
 
         // Tap the focused chat's identified composer, type, and keep the keyboard up.
         let input = app.textFields["taskAssistant.input"]
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
-        input.tap()
-        app.typeText("complete long task")
+        XCTAssertTrue(input.waitForExistence(timeout: uiTimeout))
+        typeText("complete long task", into: input)
 
         let sendButton = app.buttons["Send task message"]
-        XCTAssertTrue(sendButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(sendButton.waitForExistence(timeout: uiTimeout))
         sendButton.tap()
 
         // The card's trailing Cancel button is its last element and exists in the hierarchy even
         // when off-screen. With the shipped bug the chat did not auto-scroll to reveal the card
         // (keyboard up), so it was not hittable. The fix must scroll it in.
         let cancelDisambiguation = app.buttons["taskAssistant.cancelTaskDisambiguationButton"]
-        XCTAssertTrue(cancelDisambiguation.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancelDisambiguation.waitForExistence(timeout: uiTimeout))
         // The button exists as soon as the card is inserted; the auto-scroll lands a moment later
         // (after the card's transition and the keyboard settle), so poll for it instead of
         // reading `isHittable` once. No manual swipe: only the app's own scroll can pass.
@@ -528,19 +526,19 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let originalRow = app.buttons["taskRow.\(originalTitle)"]
-        XCTAssertTrue(originalRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(originalRow.waitForExistence(timeout: uiTimeout))
         originalRow.tap()
 
         let titleField = app.textFields["taskEdit.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout))
         replaceText(in: titleField, with: updatedTitle)
 
         let saveButton = app.buttons["taskEdit.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         let updatedRow = app.buttons["taskRow.\(updatedTitle)"]
-        XCTAssertTrue(updatedRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(updatedRow.waitForExistence(timeout: uiTimeout))
 
         let deleteButton = app.buttons["taskRow.delete.\(updatedTitle)"].firstMatch
         performGesture(on: updatedRow, revealing: deleteButton) {
@@ -562,10 +560,10 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let taskRow = app.buttons["taskRow.UI Test Task"]
-        XCTAssertTrue(taskRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskRow.waitForExistence(timeout: uiTimeout))
         taskRow.tap()
 
-        XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForExistence(timeout: uiTimeout))
 
         assertReminderToggleRoundTripKeepsMenuReachable(in: app)
     }
@@ -580,18 +578,18 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
         let addMenuButton = app.buttons["taskManagement.addMenuButton"]
-        XCTAssertTrue(addMenuButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(addMenuButton.waitForExistence(timeout: uiTimeout))
         addMenuButton.tap()
 
         let customTaskButton = app.buttons["taskManagement.customTaskButton"]
-        XCTAssertTrue(customTaskButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(customTaskButton.waitForExistence(timeout: uiTimeout))
         customTaskButton.tap()
 
-        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: uiTimeout))
 
         assertReminderToggleRoundTripKeepsMenuReachable(in: app)
     }
@@ -610,31 +608,31 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let row = app.buttons["taskRow.\(taskTitle)"]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout))
         row.tap()
 
         let caregiverButton = app.buttons["taskEdit.caregiverButton"]
-        XCTAssertTrue(caregiverButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(caregiverButton.waitForExistence(timeout: uiTimeout))
         // The seeded task is assigned to the default ("Myself") caregiver.
         XCTAssertFalse(caregiverButton.label.contains(newCaregiver))
         caregiverButton.tap()
 
         let option = app.buttons[newCaregiver]
-        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        XCTAssertTrue(option.waitForExistence(timeout: uiTimeout))
         option.tap()
 
         XCTAssertTrue(caregiverButton.label.contains(newCaregiver))
 
         let saveButton = app.buttons["taskEdit.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         // Reopen the same task to confirm the reassignment persisted.
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.waitForExistence(timeout: uiTimeout))
         row.tap()
 
         let reopenedCaregiverButton = app.buttons["taskEdit.caregiverButton"]
-        XCTAssertTrue(reopenedCaregiverButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(reopenedCaregiverButton.waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(reopenedCaregiverButton.label.contains(newCaregiver))
     }
 
@@ -651,36 +649,35 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let addButton = app.buttons["cats.addButton"]
-        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(addButton.waitForExistence(timeout: uiTimeout))
         addButton.tap()
 
         let nameField = app.textFields["catForm.nameField"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-        nameField.tap()
-        nameField.typeText(newCatName)
+        XCTAssertTrue(nameField.waitForExistence(timeout: uiTimeout))
+        typeText(newCatName, into: nameField)
 
         let saveButton = app.buttons["catForm.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         let newCatCard = app.buttons["cats.card.\(newCatName)"]
-        XCTAssertTrue(newCatCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(newCatCard.waitForExistence(timeout: uiTimeout))
         newCatCard.tap()
 
         let editButton = app.buttons["catDetail.editButton"]
-        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.waitForExistence(timeout: uiTimeout))
         editButton.tap()
 
         let editNameField = app.textFields["catForm.nameField"]
-        XCTAssertTrue(editNameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(editNameField.waitForExistence(timeout: uiTimeout))
         replaceText(in: editNameField, with: updatedCatName)
         app.buttons["catForm.saveButton"].tap()
 
-        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.waitForExistence(timeout: uiTimeout))
         editButton.tap()
 
         let persistedNameField = app.textFields["catForm.nameField"]
-        XCTAssertTrue(persistedNameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(persistedNameField.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(persistedNameField.value as? String, updatedCatName)
         app.buttons["catForm.cancelButton"].tap()
     }
@@ -696,10 +693,10 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let catCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(catCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(catCard.waitForExistence(timeout: uiTimeout))
         catCard.tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["catDetail.emptyState"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["catDetail.emptyState"].waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.buttons.matching(identifier: "catDetail.emptyStateAction").count, 1)
         XCTAssertFalse(app.buttons["catDetail.completeProfileButton"].exists)
     }
@@ -715,10 +712,11 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let catCard = app.buttons["cats.card.UI Basic Details Cat"]
-        XCTAssertTrue(catCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(catCard.waitForExistence(timeout: uiTimeout))
         catCard.tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["catDetail.basicInformationSection"].waitForExistence(timeout: 5))
+        let basicInformationSection = app.descendants(matching: .any)["catDetail.basicInformationSection"]
+        XCTAssertTrue(basicInformationSection.waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.descendants(matching: .any)["catDetail.additionalInformationSection"].exists)
     }
 
@@ -733,7 +731,7 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         app.buttons["cats.card.UI Test Cat"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["catDetail.emptyState"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["catDetail.emptyState"].waitForExistence(timeout: uiTimeout))
         attachScreenshot(named: "CatDetail-name-only-empty-state")
     }
 
@@ -748,20 +746,20 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: uiTimeout))
         primaryCatCard.tap()
 
         let editButton = app.buttons["catDetail.editButton"]
-        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.waitForExistence(timeout: uiTimeout))
         editButton.tap()
 
         let deleteButton = app.buttons["catForm.deleteButton"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.staticTexts["Danger Zone"].exists)
         deleteButton.tap()
 
         let confirmDeleteButton = app.alerts.buttons["Delete"].firstMatch
-        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: uiTimeout))
         confirmDeleteButton.tap()
 
         if app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: 2) == false {
@@ -771,15 +769,15 @@ final class CriticalFlowsUITests: XCTestCase {
             }
         }
 
-        XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["cats.card.UI Test Cat"].waitForExistence(timeout: 2))
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
-        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskRow.UI Solo Task"].waitForExistence(timeout: 2))
     }
 
@@ -883,38 +881,38 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         // Render the task rows first so they are live when the cascade delete runs.
-        XCTAssertTrue(app.buttons["taskRow.UI Solo Task"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.UI Solo Task"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: uiTimeout))
 
         let moreTab = app.tabBars.buttons["More"]
-        XCTAssertTrue(moreTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(moreTab.waitForExistence(timeout: uiTimeout))
         moreTab.tap()
 
         let catsShortcut = app.buttons["settings.shortcut.cats"]
-        XCTAssertTrue(catsShortcut.waitForExistence(timeout: 5))
+        XCTAssertTrue(catsShortcut.waitForExistence(timeout: uiTimeout))
         catsShortcut.tap()
 
         let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: uiTimeout))
         primaryCatCard.tap()
 
         let editButton = app.buttons["catDetail.editButton"]
-        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.waitForExistence(timeout: uiTimeout))
         editButton.tap()
 
         let deleteButton = app.buttons["catForm.deleteButton"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: uiTimeout))
         deleteButton.tap()
 
         let confirmDeleteButton = app.alerts.buttons["Delete"].firstMatch
-        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: uiTimeout))
         confirmDeleteButton.tap()
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
-        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.UI Shared Task"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["taskRow.UI Solo Task"].waitForExistence(timeout: 2))
         XCTAssertEqual(app.state, .runningForeground)
     }
@@ -930,18 +928,25 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let catCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(catCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(catCard.waitForExistence(timeout: uiTimeout))
         scrollUntilHittable(catCard, in: app)
         let addTaskMenuItem = app.buttons["Add Task"]
-        performGesture(on: catCard, revealing: addTaskMenuItem) {
-            catCard.press(forDuration: 1.2)
-        }
+        // #152: on a slow runner the long press can reach the card as a plain tap, which pushes
+        // the cat's detail screen instead of opening the menu (CI runs 43761755575, 43323567565:
+        // the retry then found the detail screen, not the card). Hold well past the context-menu
+        // threshold, and before the retry go back to the list if the press opened the detail.
+        performGesture(
+            on: catCard,
+            revealing: addTaskMenuItem,
+            recover: { self.returnToCatsListIfDetailOpened(in: app, card: catCard) },
+            gesture: { catCard.press(forDuration: 2.0) }
+        )
         addTaskMenuItem.tap()
 
-        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForExistence(timeout: uiTimeout))
 
         let catsButton = app.buttons["taskAdd.catsButton"]
-        XCTAssertTrue(catsButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(catsButton.waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(catsButton.label.localizedStandardContains("UI Test Cat"))
     }
 
@@ -949,7 +954,7 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = makeApp(additionalArguments: ["-complete-onboarding", "-launch-route", "history"])
         app.launch()
 
-        XCTAssertTrue(app.buttons["Create Your First Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Create Your First Task"].waitForExistence(timeout: uiTimeout))
     }
 
     func testHistoryShowsCompletionsWhenSeeded() {
@@ -962,7 +967,7 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["UI Test Completed Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["UI Test Completed Task"].waitForExistence(timeout: uiTimeout))
     }
 
     func testHistoryShowsNoCompletionsStateWhenTasksExistWithoutCompletions() {
@@ -975,8 +980,8 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["history.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["No statistics yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["history.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.staticTexts["No statistics yet"].waitForExistence(timeout: uiTimeout))
         XCTAssertTrue(app.staticTexts["History and statistics will appear here as you complete tasks."].exists)
         XCTAssertFalse(app.descendants(matching: .any)["history.state.noTasks"].exists)
     }
@@ -992,12 +997,13 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["home.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["home.currentTasks.section"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.currentTask.UI Test Overdue Task"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["home.currentTask.UI Test Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["home.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["home.currentTasks.section"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["home.currentTask.UI Test Overdue Task"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["home.currentTask.UI Test Task"].waitForExistence(timeout: uiTimeout))
 
-        XCTAssertTrue(app.descendants(matching: .any)["home.routineStatus.section"].waitForExistence(timeout: 5))
+        let routineStatusSection = app.descendants(matching: .any)["home.routineStatus.section"]
+        XCTAssertTrue(routineStatusSection.waitForExistence(timeout: uiTimeout))
         // Routine status only lists tasks with at least one completion; the seeded
         // never-completed tasks must stay out of it and leave the empty state visible.
         XCTAssertFalse(app.descendants(matching: .any)["home.routineStatus.row.UI Test Overdue Task"].exists)
@@ -1019,7 +1025,7 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let completeButton = app.buttons["taskRow.complete.UI Test Task"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
 
         let completedValue = NSPredicate(format: "value CONTAINS %@", "Completed")
         let completed = expectation(for: completedValue, evaluatedWith: completeButton)
@@ -1038,31 +1044,28 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let taskRow = app.buttons["taskRow.UI Test Task"]
-        XCTAssertTrue(taskRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskRow.waitForExistence(timeout: uiTimeout))
 
         let completeButton = app.buttons["taskRow.complete.UI Test Task"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
 
         let settingsTab = app.tabBars.buttons["More"]
-        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: uiTimeout))
         settingsTab.tap()
 
         let settingsView = app.descendants(matching: .any)["settings.view"].firstMatch
-        XCTAssertTrue(settingsView.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsView.waitForExistence(timeout: uiTimeout))
 
         let developerToolsButton = app.buttons["settings.developerTools"]
-        for _ in 0..<6 where !developerToolsButton.exists || !developerToolsButton.isHittable {
-            settingsView.swipeUp()
-        }
-        XCTAssertTrue(developerToolsButton.waitForExistence(timeout: 5))
-        developerToolsButton.tap()
+        XCTAssertTrue(developerToolsButton.waitForExistence(timeout: uiTimeout))
+        scrollUntilHittable(developerToolsButton, in: app)
 
         let notificationHistoryButton = app.buttons["developerTools.notificationHistory"]
-        XCTAssertTrue(notificationHistoryButton.waitForExistence(timeout: 5))
-        notificationHistoryButton.tap()
+        tap(developerToolsButton, opening: notificationHistoryButton)
 
-        XCTAssertTrue(app.descendants(matching: .any)["notificationHistory.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["UI Test Task"].waitForExistence(timeout: 5))
+        let notificationHistoryView = app.descendants(matching: .any)["notificationHistory.view"]
+        tap(notificationHistoryButton, opening: notificationHistoryView)
+        XCTAssertTrue(app.staticTexts["UI Test Task"].waitForExistence(timeout: uiTimeout))
     }
 
     /// #39: a caregiver whose photo did not save still saves, the sheet closes, and the caregiver
@@ -1080,33 +1083,30 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let settingsView = app.descendants(matching: .any)["settings.view"].firstMatch
-        XCTAssertTrue(settingsView.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsView.waitForExistence(timeout: uiTimeout))
 
         // `-launch-route settings` opens the More hub. The caregiver row lives in the Settings
         // screen that the hub's "Settings" row pushes, not on the hub itself.
         let appSettingsRow = app.buttons["settings.appSettings.row"]
-        XCTAssertTrue(appSettingsRow.waitForExistence(timeout: 5))
-        waitUntilHittable(appSettingsRow)
-        appSettingsRow.tap()
+        XCTAssertTrue(appSettingsRow.waitForExistence(timeout: uiTimeout))
+        // The notifications row tops the pushed Settings screen; the caregivers row may sit below
+        // the fold, so it is scrolled to after the push.
+        tap(appSettingsRow, opening: app.buttons["settings.notifications.row"])
 
         let caregiversRow = app.buttons["settings.caregivers.row"]
-        for _ in 0..<6 where !caregiversRow.exists || !caregiversRow.isHittable {
-            app.swipeUp()
-        }
-        XCTAssertTrue(caregiversRow.waitForExistence(timeout: 5))
+        scrollUntilHittable(caregiversRow, in: app)
         caregiversRow.tap()
 
         let addButton = app.buttons["caregiverList.addButton"]
-        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(addButton.waitForExistence(timeout: uiTimeout))
         addButton.tap()
 
         let nameField = app.textFields["Caregiver name"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-        nameField.tap()
-        nameField.typeText("UI Avatar Caregiver")
+        XCTAssertTrue(nameField.waitForExistence(timeout: uiTimeout))
+        typeText("UI Avatar Caregiver", into: nameField)
         dismissKeyboardIfPresent(in: app)
         let saveButton = app.buttons["addCaregiver.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         scrollUntilHittable(saveButton, in: app)
         saveButton.tap()
 
@@ -1115,7 +1115,7 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertFalse(nameField.exists)
         note.buttons.firstMatch.tap()
         XCTAssertTrue(note.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["UI Avatar Caregiver"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["UI Avatar Caregiver"].waitForExistence(timeout: uiTimeout))
     }
 
     func testSettingsShortcutsNavigateToCatsAndHistory() {
@@ -1130,23 +1130,23 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let catsShortcut = app.buttons["settings.shortcut.cats"]
-        XCTAssertTrue(catsShortcut.waitForExistence(timeout: 5))
+        XCTAssertTrue(catsShortcut.waitForExistence(timeout: uiTimeout))
         waitUntilHittable(catsShortcut)
         catsShortcut.tap()
 
-        XCTAssertTrue(app.buttons["cats.card.UI Test Cat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["cats.card.UI Test Cat"].waitForExistence(timeout: uiTimeout))
 
         let backButton = app.navigationBars.buttons.element(boundBy: 0)
-        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(backButton.waitForExistence(timeout: uiTimeout))
         waitUntilHittable(backButton)
         backButton.tap()
 
         let historyShortcut = app.buttons["settings.shortcut.history"]
-        XCTAssertTrue(historyShortcut.waitForExistence(timeout: 5))
+        XCTAssertTrue(historyShortcut.waitForExistence(timeout: uiTimeout))
         waitUntilHittable(historyShortcut)
         historyShortcut.tap()
 
-        XCTAssertTrue(app.staticTexts["UI Test Completed Task"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["UI Test Completed Task"].waitForExistence(timeout: uiTimeout))
     }
 
     func testSettingsLaunchRouteShowsSettingsRootAndShortcuts() {
@@ -1160,10 +1160,10 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["settings.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.appSettings.row"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.shortcut.cats"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.shortcut.history"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["settings.appSettings.row"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["settings.shortcut.cats"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["settings.shortcut.history"].waitForExistence(timeout: uiTimeout))
     }
 
     func testNotificationSettingsAdvancedChangesPersistWithinDraftFlow() {
@@ -1176,36 +1176,30 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let appSettingsRow = app.buttons["settings.appSettings.row"]
-        XCTAssertTrue(appSettingsRow.waitForExistence(timeout: 5))
-        appSettingsRow.tap()
-
+        XCTAssertTrue(appSettingsRow.waitForExistence(timeout: uiTimeout))
         let notificationsRow = app.buttons["settings.notifications.row"]
-        XCTAssertTrue(notificationsRow.waitForExistence(timeout: 5))
-        notificationsRow.tap()
+        tap(appSettingsRow, opening: notificationsRow)
 
-        XCTAssertTrue(app.navigationBars["Notification Settings"].waitForExistence(timeout: 5))
+        tap(notificationsRow, opening: app.navigationBars["Notification Settings"])
 
         let advancedRow = app.buttons["notificationSettings.advanced"]
-        XCTAssertTrue(advancedRow.waitForExistence(timeout: 5))
-        advancedRow.tap()
-
-        XCTAssertTrue(app.navigationBars["Advanced Notification Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(advancedRow.waitForExistence(timeout: uiTimeout))
+        tap(advancedRow, opening: app.navigationBars["Advanced Notification Settings"])
 
         let soundToggle = app.switches["advancedNotificationSettings.soundToggle"]
-        XCTAssertTrue(soundToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(soundToggle.waitForExistence(timeout: uiTimeout))
         let originalState = toggleState(for: soundToggle)
         let expectedState = originalState == "on" ? "off" : "on"
-        tapSwitchControl(soundToggle)
-        waitForToggleState(expectedState, in: soundToggle)
+        setToggle(soundToggle, to: expectedState)
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
-        XCTAssertTrue(app.navigationBars["Notification Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(advancedRow.waitForExistence(timeout: 5))
-        advancedRow.tap()
+        XCTAssertTrue(app.navigationBars["Notification Settings"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(advancedRow.waitForExistence(timeout: uiTimeout))
+        tap(advancedRow, opening: app.navigationBars["Advanced Notification Settings"])
 
         let updatedSoundToggle = app.switches["advancedNotificationSettings.soundToggle"]
-        XCTAssertTrue(updatedSoundToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(updatedSoundToggle.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(toggleState(for: updatedSoundToggle), expectedState)
     }
 
@@ -1219,15 +1213,15 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let supportRow = app.buttons["settings.support.row"]
-        XCTAssertTrue(supportRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(supportRow.waitForExistence(timeout: uiTimeout))
         supportRow.tap()
 
-        XCTAssertTrue(app.staticTexts["Purrtine"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Version'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Purrtine"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Version'")).firstMatch.waitForExistence(timeout: uiTimeout))
         // settings.rateApp is only rendered when APP_STORE_ID is configured, which this build doesn't set.
-        XCTAssertTrue(app.descendants(matching: .any)["settings.giveFeedback"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["settings.privacyPolicy"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["settings.termsOfService"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.giveFeedback"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.privacyPolicy"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.termsOfService"].waitForExistence(timeout: uiTimeout))
     }
 
     func testCriticalAccessibilityIdentifiersArePresentAcrossMainFlows() {
@@ -1242,12 +1236,12 @@ final class CriticalFlowsUITests: XCTestCase {
         )
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["home.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["home.currentTasks.section"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["home.quickActions.section"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["home.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["home.currentTasks.section"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.descendants(matching: .any)["home.quickActions.section"].waitForExistence(timeout: uiTimeout))
 
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout))
         tasksTab.tap()
 
         // Destination-view waits after a tab/navigation transition get a longer timeout than
@@ -1255,22 +1249,22 @@ final class CriticalFlowsUITests: XCTestCase {
         // occasionally exceed 5s even though it's never actually stuck (confirmed by re-running
         // this test alone, where it passes reliably in ~5-10s well under the old 5s ceiling).
         XCTAssertTrue(app.descendants(matching: .any)["taskManagement.view"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["taskManagement.addMenuButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskManagement.addMenuButton"].waitForExistence(timeout: uiTimeout))
 
         let assistantTab = app.tabBars.buttons["Whiskers"]
-        XCTAssertTrue(assistantTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(assistantTab.waitForExistence(timeout: uiTimeout))
         assistantTab.tap()
         XCTAssertTrue(app.descendants(matching: .any)["taskAssistant.welcome"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskAssistant.startChatButton"].waitForExistence(timeout: uiTimeout))
 
         let moreTab = app.tabBars.buttons["More"]
-        XCTAssertTrue(moreTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(moreTab.waitForExistence(timeout: uiTimeout))
         moreTab.tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["settings.view"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["settings.appSettings.row"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.shortcut.cats"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["settings.shortcut.history"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.appSettings.row"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["settings.shortcut.cats"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["settings.shortcut.history"].waitForExistence(timeout: uiTimeout))
 
         app.buttons["settings.shortcut.cats"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: 10))
@@ -1298,25 +1292,25 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let originalRow = app.buttons["taskRow.\(originalTitle)"]
-        XCTAssertTrue(originalRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(originalRow.waitForExistence(timeout: uiTimeout))
         originalRow.tap()
 
         let titleField = app.textFields["taskEdit.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout))
         replaceText(in: titleField, with: updatedTitle)
 
         let saveButton = app.buttons["taskEdit.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
 
-        // No wait between the taps. The stubbed notification layer resolves almost immediately, so
-        // the sheet is usually gone before the second tap lands; `tapAgainIfStillPresent` keeps the
-        // test deterministic. That makes this a regression guard on the update path, not a proof
-        // that the `isSaving` guard holds under a real race. A real proof needs an injected delay.
-        saveButton.tap()
-        tapAgainIfStillPresent(saveButton)
+        // Both taps go out as one `doubleTap()` event, resolved against the button once (#152). Two
+        // separate taps had to look the button up again for the second tap, and on CI the sheet was
+        // already closing then: "No matches found for taskEdit.saveButton" (PR #159 run 1). This
+        // is a regression guard on the update path; a real race proof needs an injected delay.
+        waitUntilHittable(saveButton)
+        saveButton.doubleTap()
 
         let updatedRow = app.buttons["taskRow.\(updatedTitle)"]
-        XCTAssertTrue(updatedRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(updatedRow.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.buttons.matching(identifier: "taskRow.\(updatedTitle)").count, 1)
         XCTAssertFalse(app.buttons["taskRow.\(originalTitle)"].exists)
     }
@@ -1339,13 +1333,13 @@ final class CriticalFlowsUITests: XCTestCase {
         fillCustomTaskForm(in: app, title: taskTitle)
 
         let saveButton = app.buttons["taskAdd.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
 
-        // Same timing caveat as the edit-sheet double-tap test above.
-        saveButton.tap()
-        tapAgainIfStillPresent(saveButton)
+        // Same one-event double tap and timing caveat as the edit-sheet test above.
+        waitUntilHittable(saveButton)
+        saveButton.doubleTap()
 
-        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.buttons.matching(identifier: "taskRow.\(taskTitle)").count, 1)
     }
 
@@ -1365,25 +1359,25 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let taskRow = app.buttons["taskRow.UI Test Task"]
-        XCTAssertTrue(taskRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskRow.waitForExistence(timeout: uiTimeout))
         taskRow.tap()
 
         let titleField = app.textFields["taskEdit.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout))
 
         // `enableReminder` starts on, so the save takes the schedule path. Read it, do not tap it.
         let reminderToggle = app.switches["reminderRow.notificationsToggle"]
-        XCTAssertTrue(reminderToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(reminderToggle.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(toggleState(for: reminderToggle), "on")
 
         replaceText(in: titleField, with: updatedTitle)
 
         let saveButton = app.buttons["taskEdit.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         let scheduleAlert = app.alerts[scheduleFailureAlertTitle]
-        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: 5))
+        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: uiTimeout))
 
         // Spec section 8, assertion 4 asks that the updated row not exist. A run proved that wrong:
         // finding P3 commits the update before the notification hop, so the list behind the sheet
@@ -1396,7 +1390,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
         // The edit sheet's alert has an empty action block, so only the system dismiss button is up.
         let dismissAlertButton = scheduleAlert.buttons.firstMatch
-        XCTAssertTrue(dismissAlertButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(dismissAlertButton.waitForExistence(timeout: uiTimeout))
         dismissAlertButton.tap()
         XCTAssertTrue(scheduleAlert.waitForNonExistence(timeout: 5))
 
@@ -1414,7 +1408,7 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = launchStaleReminderCompletionScenario()
 
         let completeButton = app.buttons["taskRow.complete.UI Solo Task"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
         completeButton.tap()
 
         acknowledgeReminderWarning(in: app)
@@ -1428,12 +1422,12 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = launchStaleReminderCompletionScenario()
 
         let viewModeButton = app.buttons["taskManagement.viewModeButton"]
-        XCTAssertTrue(viewModeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(viewModeButton.waitForExistence(timeout: uiTimeout))
         viewModeButton.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["taskManagement.calendar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["taskManagement.calendar"].waitForExistence(timeout: uiTimeout))
 
         let completeButton = app.buttons["taskRow.complete.UI Solo Task"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
         completeButton.tap()
 
         acknowledgeReminderWarning(in: app)
@@ -1445,15 +1439,15 @@ final class CriticalFlowsUITests: XCTestCase {
         let app = launchStaleReminderCompletionScenario()
 
         let completeButton = app.buttons["taskRow.complete.UI Shared Task"]
-        XCTAssertTrue(completeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(completeButton.waitForExistence(timeout: uiTimeout))
         completeButton.tap()
 
         let selectAllButton = app.buttons["taskCompletionSelectAllButton"]
-        XCTAssertTrue(selectAllButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectAllButton.waitForExistence(timeout: uiTimeout))
         selectAllButton.tap()
 
         let confirmButton = app.buttons["taskCompletion.confirmButton"]
-        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: uiTimeout))
         confirmButton.tap()
 
         acknowledgeReminderWarning(in: app)
@@ -1476,7 +1470,7 @@ final class CriticalFlowsUITests: XCTestCase {
     /// The warning's only button is OK; no retry is offered, because a retry would record twice.
     private func acknowledgeReminderWarning(in app: XCUIApplication) {
         let warning = app.alerts[scheduleFailureAlertTitle]
-        XCTAssertTrue(warning.waitForExistence(timeout: 5))
+        XCTAssertTrue(warning.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(warning.buttons.count, 1)
         warning.buttons.firstMatch.tap()
         XCTAssertTrue(warning.waitForNonExistence(timeout: 5))
@@ -1499,30 +1493,30 @@ final class CriticalFlowsUITests: XCTestCase {
         app.launch()
 
         let taskRow = app.buttons["taskRow.UI Test Task"]
-        XCTAssertTrue(taskRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(taskRow.waitForExistence(timeout: uiTimeout))
         taskRow.tap()
 
         let titleField = app.textFields["taskEdit.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout))
 
         // `enableReminder` starts on, so the save takes the schedule path. Read it, do not tap it.
         let reminderToggle = app.switches["reminderRow.notificationsToggle"]
-        XCTAssertTrue(reminderToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(reminderToggle.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(toggleState(for: reminderToggle), "on")
 
         replaceText(in: titleField, with: updatedTitle)
 
         let saveButton = app.buttons["taskEdit.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         let scheduleAlert = app.alerts[scheduleFailureAlertTitle]
-        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: 5))
+        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: uiTimeout))
         scheduleAlert.buttons.firstMatch.tap()
         XCTAssertTrue(scheduleAlert.waitForNonExistence(timeout: 5))
 
         let cancelButton = app.buttons["taskEdit.cancelButton"]
-        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: uiTimeout))
         cancelButton.tap()
 
         // `SheetDismissButton` raises a confirmation dialog, not an alert. Match its destructive
@@ -1532,7 +1526,7 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.textFields["taskEdit.titleField"].waitForNonExistence(timeout: 5))
 
         // The heart of P3: the edits were committed before the notification hop, so they survive.
-        XCTAssertTrue(app.buttons["taskRow.\(updatedTitle)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.\(updatedTitle)"].waitForExistence(timeout: uiTimeout))
     }
 
     /// Locks in the deliberate asymmetry of the add sheet.
@@ -1555,19 +1549,19 @@ final class CriticalFlowsUITests: XCTestCase {
 
         // `enableReminder` starts on, so the save takes the schedule path. Read it, do not tap it.
         let reminderToggle = app.switches["reminderRow.notificationsToggle"]
-        XCTAssertTrue(reminderToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(reminderToggle.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(toggleState(for: reminderToggle), "on")
 
         let saveButton = app.buttons["taskAdd.saveButton"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.waitForExistence(timeout: uiTimeout))
         saveButton.tap()
 
         let scheduleAlert = app.alerts[scheduleFailureAlertTitle]
-        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: 5))
+        XCTAssertTrue(scheduleAlert.waitForExistence(timeout: uiTimeout))
 
         // The edit sheet's alerts carry no such button, and that difference is the point.
         let okButton = scheduleAlert.buttons["OK"]
-        XCTAssertTrue(okButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(okButton.waitForExistence(timeout: uiTimeout))
 
         // Spec section 10 assertion 3 is deliberately absent. `isEnabled` reports `false` for an
         // element that does not resolve, and XCUITest may scope queries to the modal alert, so the
@@ -1578,7 +1572,7 @@ final class CriticalFlowsUITests: XCTestCase {
         XCTAssertTrue(app.textFields["taskAdd.titleField"].waitForNonExistence(timeout: 5))
 
         // The task was created once, and the failed reminder did not roll it back.
-        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["taskRow.\(taskTitle)"].waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.buttons.matching(identifier: "taskRow.\(taskTitle)").count, 1)
     }
 
@@ -1597,11 +1591,11 @@ final class CriticalFlowsUITests: XCTestCase {
     /// Cats screen → "UI Test Cat" detail → Edit Cat → Delete → confirm.
     private func deletePrimaryCatFromEditCat(in app: XCUIApplication) {
         let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: uiTimeout))
         primaryCatCard.tap()
 
         let editButton = app.buttons["catDetail.editButton"]
-        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.waitForExistence(timeout: uiTimeout))
         editButton.tap()
 
         deleteCatFromOpenEditCat(in: app)
@@ -1612,7 +1606,7 @@ final class CriticalFlowsUITests: XCTestCase {
         openPrimaryCatCardMenu(in: app)
 
         let menuDeleteButton = app.buttons["Delete"].firstMatch
-        XCTAssertTrue(menuDeleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(menuDeleteButton.waitForExistence(timeout: uiTimeout))
         menuDeleteButton.tap()
 
         confirmCatDelete(in: app)
@@ -1623,7 +1617,7 @@ final class CriticalFlowsUITests: XCTestCase {
         openPrimaryCatCardMenu(in: app)
 
         let menuEditButton = app.buttons["Edit"].firstMatch
-        XCTAssertTrue(menuEditButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(menuEditButton.waitForExistence(timeout: uiTimeout))
         menuEditButton.tap()
 
         deleteCatFromOpenEditCat(in: app)
@@ -1631,13 +1625,13 @@ final class CriticalFlowsUITests: XCTestCase {
 
     private func openPrimaryCatCardMenu(in app: XCUIApplication) {
         let primaryCatCard = app.buttons["cats.card.UI Test Cat"]
-        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryCatCard.waitForExistence(timeout: uiTimeout))
         primaryCatCard.press(forDuration: 1.2)
     }
 
     private func deleteCatFromOpenEditCat(in app: XCUIApplication) {
         let deleteButton = app.buttons["catForm.deleteButton"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: uiTimeout))
         deleteButton.tap()
 
         confirmCatDelete(in: app)
@@ -1645,7 +1639,7 @@ final class CriticalFlowsUITests: XCTestCase {
 
     private func confirmCatDelete(in app: XCUIApplication) {
         let confirmDeleteButton = app.alerts.buttons["Delete"].firstMatch
-        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: uiTimeout))
         confirmDeleteButton.tap()
     }
 
@@ -1653,40 +1647,155 @@ final class CriticalFlowsUITests: XCTestCase {
     /// after it closes.
     private func assertCatDeletionAlert(in app: XCUIApplication, title: String) {
         let alert = app.alerts[title]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertTrue(alert.waitForExistence(timeout: uiTimeout))
         XCTAssertEqual(app.alerts.count, 1)
         XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Test Cat")).firstMatch.exists)
 
         let dismissAlertButton = alert.buttons.firstMatch
-        XCTAssertTrue(dismissAlertButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(dismissAlertButton.waitForExistence(timeout: uiTimeout))
         dismissAlertButton.tap()
         XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
 
         // No second note follows the first (#31).
         XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2))
 
-        XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["cats.view"].waitForExistence(timeout: uiTimeout))
+        XCTAssertTrue(app.buttons["cats.card.UI Second Test Cat"].waitForExistence(timeout: uiTimeout))
         XCTAssertFalse(app.buttons["cats.card.UI Test Cat"].exists)
     }
 
-    /// Taps an element a second time, but only while it is still on screen.
+    /// Whether `element` can take a tap right now, read without raising (#152).
     ///
-    /// A save button whose sheet has already closed is not a test failure: the sheet closing is the
-    /// wanted outcome. The assertion that matters is the row count after the taps.
-    private func tapAgainIfStillPresent(_ element: XCUIElement) {
-        guard element.exists, element.isHittable else { return }
+    /// Asking `isHittable` of an element whose centre is off the window, such as a save button on a
+    /// sheet that is sliding away, fails the test with "Activation point invalid" (main run
+    /// 43770586120). So `exists` and `frame` are read first, and `isHittable` only after them.
+    private func isTappableNow(_ element: XCUIElement) -> Bool {
+        guard element.exists else { return false }
 
+        let frame = element.frame
+        let window = XCUIApplication().windows.firstMatch
+        guard !frame.isEmpty, window.exists,
+              window.frame.contains(CGPoint(x: frame.midX, y: frame.midY)) else { return false }
+
+        return element.isHittable
+    }
+
+    /// Taps a row that pushes a screen and waits for `destination` on that screen (#152).
+    ///
+    /// On CI a tap on a Developer Tools row was synthesized and still left the screen in place (PR
+    /// #155 run 43761752248, attempt 2: the failure screenshot shows Developer Tools). The helper
+    /// waits until `element` can take the tap, taps, and taps once more only when `destination`
+    /// did not appear and `element` is still on screen, so a slow push is never tapped twice.
+    private func tap(
+        _ element: XCUIElement,
+        opening destination: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitUntilHittable(element, file: file, line: line)
         element.tap()
+        if destination.waitForExistence(timeout: uiTimeout) { return }
+
+        if isTappableNow(element) {
+            XCTContext.runActivity(named: "Retrying tap (#152): \(element) did not open \(destination)") { _ in
+                element.tap()
+            }
+        }
+        XCTAssertTrue(
+            destination.waitForExistence(timeout: uiTimeout),
+            "Tap on \(element) did not open \(destination)",
+            file: file,
+            line: line
+        )
+    }
+
+    /// Recovery for a cat-card long press that landed as a tap (#152): leaves the pushed cat detail
+    /// screen through the back button, so the retry presses the card again.
+    private func returnToCatsListIfDetailOpened(in app: XCUIApplication, card: XCUIElement) {
+        guard app.buttons["catDetail.editButton"].exists, !card.exists else { return }
+
+        let backButton = app.navigationBars.buttons.element(boundBy: 0)
+        waitUntilHittable(backButton)
+        backButton.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: uiTimeout), "The cats list did not come back.")
     }
 
     /// Waits for an element to report `isHittable == true`.
     ///
     /// Toolbar/chrome morph animations (e.g. Liquid Glass) can leave an element in the
     /// accessibility tree, and passing `waitForExistence`, before it is actually tappable.
-    private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = 5) {
-        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: element)
-        wait(for: [hittable], timeout: timeout)
+    ///
+    /// Condition-based: returns as soon as the element is hittable (#152). Asking an element for
+    /// `isHittable` before it has a real frame on screen raises "Activation point invalid", so the
+    /// poll reads `exists` and `frame` first. A slow CI runner gets the full 15 s; a failure names
+    /// the element.
+    @discardableResult
+    private func waitUntilHittable(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 15,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let isHittable = waitUntil(timeout: timeout) { isTappableNow(element) }
+        XCTAssertTrue(
+            isHittable,
+            "Element never became hittable within \(timeout) s: \(element)",
+            file: file,
+            line: line
+        )
+        return isHittable
+    }
+
+    /// Polls `condition` every 0.1 s and returns `true` as soon as it holds, `false` at the deadline.
+    /// Never sleeps for a fixed time: the run loop keeps turning while it waits.
+    private func waitUntil(timeout: TimeInterval, condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        repeat {
+            if condition() { return true }
+
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        } while Date() < deadline
+
+        return condition()
+    }
+
+    /// Whether `field` itself has keyboard focus. The keyboard being up is not enough: it can still
+    /// belong to the previous field.
+    private func hasTypingFocus(_ field: XCUIElement) -> Bool {
+        NSPredicate(format: "hasKeyboardFocus == true").evaluate(with: field)
+    }
+
+    /// Taps `field` and types `text` once the field can really receive it (#152).
+    ///
+    /// A `tap(); typeText()` pair right after `waitForExistence` fails with "Neither element nor any
+    /// descendant has keyboard focus" when a sheet or push is still animating in. The helper waits
+    /// for the field to be hittable, taps, waits for keyboard focus, taps once more if focus did
+    /// not arrive, and only then types.
+    private func typeText(
+        _ text: String,
+        into field: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        focus(field, file: file, line: line)
+        field.typeText(text)
+    }
+
+    /// Gives `field` keyboard focus: tap, wait for focus, tap again if it did not arrive.
+    private func focus(
+        _ field: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        _ = field.waitForExistence(timeout: 15)
+        waitUntilHittable(field, file: file, line: line)
+        field.tap()
+        if waitUntil(timeout: 5, condition: { hasTypingFocus(field) }) { return }
+
+        field.tap()
+        let gotFocus = waitUntil(timeout: 10) { hasTypingFocus(field) }
+        XCTAssertTrue(gotFocus, "Field never got keyboard focus: \(field)", file: file, line: line)
     }
 
     /// Swipes the app's main scroll view up until `element` has its centre inside the window, then
@@ -1695,6 +1804,7 @@ final class CriticalFlowsUITests: XCTestCase {
     /// Reads `frame` instead of `isHittable` while scrolling: asking an off-screen or mid-scroll
     /// element for hittability is what raises "Activation point invalid" on CI.
     private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 6) {
+        // A short settle only: a row below the fold of a lazy list may not exist until scrolled to.
         _ = element.waitForExistence(timeout: 5)
         let window = app.windows.firstMatch
         for _ in 0..<maxSwipes {
@@ -1708,15 +1818,37 @@ final class CriticalFlowsUITests: XCTestCase {
         waitUntilHittable(element)
     }
 
-    /// Dismisses the keyboard through its toolbar Done button, when the form has one.
-    private func dismissKeyboardIfPresent(in app: XCUIApplication) {
-        guard app.keyboards.firstMatch.exists else { return }
+    /// Dismisses the keyboard and returns only when it is really gone (#152).
+    ///
+    /// Waits up to 10 s for the toolbar Done button; falls back to the keyboard's Return key when the
+    /// form has no Done button. Fails when the keyboard is still up after the last wait, because a
+    /// keyboard left over a button is what swallowed the save tap on slow runners.
+    private func dismissKeyboardIfPresent(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists else { return }
 
         let done = app.toolbars.buttons["Done"]
-        if done.waitForExistence(timeout: 2) {
+        if done.waitForExistence(timeout: 6) {
             done.tap()
-            _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 5)
+        } else {
+            // The keyboard window cannot be scrolled to, so a plain `tap()` on its key fails with
+            // "Failed to scroll to visible"; tap the key's coordinate instead.
+            let returnKey = keyboard.buttons["Return"]
+            if returnKey.exists {
+                returnKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
         }
+
+        XCTAssertTrue(
+            keyboard.waitForNonExistence(timeout: 10),
+            "Keyboard did not go away after dismissal.",
+            file: file,
+            line: line
+        )
     }
 
     /// Performs a gesture on `target` and waits for the element it reveals, with one retry (#71).
@@ -1725,31 +1857,26 @@ final class CriticalFlowsUITests: XCTestCase {
     /// a no-op. The helper waits until `target` is hittable, runs `gesture`, waits up to `timeout`
     /// for `revealed`, and runs `gesture` exactly once more if `revealed` is still absent.
     /// Asserts that `revealed` exists after the retry.
+    ///
+    /// `recover` runs before the retry. It puts the screen back when the first attempt did
+    /// something other than a no-op, such as a long press that landed as a tap and pushed a screen.
     private func performGesture(
         on target: XCUIElement,
         revealing revealed: XCUIElement,
-        timeout: TimeInterval = 10,
+        timeout: TimeInterval = 15,
         file: StaticString = #filePath,
         line: UInt = #line,
+        recover: () -> Void = {},
         gesture: () -> Void
     ) {
-        let hittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: target
-        )
-        let hittableResult = XCTWaiter().wait(for: [hittable], timeout: 5)
-        XCTAssertEqual(
-            hittableResult,
-            .completed,
-            "Gesture target never became hittable: \(target)",
-            file: file,
-            line: line
-        )
+        waitUntilHittable(target, file: file, line: line)
 
         gesture()
         if revealed.waitForExistence(timeout: timeout) { return }
 
         XCTContext.runActivity(named: "Retrying gesture (#71): first attempt did not reveal \(revealed)") { _ in
+            recover()
+            waitUntilHittable(target, file: file, line: line)
             gesture()
         }
         _ = revealed.waitForExistence(timeout: timeout)
@@ -1768,15 +1895,15 @@ final class CriticalFlowsUITests: XCTestCase {
         line: UInt = #line
     ) {
         let tasksTab = app.tabBars.buttons["Tasks"]
-        XCTAssertTrue(tasksTab.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(tasksTab.waitForExistence(timeout: uiTimeout), file: file, line: line)
         tasksTab.tap()
 
         let addMenuButton = app.buttons["taskManagement.addMenuButton"]
-        XCTAssertTrue(addMenuButton.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(addMenuButton.waitForExistence(timeout: uiTimeout), file: file, line: line)
         addMenuButton.tap()
 
         let customTaskButton = app.buttons["taskManagement.customTaskButton"]
-        XCTAssertTrue(customTaskButton.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(customTaskButton.waitForExistence(timeout: uiTimeout), file: file, line: line)
         customTaskButton.tap()
     }
 
@@ -1789,28 +1916,23 @@ final class CriticalFlowsUITests: XCTestCase {
         line: UInt = #line
     ) {
         let titleField = app.textFields["taskAdd.titleField"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5), file: file, line: line)
-        titleField.tap()
-        titleField.typeText(title)
+        XCTAssertTrue(titleField.waitForExistence(timeout: uiTimeout), file: file, line: line)
+        typeText(title, into: titleField, file: file, line: line)
 
         // Dismiss the keyboard before tapping rows near its edge; on iOS 26 the
         // keyboard-avoidance layout shift can otherwise swallow the tap.
-        let keyboardDoneButton = app.toolbars.buttons["Done"]
-        if keyboardDoneButton.waitForExistence(timeout: 2) {
-            keyboardDoneButton.tap()
-            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), file: file, line: line)
-        }
+        dismissKeyboardIfPresent(in: app, file: file, line: line)
 
         let catsButton = app.buttons["taskAdd.catsButton"]
-        XCTAssertTrue(catsButton.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(catsButton.waitForExistence(timeout: uiTimeout), file: file, line: line)
         catsButton.tap()
 
         let catOption = app.buttons["taskCatsSelection.cat.\(catName)"]
-        XCTAssertTrue(catOption.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(catOption.waitForExistence(timeout: uiTimeout), file: file, line: line)
         catOption.tap()
 
         let doneButton = app.buttons["taskCatsSelection.doneButton"]
-        XCTAssertTrue(doneButton.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(doneButton.waitForExistence(timeout: uiTimeout), file: file, line: line)
         doneButton.tap()
     }
 
@@ -1822,7 +1944,8 @@ final class CriticalFlowsUITests: XCTestCase {
         }
     }
 
-    private func attachScreenshot(named name: String) {
+    /// `nonisolated`: the synchronous `tearDownWithError` that calls it is not main-actor isolated.
+    private nonisolated func attachScreenshot(named name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -1830,7 +1953,7 @@ final class CriticalFlowsUITests: XCTestCase {
     }
 
     private func replaceText(in element: XCUIElement, with text: String) {
-        element.tap()
+        focus(element)
 
         if let currentValue = element.value as? String, currentValue.isEmpty == false, currentValue != element.placeholderValue {
             element.press(forDuration: 1.0)
@@ -1876,17 +1999,33 @@ final class CriticalFlowsUITests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(5)
+        let reached = waitUntil(timeout: 10) {
+            toggleState(for: element, file: file, line: line) == state
+        }
+        if !reached {
+            XCTFail("Expected toggle state to become \(state): \(element)", file: file, line: line)
+        }
+    }
 
-        repeat {
-            if toggleState(for: element, file: file, line: line) == state {
-                return
-            }
+    /// Flips a switch to `state` and waits for it (#152).
+    ///
+    /// Waits for the switch to be hittable, taps, then waits for the new state. Taps again only when
+    /// the state is still the old one after that wait, i.e. the first tap provably did not land, so a
+    /// slow update is never toggled twice.
+    private func setToggle(
+        _ element: XCUIElement,
+        to state: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitUntilHittable(element, file: file, line: line)
+        tapSwitchControl(element)
+        if waitUntil(timeout: 8, condition: { toggleState(for: element, file: file, line: line) == state }) {
+            return
+        }
 
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        } while Date() < deadline
-
-        XCTFail("Expected toggle state to become \(state).", file: file, line: line)
+        tapSwitchControl(element)
+        waitForToggleState(state, in: element, file: file, line: line)
     }
 
     private func normalizedToggleState(from rawValue: String?) -> String {
@@ -1923,16 +2062,15 @@ final class CriticalFlowsUITests: XCTestCase {
         line: UInt = #line
     ) {
         let reminderToggle = app.switches["reminderRow.notificationsToggle"]
-        XCTAssertTrue(reminderToggle.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(reminderToggle.waitForExistence(timeout: uiTimeout), file: file, line: line)
 
         let notificationsMenu = app.buttons["reminderRow.notificationsMenu"]
-        XCTAssertTrue(notificationsMenu.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(notificationsMenu.waitForExistence(timeout: uiTimeout), file: file, line: line)
 
         XCTAssertEqual(toggleState(for: reminderToggle, file: file, line: line), "on", file: file, line: line)
         XCTAssertTrue(notificationsMenu.isEnabled, file: file, line: line)
 
-        tapSwitchControl(reminderToggle)
-        waitForToggleState("off", in: reminderToggle, file: file, line: line)
+        setToggle(reminderToggle, to: "off", file: file, line: line)
         XCTAssertFalse(
             notificationsMenu.isEnabled,
             "The menu row must disable while the reminder is off.",
@@ -1940,8 +2078,7 @@ final class CriticalFlowsUITests: XCTestCase {
             line: line
         )
 
-        tapSwitchControl(reminderToggle)
-        waitForToggleState("on", in: reminderToggle, file: file, line: line)
+        setToggle(reminderToggle, to: "on", file: file, line: line)
         XCTAssertTrue(
             notificationsMenu.isEnabled,
             "The menu row must become reachable again once the reminder is back on — this is the regression.",
