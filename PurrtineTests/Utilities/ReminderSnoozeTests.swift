@@ -270,6 +270,36 @@ struct ReminderSnoozeTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func aFifthSnoozeWhoseTaskIsCompletedWhileItsPendingReadIsOpenLeavesTheOldestOneInPlace() async throws {
+        let fakeCenter = FakeUserNotificationCenterClient()
+        let sut = try await makeManager(notificationCenter: fakeCenter)
+        let tasks = (0..<5).map { _ in makeTask() }
+        for (index, task) in tasks.prefix(4).enumerated() {
+            fakeCenter.pendingRequests.append(
+                pendingRequest(identifier: "snooze_\(task.id.uuidString)_\(index + 1)", taskId: task.id)
+            )
+        }
+        let gate = PermissionGate()
+        fakeCenter.pendingRequestsHandler = { await gate.hold() }
+
+        let snooze = Task {
+            try await sut.scheduleSnoozedNotification(for: info(for: tasks[4]), delayMinutes: 10)
+        }
+        await gate.waitUntilHeld()
+        // What `CareTaskWriter.complete` does while the snooze waits on the pending read: the cancel
+        // bumps the generation at once, then queues behind the snooze.
+        let cancel = Task { await sut.cancelSnoozedNotifications(forTaskId: tasks[4].id) }
+        await Task.yield()
+        gate.release()
+        try await snooze.value
+        await cancel.value
+
+        // The finished occurrence's snooze is dropped, so the cap must not have removed another one.
+        #expect(Set(snoozedTaskIds(in: fakeCenter)) == Set(tasks.prefix(4).map(\.id.uuidString)))
+        #expect(fakeCenter.addedRequests.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func snoozesTappedTogetherNeverExceedTheFourSlots() async throws {
         let fakeCenter = FakeUserNotificationCenterClient()
         let sut = try await makeManager(notificationCenter: fakeCenter)

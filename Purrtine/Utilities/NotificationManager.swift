@@ -836,14 +836,16 @@ final class NotificationManager:
             let pendingSnoozes = await notificationCenter.pendingNotificationRequests()
                 .filter { Self.isSnooze($0) && $0.identifier != request.identifier }
                 .sorted { Self.snoozeCreationStamp($0) < Self.snoozeCreationStamp($1) }
+            // Re-check after the read and before the cap removes anything: a snooze that is dropped
+            // here must not have cost another task its reminder.
+            guard isCurrent() else { return }
+            guard self.areRemindersOn else { throw NotificationSchedulingError.remindersOff }
             let overflow = pendingSnoozes.count - (CareTaskReminderSelection.snoozeSlots - 1)
             if overflow > 0 {
                 notificationCenter.removePendingNotificationRequests(
                     withIdentifiers: pendingSnoozes.prefix(overflow).map(\.identifier)
                 )
             }
-            guard isCurrent() else { return }
-            guard self.areRemindersOn else { throw NotificationSchedulingError.remindersOff }
             try await notificationCenter.add(request)
             // The add may have been slow: if the occurrence finished or reminders went off meanwhile,
             // take the request back out.
