@@ -82,8 +82,9 @@ struct CareTaskCompletionPerformedAtTests {
         task.completions = [completion(recordedAt: day(0, hour: 11), forDay: day(-3))]
 
         #expect(task.lastCompletionDate == day(-3))
-        #expect(task.lastCompletionDisplayText().contains(String(localized: .generalToday)) == false)
-        #expect(task.lastCompletionDisplayText().contains(String(localized: .timeYesterday)) == false)
+        let label = task.lastCompletionDisplayText(relativeTo: now)
+        #expect(label.contains(String(localized: .generalToday)) == false)
+        #expect(label.contains(String(localized: .timeYesterday)) == false)
     }
 
     @Test
@@ -91,7 +92,7 @@ struct CareTaskCompletionPerformedAtTests {
         let task = CareTask(title: "Brush Coat")
         task.completions = [completion(recordedAt: day(0, hour: 11), forDay: day(-1))]
 
-        #expect(task.lastCompletionDisplayText() == String(localized: .tasksRowLastCompletedDay(
+        #expect(task.lastCompletionDisplayText(relativeTo: now) == String(localized: .tasksRowLastCompletedDay(
             String(localized: .timeYesterday)
         )))
     }
