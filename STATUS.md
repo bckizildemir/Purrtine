@@ -4,8 +4,16 @@ Hand-off file: where the work stands. Read it at session start; update it before
 
 ## Focus
 
-Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the animation audit and decisions,
-#131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
+Robustness first (owner, 2026-11-17): a red CI blocks every merge, and bugs damage user data while polish can wait.
+Items, in this order:
+- #152 (CI UI tests are flaky), PR #159: in work
+- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off), PR #155: rebase on main, then CI
+- #149 (build number 14): merge once the UI tests pass
+- #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
+  #1, #164, #165 (see "Next step" 5)
+
+Then Stage 2 polish (animation and look) resumes, plan `docs/stage2-polish-decisions.md` (the animation audit and
+decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
 - #124 (Polish 1: shared motion tokens): done, #158 merged 2026-11-16
 - #125 (Polish 2: Home cards and task rows lose glass)
 - #126 (Polish 3: Apple calendar view)
@@ -16,9 +24,13 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 
 ## Last updated
 
-2026-11-16
+2026-11-17
 
 Last session:
+- 2026-11-17 (later): the owner reordered the focus: robustness (#152 flaky CI UI tests, #142 snoozes, #149
+  build 14, #163) before the polish items. PR #159 CI run 43793613651: the retry now runs, but
+  `testTaskEditDoubleSaveTapUpdatesTaskOnce` failed on both attempts ("No matches found for taskEdit.saveButton"
+  after the first tap closed the sheet); a fix is in work on the PR.
 - 2026-11-17: #169 merged (owner's go). `lastCompletionDisplayText(relativeTo:)` and `dueDisplayText(relativeTo:)`
   read the clock instead of their reference date, so the #156 test pinned to 2026-11-16 failed from 2026-11-17 and
   turned CI red; both now compare start-of-day values with the reference date. Same PR: the custom repeat summary
@@ -90,7 +102,7 @@ Last session:
 
 ## Next step
 
-1. Stage 2 polish (the Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
+1. Stage 2 polish (after the robustness items in Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
    fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
 2. Land the formal-check fixes: #140 is done (#154), #141 is done (#156); #142 is in #155 (rebase it on main:
    #156 touched `NotificationActionCoordinator.swift` and its tests). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
