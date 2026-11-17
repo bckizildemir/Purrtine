@@ -127,17 +127,24 @@ jobs:
           path: ~/Library/Caches/ci-spm
           key: spm-${{ hashFiles('Purrtine.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
+      # The picker sorts runtimes by number (iOS 26.10 beats 26.6) and prefers a plain iPhone 17.
+      # The same file is in TriQ; keep the two byte-identical.
+      - name: Pick a simulator
+        run: |
+          Scripts/ci-pick-simulator.sh --self-test
+          UDID=$(Scripts/ci-pick-simulator.sh)
+          echo "Simulator: $UDID"
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
       # No GoogleService-Info.plist in the repo: the app builds and runs with the cloud tier off.
       - name: Run unit tests with coverage
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
-          echo "Simulator: $UDID"
           mkdir -p TestResults
           xcodebuild test \
             -project Purrtine.xcodeproj \
             -scheme Purrtine \
             -testPlan Purrtine \
-            -destination "id=$UDID" \
+            -destination "id=$SIM_UDID" \
             -skip-testing:PurrtineUITests \
             -resultBundlePath TestResults/Purrtine.xcresult \
             -clonedSourcePackagesDirPath ~/Library/Caches/ci-spm \
