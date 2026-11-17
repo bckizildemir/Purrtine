@@ -107,7 +107,10 @@ Last session:
    `swiftui-preview` mod (`~/.claude/mods/swiftui-preview/`, loaded in every session through
    `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`) keeps each render's PNG, draws it in a "SwiftUI Preview"
    pane (`/preview-pane` reopens it), and refuses a render that names no device. A preview shows layout with sample
-   data only; behavior still needs `verify-purrtine`.
+   data only; behavior still needs `verify-purrtine`. Postponed by the owner 2026-11-17 ("will do later"; Yazi is
+   enough for now): an interactive preview, and centering the image in Yazi. `docs/swiftui-preview-interaction-research.md`
+   holds what is possible (no mod can drive a `#Preview` today; nearest: an "open in Xcode" button, or a pisim-style
+   simulator stream in a herdr pane; Yazi centering only by padding the PNG). Start trigger: the owner picks one.
 
 ## Waits for the owner
 
