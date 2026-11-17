@@ -179,7 +179,8 @@ final class NotificationManager:
     private var badgeSyncToken = UUID()
     /// Bumped per task each time its snoozes are cancelled, so a snooze add already in flight can
     /// tell its occurrence was finished or its task deleted. See `cancelSnoozedNotifications`.
-    private var snoozeGenerations: [UUID: Int] = [:]
+    /// Readable for tests, which wait on the bump; only this type writes it.
+    private(set) var snoozeGenerations: [UUID: Int] = [:]
     /// The newest snooze add or cancel; the next one waits for it. See `inSnoozeQueue`.
     private var snoozeQueueTail: Task<Void, any Error>?
     /// The one test a resync and a snooze add both use: the app's switch is on and iOS allows reminders.

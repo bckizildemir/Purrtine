@@ -288,8 +288,12 @@ struct ReminderSnoozeTests {
         await gate.waitUntilHeld()
         // What `CareTaskWriter.complete` does while the snooze waits on the pending read: the cancel
         // bumps the generation at once, then queues behind the snooze.
+        let generationBefore = sut.snoozeGenerations[tasks[4].id, default: 0]
         let cancel = Task { await sut.cancelSnoozedNotifications(forTaskId: tasks[4].id) }
-        await Task.yield()
+        // Wait for the bump itself, not one scheduler turn; the test's time limit ends a hang.
+        while sut.snoozeGenerations[tasks[4].id, default: 0] == generationBefore {
+            await Task.yield()
+        }
         gate.release()
         try await snooze.value
         await cancel.value
