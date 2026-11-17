@@ -19,6 +19,10 @@ Stage 2 polish (animation and look), plan `docs/stage2-polish-decisions.md` (the
 2026-11-16
 
 Last session:
+- 2026-11-17: #169 merged (owner's go). `lastCompletionDisplayText(relativeTo:)` and `dueDisplayText(relativeTo:)`
+  read the clock instead of their reference date, so the #156 test pinned to 2026-11-16 failed from 2026-11-17 and
+  turned CI red; both now compare start-of-day values with the reference date. Same PR: the custom repeat summary
+  reads "Repeats: %@" / "Tekrar: %@". Preview tooling steps A and B done (item 6).
 - 2026-11-16 (night, lessons): `session-lessons` after the #1 grilling. Written: owner preferences that must hold in
   every folder go in `~/.claude/CLAUDE.md` or a skill, not project memory; keep a recommendation stable between
   rounds; `decision-check` shows the owner the real screens; `verify-purrtine` gotcha: an open sheet does not hide
@@ -99,17 +103,18 @@ Last session:
    It becomes ready when #2 merges. #165 (the "count from the day I did it" setting) also needs a schema version
    and takes the next free one; whichever merges second takes the version after it.
 5. Recurrence chain, decided 2026-11-16: #163 (fix) first, then #1, then #164, then #165 (see "Last session").
-6. Postponed by the owner 2026-11-16 (tooling, both apps): SwiftUI Preview rendering through Xcode's MCP server
-   (`xcrun mcpbridge`, tool `RenderPreview`, Xcode 26.3 or later; the host has Xcode 27.2). Step A, chosen by the
-   owner: a global `/preview` skill that renders a `#Preview` to a PNG and opens it with the `show-in-yazi` skill.
-   Step B, to follow after A: a Claude Code mod with its own pane (the mods docs:
-   https://code.claude.com/docs/en/plugins/mods/overview; the blog post that inspired it is
-   https://www.natashatherobot.com/p/faster-swiftui-development-in-claude, its mod is paid and has no repo, so build
-   our own). Start trigger for A: the owner turns on Xcode > Settings > Intelligence > Model Context Protocol >
-   "Allow external agents to use Xcode tools" and registers the server
-   (`claude mcp add --scope user --transport stdio xcode -- xcrun mcpbridge`), then restarts the session so the tool
-   is visible; write the skill from the real tool schema, not from the blog. A preview shows layout with sample
-   data only; behavior still needs `verify-purrtine`.
+6. SwiftUI Preview rendering through Xcode's MCP server (`xcode`, `xcrun mcpbridge`, tool `RenderPreview`), both
+   apps. Step A is done (2026-11-17): the global `preview` skill (`~/.claude/skills/preview/`) renders a `#Preview` to
+   `~/preview-renders/<app>/` and shows it with `show-in-yazi`; `decision-check` step 4 now uses it for screens a
+   decision changes. Proved on `CustomRepeatSheet.swift` in Turkish dark and English light. It must name the render
+   device: left to Xcode it drew on the work project's `iPhone 12 slim (CWA)`. Step B is done (2026-11-17): the
+   `swiftui-preview` mod (`~/.claude/mods/swiftui-preview/`, loaded in every session through
+   `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`) keeps each render's PNG, draws it in a "SwiftUI Preview"
+   pane (`/preview-pane` reopens it), and refuses a render that names no device. A preview shows layout with sample
+   data only; behavior still needs `verify-purrtine`. Postponed by the owner 2026-11-17 ("will do later"; Yazi is
+   enough for now): an interactive preview, and centering the image in Yazi. `docs/swiftui-preview-interaction-research.md`
+   holds what is possible (no mod can drive a `#Preview` today; nearest: an "open in Xcode" button, or a pisim-style
+   simulator stream in a herdr pane; Yazi centering only by padding the PNG). Start trigger: the owner picks one.
 
 ## Waits for the owner
 
