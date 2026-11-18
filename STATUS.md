@@ -40,6 +40,15 @@ Last session:
   - #171 (CI quick pack) updated from main, CI green with no retry warning; merged. The job "Detect UI-test paths"
     is now "Detect changed paths" (not a required check).
   - #149 (build 14) updated from main, CI green with no retry warning; merged.
+  - Dependabot's first run (after #171) opened 12 PRs. Merged: #177 (firebase-functions 7.3.0 → 7.4.0, minor) and
+    #187 (fast-xml-parser 5.10.1 → 5.12.1, a security update, lockfile only). The 11 major or Firebase-internal
+    ones were closed on the owner's go. PR #188 makes Dependabot propose minor and patch only, and Swift only
+    `firebase-ios-sdk`; it waits for the owner (CI config).
+  - Deployed on the owner's yes: `interpretTaskAssistantRequest` (europe-west1) with #177. "Successful update
+    operation"; revision `-00007-non` is both latest created and latest ready. No live call was made (it reaches
+    the paid model API). #187 is merged but not deployed yet.
+  - On the owner's yes: "UI tests" is now a required check in ruleset `main-ci`, and Dependabot security updates
+    are on.
   - Next in Focus: #163 (a completion records which day it counts for).
 - 2026-11-17 (paused by the owner mid-run; resume from here):
   - #159 merged (owner's go): a failed UI test now really retries (sync tearDown), safer taps and waits, the
@@ -165,14 +174,15 @@ Last session:
    - Raise the coverage floor (`MINIMUM_LINE_COVERAGE` 17.5, actual 24.48%) to ~24 and ratchet it.
    - Move `npm audit` out of the required job (weekly schedule or warning only): a new advisory would block every PR.
    - Try a DerivedData cache (measure first).
-   - Decide whether "UI tests" becomes a required check (today only "Build, unit tests, coverage, Release build"
-     and "Cloud Function tests" are required, so a red UI job does not block a merge, and after #171 the UI tests
-     run only on PRs). Recommended once #171 merged and the UI job stays green.
-   - Turn on Dependabot security updates in the repo settings (disabled today).
+   - Done 2026-11-18: "UI tests" is a required check; Dependabot security updates are on.
+   - Major dependency upgrades, now planned tasks instead of Dependabot PRs: Firebase iOS SDK 11 → 13; the
+     GitHub actions on Node 20 (checkout, cache, setup-node, upload-artifact; CI warns that Node 20 is
+     deprecated); firebase-admin 13 → 14 in `functions`.
 
 ## Waits for the owner
 
-- Whether "UI tests" becomes a required check, and turning on Dependabot security updates (Next step 7).
+- Merge PR #188 (Dependabot: minor and patch only, Swift only `firebase-ios-sdk`).
+- Deploy #187 (fast-xml-parser security update, lockfile only) to `interpretTaskAssistantRequest`.
 - A TestFlight upload of build 14 (#149).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
