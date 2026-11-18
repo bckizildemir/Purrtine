@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import Purrtine
 
@@ -167,5 +168,66 @@ struct HistoryPresentationTests {
     func oldCompletionWithoutCatsAndWithoutTaskShowsNoCats() {
         let completion = CareTaskCompletion(completedAt: Self.cutoff.addingTimeInterval(-3_600))
         #expect(HistoryPresentation.displayCats(for: completion, fallbackCutoff: Self.cutoff).isEmpty)
+    }
+
+    // MARK: - The row's date and time (#163)
+
+    /// Due two days ago, tapped now with no day named: a late completion. The row shows the day and
+    /// time it was really done, not the day it was due.
+    @Test
+    func aLateTapShowsWhenItWasDoneWithItsTime() throws {
+        let calendar = Calendar.current
+        let now = try #require(calendar.date(bySettingHour: 15, minute: 20, second: 0, of: Date()))
+        let openDay = try #require(calendar.date(byAdding: .day, value: -2, to: calendar.startOfDay(for: now)))
+        let fixture = try makeFixture(openDay: openDay)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task, with: CareTaskCompletionInput(), in: fixture.context, now: now
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        let timestamp = HistoryPresentation.rowTimestamp(for: completion)
+        #expect(timestamp.day == now)
+        #expect(timestamp.time == now)
+    }
+
+    /// A past day named on a task with no time of its own: no real time is known, so the row shows
+    /// the day alone.
+    @Test
+    func aFillInShowsTheDayAndNoTime() throws {
+        let calendar = Calendar.current
+        let now = try #require(calendar.date(bySettingHour: 15, minute: 20, second: 0, of: Date()))
+        let today = calendar.startOfDay(for: now)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let fixture = try makeFixture(openDay: today)
+
+        try TaskActionService.recordCompletion(
+            of: fixture.task, with: CareTaskCompletionInput(completedForDate: yesterday),
+            in: fixture.context, now: now
+        )
+
+        let completion = try #require(fixture.task.completions.first)
+        let timestamp = HistoryPresentation.rowTimestamp(for: completion)
+        #expect(timestamp.day == yesterday)
+        #expect(timestamp.time == nil)
+    }
+
+    private func makeFixture(openDay: Date) throws -> (container: ModelContainer, context: ModelContext, task: CareTask) {
+        let container = try TestModelContainerFactory.makeInMemoryContainer()
+        let context = container.mainContext
+        let task = CareTask(title: "Feed Mochi")
+        task.createdAt = try #require(Calendar.current.date(byAdding: .day, value: -30, to: openDay))
+        let schedule = CareTaskSchedule(
+            scheduledDate: Calendar.current.startOfDay(for: openDay),
+            frequency: .daily,
+            frequencyInterval: 1
+        )
+        schedule.task = task
+        task.schedules = [schedule]
+        context.insert(Caregiver(name: "Primary Caregiver", role: .primary))
+        context.insert(task)
+        context.insert(schedule)
+        try context.save()
+        return (container, context, task)
     }
 }

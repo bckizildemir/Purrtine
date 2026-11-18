@@ -482,12 +482,18 @@ final class TaskManagementViewModel {
         )
     }
 
-    /// A Complete tap in the calendar for the selected `day`. A day the task cannot be completed for
-    /// (one after today, or one already done) is refused here with the alert the one-tap path shows,
-    /// before any sheet opens.
+    /// Why the calendar cannot offer Complete for `task` on `day`, or `nil` when it can. The row hides
+    /// Complete and shows the reason instead of refusing with an alert after the tap.
+    func calendarCompletionRefusal(of task: CareTask, on day: Date, now: Date = Date()) -> CompletionDayRefusal? {
+        TaskActionService.completionRefusal(of: task, on: day, now: now)
+    }
+
+    /// A Complete tap in the calendar for the selected `day`. The row offers Complete only on a day
+    /// the rules accept, so a refusal here is a race: the state changed between showing the row and the
+    /// tap. It is refused with the alert the one-tap path shows, before any sheet opens.
     func handleCalendarCompletion(of task: CareTask, on day: Date) {
-        guard TaskActionService.canComplete(task, on: day) else {
-            raiseActionFailure(.occurrenceNotOpen)
+        if let refusal = TaskActionService.completionRefusal(of: task, on: day) {
+            raiseActionFailure(.dayRefused(refusal))
             return
         }
         if task.assignedCats.count > 1 {

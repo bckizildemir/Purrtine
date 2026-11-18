@@ -10,5 +10,6 @@ struct TaskAssistantTaskDisambiguation {
     let message: String
     let choices: [TaskAssistantTaskChoice]
     let completedForDate: Date?
+    var completedAtTime: TimeOfDay?
     let notes: String?
 }

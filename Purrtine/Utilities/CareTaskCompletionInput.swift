@@ -5,7 +5,11 @@ import Foundation
 struct CareTaskCompletionInput {
     var cats: [Cat] = []
     var caregiver: Caregiver?
+    /// The day this completion counts for. `nil` is a plain tap: the real time, counted for the open day.
     var completedForDate: Date?
+    /// A time of day the user stated for `completedForDate` ("yesterday at 9"). Read only with a named
+    /// day; a time after now is refused (`TaskActionError.occurrenceNotOpen`).
+    var completedAtTime: TimeOfDay?
     var notes: String?
     var photoURLs: [String] = []
     /// The occurrence the caller was shown, such as the day a reminder was made for. When the task's

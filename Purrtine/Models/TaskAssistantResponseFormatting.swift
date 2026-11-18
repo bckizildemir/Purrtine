@@ -31,9 +31,17 @@ enum TaskAssistantResponseFormatting {
 
     static func confirmationMessage(for action: TaskAssistantAction) -> String {
         switch action {
-        case .complete(let task, let completedForDate, _, let cats):
+        case .complete(let task, let completedForDate, let completedAtTime, _, let cats):
             let catNames = (cats.isEmpty ? task.assignedCats : cats).map(\.name).joined(separator: ", ")
             if let completedForDate {
+                if let timeOnDay = completedAtTime?.date(on: completedForDate) {
+                    return String(localized: .taskAssistantConfirmCompletionMessageAtTime(
+                        task.title,
+                        catNames.isEmpty ? String(localized: .tasksConfigAllCats) : catNames,
+                        completedForDate.formatted(date: .abbreviated, time: .omitted),
+                        timeOnDay.formatted(date: .omitted, time: .shortened)
+                    ))
+                }
                 return String(localized: .taskAssistantConfirmCompletionMessage(task.title, catNames.isEmpty ? String(localized: .tasksConfigAllCats) : catNames, completedForDate.formatted(date: .abbreviated, time: .omitted)))
             }
 

@@ -111,6 +111,9 @@ final class TaskAssistantViewModel {
     private func apply(_ interpretation: TaskAssistantInterpreter.Interpretation, isAIGenerated: Bool) {
         switch interpretation {
         case .confirmation(let confirmation):
+            if declinesRefusedCompletion(confirmation.action, isAIGenerated: isAIGenerated) {
+                return
+            }
             pendingConfirmation = confirmation
             messages.append(
                 TaskAssistantMessage(role: .assistant, text: confirmation.message, isAIGenerated: isAIGenerated)
@@ -153,6 +156,10 @@ final class TaskAssistantViewModel {
 
     func chooseSuggestion(_ suggestion: TaskAssistantSuggestion) {
         pendingClarification = nil
+        if declinesRefusedCompletion(suggestion.action) {
+            scrollToBottomToken += 1
+            return
+        }
         let message = confirmationMessage(for: suggestion.action)
         pendingConfirmation = TaskAssistantConfirmation(
             title: suggestion.title,
@@ -173,6 +180,7 @@ final class TaskAssistantViewModel {
             task: choice.task,
             selectedCats: choice.selectedCats,
             completedForDate: disambiguation.completedForDate,
+            completedAtTime: disambiguation.completedAtTime,
             notes: disambiguation.notes
         )
         pendingIntentSelection = selection
@@ -203,6 +211,7 @@ final class TaskAssistantViewModel {
             action = .complete(
                 task: selection.task,
                 completedForDate: selection.completedForDate,
+                completedAtTime: selection.completedAtTime,
                 notes: selection.notes,
                 cats: selection.selectedCats
             )
@@ -212,6 +221,10 @@ final class TaskAssistantViewModel {
             commandKind = .postpone
         }
 
+        if declinesRefusedCompletion(action) {
+            scrollToBottomToken += 1
+            return
+        }
         let message = confirmationMessage(for: action)
         pendingConfirmation = TaskAssistantConfirmation(
             title: TaskAssistantResponseFormatting.confirmationTitle(for: commandKind),
@@ -489,6 +502,7 @@ final class TaskAssistantViewModel {
                     message: pendingTaskDisambiguation.message,
                     choices: validChoices,
                     completedForDate: pendingTaskDisambiguation.completedForDate,
+                    completedAtTime: pendingTaskDisambiguation.completedAtTime,
                     notes: pendingTaskDisambiguation.notes
                 )
             }
@@ -514,13 +528,14 @@ final class TaskAssistantViewModel {
         defer { isProcessing = false }
 
         switch pendingConfirmation.action {
-        case .complete(let task, let completedForDate, let notes, let cats):
+        case .complete(let task, let completedForDate, let completedAtTime, let notes, let cats):
             let selectedCats = cats.isEmpty ? task.assignedCats : cats
 
             if requiresDetailedCompletion(for: task, selectedCats: selectedCats) {
                 taskCompletionRequest = TaskAssistantCompletionRequest(
                     task: task,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     initialNotes: notes,
                     initialSelectedCats: selectedCats,
                     expectedOccurrence: completedForDate == nil ? pendingConfirmation.openOccurrence : nil
@@ -540,6 +555,7 @@ final class TaskAssistantViewModel {
                 with: CareTaskCompletionInput(
                     cats: selectedCats,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     notes: notes,
                     // The day the card was made for, when it names no day: a task completed
                     // elsewhere meanwhile is not completed again for its next day. A named day is
@@ -590,6 +606,7 @@ final class TaskAssistantViewModel {
         notes: String?,
         photos: [UIImage]?,
         completedForDate: Date?,
+        completedAtTime: TimeOfDay? = nil,
         expectedOccurrence: Date? = nil,
         in context: ModelContext
     ) async throws {
@@ -609,6 +626,7 @@ final class TaskAssistantViewModel {
                     cats: selectedCats,
                     caregiver: selectedCaregiver,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     notes: notes,
                     photoURLs: savedPhotos.fileNames,
                     expectedOccurrence: expectedOccurrence
@@ -739,6 +757,19 @@ final class TaskAssistantViewModel {
         }
 
         return false
+    }
+
+    /// A completion that names a day or time the rules refuse gets no confirm card (Confirm would only
+    /// fail with a generic alert): the chat says why instead. Returns whether it did.
+    private func declinesRefusedCompletion(_ action: TaskAssistantAction, isAIGenerated: Bool = false) -> Bool {
+        guard case .complete(let task, let namedDay?, let time, _, _) = action,
+              let refusal = TaskActionService.completionRefusal(of: task, on: namedDay, at: time) else {
+            return false
+        }
+        messages.append(
+            TaskAssistantMessage(role: .assistant, text: refusal.message, style: .failure, isAIGenerated: isAIGenerated)
+        )
+        return true
     }
 
     private func confirmationMessage(for action: TaskAssistantAction) -> String {

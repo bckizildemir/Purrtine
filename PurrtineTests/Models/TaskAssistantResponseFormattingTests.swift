@@ -39,6 +39,29 @@ struct TaskAssistantResponseFormattingTests {
     }
 
     @Test
+    func completionMessageNamesAStatedTime() throws {
+        let task = CareTask(title: "Feed")
+        task.assignedCats = [Cat(name: "Mochi")]
+        let date = Date(timeIntervalSince1970: 1_710_000_000)
+        let time = try #require(TimeOfDay(hour: 9, minute: 30))
+        let timeOnDay = try #require(time.date(on: date))
+
+        let message = TaskAssistantResponseFormatting.confirmationMessage(
+            for: .complete(task: task, completedForDate: date, completedAtTime: time, notes: nil, cats: [])
+        )
+        let expected = String(
+            localized: .taskAssistantConfirmCompletionMessageAtTime(
+                "Feed",
+                "Mochi",
+                date.formatted(date: .abbreviated, time: .omitted),
+                timeOnDay.formatted(date: .omitted, time: .shortened)
+            )
+        )
+
+        #expect(message == expected)
+    }
+
+    @Test
     func completionMessageFallsBackToAssignedCatsAndAllCats() {
         let assignedTask = CareTask(title: "Brush")
         assignedTask.assignedCats = [Cat(name: "Mochi"), Cat(name: "Luna")]

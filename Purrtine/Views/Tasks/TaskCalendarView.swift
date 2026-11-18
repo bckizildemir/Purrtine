@@ -308,7 +308,8 @@ struct TaskCalendarView: View {
         LazyVStack(spacing: 8) {
             ForEach(tasksForDay.sorted { ($0.nextDueDate ?? Date()) < ($1.nextDueDate ?? Date()) }) { task in
                 TaskRow(
-                    task: task
+                    task: task,
+                    completionRefusal: viewModel.calendarCompletionRefusal(of: task, on: selectedDate)
                 ) {
                     viewModel.presentTaskEdit(task)
                 } onComplete: {
@@ -326,8 +327,8 @@ struct TaskCalendarView: View {
     private func handleTaskCompletion(_ task: CareTask) {
         guard hasCompletionForDate(task, date: selectedDate) == false else { return }
 
-        // A selected day after the open occurrence is refused: recording it would move the task past
-        // the open day. The view model shows the refusal before any sheet opens.
+        // The row offers Complete only on a day the rules accept. A refusal here is a race (the state
+        // changed since the row was drawn); the view model shows it before any sheet opens.
         viewModel.handleCalendarCompletion(of: task, on: selectedDate)
     }
     

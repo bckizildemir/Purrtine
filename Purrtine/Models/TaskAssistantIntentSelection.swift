@@ -10,6 +10,7 @@ struct TaskAssistantIntentSelection {
     let task: CareTask
     let selectedCats: [Cat]
     let completedForDate: Date?
+    var completedAtTime: TimeOfDay?
     let notes: String?
 
     /// Intents that make sense for the task's current status. Complete/postpone assume the
