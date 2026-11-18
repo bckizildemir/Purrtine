@@ -37,7 +37,9 @@ Last session:
   App Store Connect agreement; API writes came back about 30 minutes after reads did. Build 15 uploaded (`VALID`,
   build id `fa438490-5764-4679-896a-642666623160`) and submitted to beta review for the External Testers group
   (`"betaReviewSubmitted":true`); external testers had build 14 from 2026-11-12 (Whiskers fix). #191
-  (firebase-admin 13 → 14 in `functions`) waits for the owner's yes to merge and deploy; the deploy also ships #187.
+  (firebase-admin 13 → 14 in `functions`) merged and deployed on the owner's yes: `interpretTaskAssistantRequest`
+  "Successful update operation", revision `-00010-nik` both latest created and latest ready. No live call (paid
+  model API). #187 was already live since the #163 deploy (revision `-00009`).
 - 2026-11-18 (later): #188 and TriQ #214/#218 merged: Dependabot version-updates only Firebase (and Nuke in TriQ)
   among Swift packages; majors come as one grouped PR, not ignored, so security updates are never blocked
   (owner: "güvenlikleri atlamayalım"). #187 deployed. #163 via `/implement`: `swift-writer` TDD, two reviews
@@ -193,12 +195,10 @@ Last session:
    - Try a DerivedData cache (measure first).
    - Done 2026-11-18: "UI tests" is a required check; Dependabot security updates are on.
    - Major dependency upgrades: Firebase iOS SDK 11 → 13 (a planned task). The GitHub actions on Node 20 are done
-     (#190, 2026-11-19). firebase-admin 13 → 14 in `functions` is PR #191, waiting for the owner.
+     (#190, 2026-11-19). firebase-admin 13 → 14 in `functions` is done (#191, deployed 2026-11-19).
 
 ## Waits for the owner
 
-- #191 (firebase-admin 13 → 14): a yes to merge, then a yes to deploy `interpretTaskAssistantRequest`
-  (europe-west1), which also ships #187 (fast-xml-parser security fix, merged but not deployed).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
