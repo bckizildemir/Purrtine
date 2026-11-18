@@ -7,10 +7,10 @@ Hand-off file: where the work stands. Read it at session start; update it before
 Robustness first (owner, 2026-11-17): a red CI blocks every merge, and bugs damage user data while polish can wait.
 Items, in this order:
 - #152 (CI UI tests are flaky): done, #159 merged 2026-11-17
-- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off), PR #155: main merged in
-  (`8caf1fc`, 2026-11-17), unit job green, UI job was running when work paused; then the owner's merge
-- CI quick pack, PR #171 (see "Next step" 7): waits for its UI job, then the owner's merge
-- #149 (build number 14): update the branch and merge once the UI tests pass
+- #142 (reminder snoozes outlive completion and deletes, ignore Reminders off): done, #155 merged 2026-11-18;
+  two narrow gaps left in #173 (failed cat delete keeps snoozes; "Remind me" on a finished day)
+- CI quick pack: done, #171 merged 2026-11-18 (TriQ #192 too)
+- #149 (build number 14): done, merged 2026-11-18; the TestFlight upload waits for the owner
 - #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
   #1, #164, #165 (see "Next step" 5)
 
@@ -26,9 +26,21 @@ decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now
 
 ## Last updated
 
-2026-11-17
+2026-11-18
 
 Last session:
+- 2026-11-18 (resumed; the owner said "merge when they're ready, UI test should be green"):
+  - Docs PRs #172 and TriQ #193 merged. TriQ #192 (CI quick pack) merged.
+  - #155 (#142 snoozes): a `swift-reviewer` pass found the main merge lost nothing. Its one low-medium finding was
+    fixed on the PR (`b47503e`): the 4-slot cap checked that the new snooze still counts only after removing the
+    oldest one. The new test waits on the `snoozeGenerations` bump (now `private(set)`), not on one `Task.yield()`
+    (`e988dfe`). CI green, 50 UI tests with no retry warning; merged. The two other findings are #173.
+  - One CI run was cancelled by GitHub ("job was not acquired by Runner", macOS capacity), not by a test; an
+    update-branch reran it.
+  - #171 (CI quick pack) updated from main, CI green with no retry warning; merged. The job "Detect UI-test paths"
+    is now "Detect changed paths" (not a required check).
+  - #149 (build 14) updated from main, CI green with no retry warning; merged.
+  - Next in Focus: #163 (a completion records which day it counts for).
 - 2026-11-17 (paused by the owner mid-run; resume from here):
   - #159 merged (owner's go): a failed UI test now really retries (sync tearDown), safer taps and waits, the
     double-save tests send one `doubleTap()`, and a test that passes only on retry shows as a `::warning`
@@ -121,8 +133,8 @@ Last session:
 
 1. Stage 2 polish (after the robustness items in Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
    fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
-2. Land the formal-check fixes: #140 is done (#154), #141 is done (#156); #142 is in #155 (rebase it on main:
-   #156 touched `NotificationActionCoordinator.swift` and its tests). Merge #149 (build 14) once the UI tests pass or #152 (flaky UI tests) is fixed.
+2. The formal-check fixes are landed: #140 (#154), #141 (#156), #142 (#155). Follow-up: #173 (two narrow snooze
+   gaps from the #155 review). A TestFlight upload of build 14 (#149) needs the owner's yes.
 3. Postponed by the owner 2026-11-16 (a later task, no issue yet): after #156, a missed earlier day of a repeating
    task can be filled in from a reminder or Whiskers, but the calendar shows that day as "No tasks". Show a missed
    day in the calendar as missed and let the user complete it there. Waits because the owner said "yes, but as a later
@@ -144,9 +156,8 @@ Last session:
    enough for now): an interactive preview, and centering the image in Yazi. `docs/swiftui-preview-interaction-research.md`
    holds what is possible (no mod can drive a `#Preview` today; nearest: an "open in Xcode" button, or a pisim-style
    simulator stream in a herdr pane; Yazi centering only by padding the PNG). Start trigger: the owner picks one.
-7. CI improvements from the 2026-11-17 audit (both apps). The quick pack is PR #171 (Purrtine) and TriQ #192.
-   The owner chose the quick pack now and the bigger items later (2026-11-17); start trigger: #171 merged and the
-   owner picks one:
+7. CI improvements from the 2026-11-17 audit (both apps). The quick pack is merged (#171, TriQ #192, 2026-11-18).
+   The bigger items wait; start trigger: the owner picks one:
    - Split the 50 UI tests (one class, ~26 min serial) into 3-4 parallel jobs: ~35 min → ~12-15 min. Free on a
      public repo; the free plan runs about 5 macOS jobs at once, so a TriQ run may queue.
    - A test summary on the PR page (failed tests, slowest tests, coverage per target) from `xcresulttool`, plus
@@ -161,8 +172,8 @@ Last session:
 
 ## Waits for the owner
 
-- Merge PR #155 (#142 reminder snoozes) and PR #171 (CI quick pack) once their UI jobs are green.
-- Whether "UI tests" becomes a required check (Next step 7).
+- Whether "UI tests" becomes a required check, and turning on Dependabot security updates (Next step 7).
+- A TestFlight upload of build 14 (#149).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
