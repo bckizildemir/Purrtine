@@ -816,6 +816,30 @@ struct TaskManagementViewModelTests {
         #expect(sut.isShowingReminderWarning == false)
     }
 
+    /// The calendar does not offer Complete on a day the rules refuse: it asks for the reason first
+    /// and shows it in the row. The alert above stays only for a race.
+    @Test
+    func theCalendarGivesAReasonInsteadOfCompleteOnARefusedDay() async throws {
+        let fixture = try makeRecurringFixture()
+        let sut = TaskManagementViewModel(taskWriter: fixture.writer)
+        sut.configure(with: fixture.context, tasks: [fixture.task])
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+
+        // The task was created today and is due today: yesterday is before its first day.
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: tomorrow) == .dayAfterToday)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: yesterday) == .beforeTaskExisted)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today) == nil)
+
+        await sut.completeCareTask(fixture.task, by: nil, completedForDate: today).value
+
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today) == .alreadyDone)
+        // Asking never raises the alert.
+        #expect(sut.isShowingActionFailure == false)
+    }
+
     /// The row passes the day that was due at the tap, so the writer can refuse a stale one.
     @Test
     func rowCompletionPassesTheOpenOccurrenceAtTapTime() async throws {

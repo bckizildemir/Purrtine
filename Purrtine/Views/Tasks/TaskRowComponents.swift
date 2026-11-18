@@ -4,6 +4,9 @@ import SwiftData
 // MARK: - CareTask Row Component with Swipe Actions
 struct TaskRow: View {
     let task: CareTask
+    /// Set by the calendar for a selected day the completion rules refuse. The row then offers no
+    /// Complete (swipe or checkmark) and says why, instead of refusing with an alert after the tap.
+    var completionRefusal: CompletionDayRefusal?
     let onTap: () -> Void
     let onComplete: () -> Void
     let onDelete: () -> Void
@@ -24,6 +27,9 @@ struct TaskRow: View {
     
     /// Determines if the task can be completed (prevents re-completing one-time tasks)
     private var canBeCompleted: Bool {
+        // A day the rules refuse (the calendar's selected day) offers no Complete at all
+        guard completionRefusal == nil else { return false }
+
         // If task is not completed, it can be completed
         guard task.status == .completed else { return true }
         
@@ -71,6 +77,13 @@ struct TaskRow: View {
         }
     }
     
+    /// What VoiceOver reads for the row, with the reason Complete is missing on a refused day.
+    private var rowAccessibilityLabel: String {
+        let label = "\(task.title), \(task.assignedCatNames), \(timeText)"
+        guard let completionRefusal else { return label }
+        return "\(label), \(completionRefusal.message)"
+    }
+
     /// Completion time text
     private var completionTimeText: String {
         task.lastCompletionDisplayText()
@@ -144,7 +157,7 @@ struct TaskRow: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("taskRow.\(task.title)")
-            .accessibilityLabel(Text(verbatim: "\(task.title), \(task.assignedCatNames), \(timeText)"))
+            .accessibilityLabel(Text(verbatim: rowAccessibilityLabel))
             .accessibilityHint(Text(.tasksRowDetailsHint))
         }
         .padding(.vertical, 14)
@@ -205,6 +218,13 @@ struct TaskRow: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.top, 2)
+
+            if let completionRefusal {
+                Text(completionRefusal.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("taskRow.completionRefusal.\(task.title)")
+            }
         }
     }
 }
