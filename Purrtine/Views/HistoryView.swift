@@ -8,8 +8,8 @@ struct HistoryView: View {
   @Environment(\.navigationRouter) private var navigationRouter
 
   @Query private var allTasks: [CatTask]
-  // Completions come straight from the store, already sorted newest-first, instead of faulting
-  // every task's completions into memory and sorting them by hand on a background Task.
+  // Completions come straight from the store, already sorted newest-first by when the care was done
+  // (`completedAt`), instead of faulting every task's completions into memory and sorting them by hand.
   @Query(sort: \CareTaskCompletion.completedAt, order: .reverse)
   private var allCompletions: [CareTaskCompletion]
   @State private var searchText = ""
@@ -22,10 +22,8 @@ struct HistoryView: View {
   }
 
   private func scopedCompletions(for scopedTask: CatTask?) -> [CareTaskCompletion] {
-    // The query sorts by when each completion was recorded; History orders by when the care was done.
-    let completions = HistoryPresentation.sortedNewestFirst(allCompletions)
-    guard let scopedTask else { return completions }
-    return completions.filter { $0.task?.id == scopedTask.id }
+    guard let scopedTask else { return allCompletions }
+    return allCompletions.filter { $0.task?.id == scopedTask.id }
   }
 
   var body: some View {
@@ -219,7 +217,7 @@ struct CompletionHistoryRow: View {
           .foregroundStyle(.primary)
 
         HStack(spacing: 4) {
-          Text(completion.performedAt(), format: CompletionTimestamp.dateStyle)
+          Text(completion.completedAt, format: CompletionTimestamp.dateStyle)
             .font(.caption)
             .foregroundStyle(.secondary)
 
