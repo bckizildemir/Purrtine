@@ -492,8 +492,8 @@ final class TaskManagementViewModel {
     /// the rules accept, so a refusal here is a race: the state changed between showing the row and the
     /// tap. It is refused with the alert the one-tap path shows, before any sheet opens.
     func handleCalendarCompletion(of task: CareTask, on day: Date) {
-        guard TaskActionService.canComplete(task, on: day) else {
-            raiseActionFailure(.occurrenceNotOpen)
+        if let refusal = TaskActionService.completionRefusal(of: task, on: day) {
+            raiseActionFailure(.dayRefused(refusal))
             return
         }
         if task.assignedCats.count > 1 {

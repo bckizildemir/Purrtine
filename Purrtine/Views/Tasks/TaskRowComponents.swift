@@ -102,63 +102,76 @@ struct TaskRow: View {
 
     private var rowContent: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Checkmark circle
-            Button(action: {
-                if canBeCompleted {
-                    onComplete()
-                }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(checkmarkColor)
-                        .frame(width: 24, height: 24)
-                    
-                    Circle()
-                        .stroke(checkmarkBorderColor, lineWidth: 2)
-                        .frame(width: 24, height: 24)
-                    
-                    if task.status == .completed {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
+            // Checkmark circle. A day the rules refuse has no checkmark at all: the reason sits below the row text.
+            if completionRefusal == nil {
+                Button(action: {
+                    if canBeCompleted {
+                        onComplete()
                     }
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(checkmarkColor)
+                            .frame(width: 24, height: 24)
+
+                        Circle()
+                            .stroke(checkmarkBorderColor, lineWidth: 2)
+                            .frame(width: 24, height: 24)
+
+                        if task.status == .completed {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!canBeCompleted)
-            .accessibilityLabel(Text(.accessibilityCompleteTask))
-            .accessibilityHint(Text(.accessibilityMarkComplete))
-            .accessibilityIdentifier("taskRow.complete.\(task.title)")
-            .accessibilityValue(
-                Text(
-                    task.status == .completed
-                    ? String(localized: .taskStatusCompleted)
-                    : String(localized: .taskStatusPending)
+                .buttonStyle(.plain)
+                .disabled(!canBeCompleted)
+                .accessibilityLabel(Text(.accessibilityCompleteTask))
+                .accessibilityHint(Text(.accessibilityMarkComplete))
+                .accessibilityIdentifier("taskRow.complete.\(task.title)")
+                .accessibilityValue(
+                    Text(
+                        task.status == .completed
+                        ? String(localized: .taskStatusCompleted)
+                        : String(localized: .taskStatusPending)
+                    )
                 )
-            )
-            
-            Button(action: onTap) {
-                HStack(alignment: .top, spacing: 0) {
-                    HStack(alignment: .center, spacing: 12) {
-                        Image(systemName: task.displayIconName)
-                            .font(.title3)
-                            .foregroundStyle(timeColor)
-                            .frame(width: iconWidth)
-                            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                            .accessibilityHidden(true)
-                        taskContent
-                    }
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("taskRow.\(task.title)")
-            .accessibilityLabel(Text(verbatim: rowAccessibilityLabel))
-            .accessibilityHint(Text(.tasksRowDetailsHint))
+
+            // The reason is a sibling of the row button, not inside it: the button combines its children,
+            // which would swallow the reason's own accessibility identifier.
+            VStack(alignment: .leading, spacing: 6) {
+                Button(action: onTap) {
+                    HStack(alignment: .top, spacing: 0) {
+                        HStack(alignment: .center, spacing: 12) {
+                            Image(systemName: task.displayIconName)
+                                .font(.title3)
+                                .foregroundStyle(timeColor)
+                                .frame(width: iconWidth)
+                                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                                .accessibilityHidden(true)
+                            taskContent
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("taskRow.\(task.title)")
+                .accessibilityLabel(Text(verbatim: rowAccessibilityLabel))
+                .accessibilityHint(Text(.tasksRowDetailsHint))
+
+                if let completionRefusal {
+                    Text(completionRefusal.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("taskRow.completionRefusal.\(task.title)")
+                }
+            }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
@@ -218,13 +231,6 @@ struct TaskRow: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.top, 2)
-
-            if let completionRefusal {
-                Text(completionRefusal.message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("taskRow.completionRefusal.\(task.title)")
-            }
         }
     }
 }

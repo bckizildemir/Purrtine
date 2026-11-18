@@ -819,23 +819,32 @@ struct TaskManagementViewModelTests {
     /// The calendar does not offer Complete on a day the rules refuse: it asks for the reason first
     /// and shows it in the row. The alert above stays only for a race.
     @Test
-    func theCalendarGivesAReasonInsteadOfCompleteOnARefusedDay() async throws {
+    func theCalendarGivesAReasonInsteadOfCompleteOnARefusedDay() throws {
         let fixture = try makeRecurringFixture()
         let sut = TaskManagementViewModel(taskWriter: fixture.writer)
         sut.configure(with: fixture.context, tasks: [fixture.task])
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        // A fixed "now" (2026-11-18 12:00), so the test reads the same on any day it runs.
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 18, hour: 12)))
+        let today = calendar.startOfDay(for: now)
         let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
         let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        fixture.task.createdAt = now
+        fixture.schedule.scheduledDate = today
 
         // The task was created today and is due today: yesterday is before its first day.
-        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: tomorrow) == .dayAfterToday)
-        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: yesterday) == .beforeTaskExisted)
-        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today) == nil)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: tomorrow, now: now) == .dayAfterToday)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: yesterday, now: now) == .beforeTaskExisted)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today, now: now) == nil)
 
-        await sut.completeCareTask(fixture.task, by: nil, completedForDate: today).value
+        try TaskActionService.recordCompletion(
+            of: fixture.task,
+            with: CareTaskCompletionInput(completedForDate: today),
+            in: fixture.context,
+            now: now
+        )
 
-        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today) == .alreadyDone)
+        #expect(sut.calendarCompletionRefusal(of: fixture.task, on: today, now: now) == .alreadyDone)
         // Asking never raises the alert.
         #expect(sut.isShowingActionFailure == false)
     }
@@ -867,7 +876,9 @@ struct TaskManagementViewModelTests {
         sut.handleCalendarCompletion(of: fixture.task, on: tomorrow)
 
         #expect(sut.taskCompletionRequest == nil)
-        #expect(sut.actionFailure == .occurrenceNotOpen)
+        // The alert names the reason, not the catch-all.
+        #expect(sut.actionFailure == .dayRefused(.dayAfterToday))
+        #expect(sut.actionFailure?.message == CompletionDayRefusal.dayAfterToday.message)
         #expect(sut.isShowingActionFailure)
         #expect(fixture.task.completions.isEmpty)
     }
