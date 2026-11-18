@@ -9,6 +9,24 @@ enum HistoryPresentationState: Equatable {
 }
 
 enum HistoryPresentation {
+    /// What a History row shows for when a care was done.
+    struct RowTimestamp: Equatable {
+        /// The instant the day is read from: when the care was done (`completedAt`).
+        let day: Date
+        /// The instant the time of day is read from, or `nil` for a fill-in: a day filled in late has no
+        /// real time, so the row shows the day alone.
+        let time: Date?
+    }
+
+    /// The day and time a History row shows. Both come from `completedAt`, never from the day the
+    /// occurrence was due, so a late tap shows when it really happened.
+    static func rowTimestamp(for completion: CareTaskCompletion) -> RowTimestamp {
+        RowTimestamp(
+            day: completion.completedAt,
+            time: completion.isFillIn() ? nil : completion.completedAt
+        )
+    }
+
     static func filteredCompletions(
         from completions: [CareTaskCompletion],
         query: String,

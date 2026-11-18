@@ -217,17 +217,18 @@ struct CompletionHistoryRow: View {
           .foregroundStyle(.primary)
 
         HStack(spacing: 4) {
-          Text(completion.completedAt, format: CompletionTimestamp.dateStyle)
+          let timestamp = HistoryPresentation.rowTimestamp(for: completion)
+          Text(timestamp.day, format: CompletionTimestamp.dateStyle)
             .font(.caption)
             .foregroundStyle(.secondary)
 
           // A day filled in late has no real time of day, so it shows the day alone.
-          if completion.isFillIn() == false {
+          if let time = timestamp.time {
             Text(verbatim: "•")
               .font(.caption)
               .foregroundStyle(.tertiary)
 
-            Text(completion.completedAt, format: CompletionTimestamp.timeStyle)
+            Text(time, format: CompletionTimestamp.timeStyle)
               .font(.caption)
               .foregroundStyle(.secondary)
           }
