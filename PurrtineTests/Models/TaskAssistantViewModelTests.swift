@@ -631,7 +631,7 @@ struct TaskAssistantViewModelTests {
         sut.chooseIntent(.complete)
 
         let confirmation = try #require(sut.pendingConfirmation)
-        guard case .complete(let task, _, _, _) = confirmation.action else {
+        guard case .complete(let task, _, _, _, _) = confirmation.action else {
             Issue.record("Expected a complete action.")
             return
         }
@@ -1080,6 +1080,103 @@ struct TaskAssistantViewModelTests {
         #expect(completion.completedForDate == yesterday)
         #expect(TaskActionService.openOccurrence(of: fixture.task) == today)
         #expect(sut.messages.last?.style != .failure)
+    }
+
+    /// "I fed her yesterday at 9": the stated time is what gets stored, and it is not a fill-in.
+    @Test
+    func confirmingYesterdayAtAStatedTimeRecordsThatTime() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: fixture.schedule.scheduledDate)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(
+                task: fixture.task,
+                completedForDate: yesterday,
+                completedAtTime: TimeOfDay(hour: 9, minute: 0),
+                notes: nil,
+                cats: []
+            )
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.completedAt == calendar.date(bySettingHour: 9, minute: 0, second: 0, of: yesterday))
+        #expect(completion.completedForDate == yesterday)
+        #expect(completion.isFillIn() == false)
+        #expect(sut.messages.last?.style != .failure)
+    }
+
+    /// The time the cloud interpreter returns travels in the action to the stored completion.
+    @Test
+    func aTimeFromTheCloudInterpreterIsStoredOnTheCompletion() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())))
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.confirmation(
+            TaskAssistantConfirmation(
+                title: fixture.task.title,
+                message: "Complete?",
+                action: .complete(
+                    task: fixture.task,
+                    completedForDate: yesterday,
+                    completedAtTime: TimeOfDay(hour: 21, minute: 30),
+                    notes: nil,
+                    cats: []
+                )
+            )
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            taskWriter: fixture.writer,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+        let confirmation = try #require(sut.pendingConfirmation)
+        guard case .complete(_, _, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion action from the cloud tier.")
+            return
+        }
+        #expect(completedAtTime == TimeOfDay(hour: 21, minute: 30))
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.completedAt == calendar.date(bySettingHour: 21, minute: 30, second: 0, of: yesterday))
+    }
+
+    /// A time stated before the task was chosen survives the "which task?" and "what to do?" steps.
+    @Test
+    func aStatedTimeSurvivesTaskAndIntentSelection() throws {
+        let fixture = try makeFixture()
+        let yesterday = try #require(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        let sut = TaskAssistantViewModel()
+        let choice = TaskAssistantTaskChoice(task: fixture.task, selectedCats: [])
+        sut.pendingTaskDisambiguation = TaskAssistantTaskDisambiguation(
+            message: "Which one?",
+            choices: [choice],
+            completedForDate: yesterday,
+            completedAtTime: TimeOfDay(hour: 9, minute: 0),
+            notes: nil
+        )
+
+        sut.chooseTaskChoice(choice)
+        #expect(sut.pendingIntentSelection?.completedAtTime == TimeOfDay(hour: 9, minute: 0))
+        sut.chooseIntent(.complete)
+
+        let confirmation = try #require(sut.pendingConfirmation)
+        guard case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion action.")
+            return
+        }
+        #expect(completedForDate == yesterday)
+        #expect(completedAtTime == TimeOfDay(hour: 9, minute: 0))
     }
 
     /// "I fed her today" while yesterday is open: the card names today. Yesterday is then recorded

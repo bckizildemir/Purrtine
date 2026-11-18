@@ -35,7 +35,7 @@ struct TaskAssistantCloudInterpreterTests {
 
         let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
 
-        guard case .confirmation(let confirmation) = result, case .complete(let task, _, _, let cats) = confirmation.action else {
+        guard case .confirmation(let confirmation) = result, case .complete(let task, _, _, _, let cats) = confirmation.action else {
             Issue.record("Expected a completion confirmation.")
             return
         }
@@ -59,12 +59,82 @@ struct TaskAssistantCloudInterpreterTests {
         let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: referenceDate)
 
         guard case .confirmation(let confirmation) = result,
-              case .complete(_, let completedForDate, _, _) = confirmation.action else {
+              case .complete(_, let completedForDate, _, _, _) = confirmation.action else {
             Issue.record("Expected a completion confirmation.")
             return
         }
         let expected = try #require(Calendar.current.date(byAdding: .day, value: dayOffset, to: referenceDate))
         #expect(completedForDate == expected)
+    }
+
+    /// The server returns the time as wall-clock "HH:mm"; the client reads it as a `TimeOfDay`.
+    @Test
+    func completedAtTimeMapsToATimeOfDayWithANamedDay() throws {
+        let fixture = try makeFixture()
+        let sut = FirebaseTaskAssistantCloudInterpreter()
+        let response: [String: Any] = [
+            "match": "confirmed",
+            "command": "complete",
+            "taskId": fixture.feedLuna.id.uuidString,
+            "completedForDate": "yesterday",
+            "completedAtTime": "09:30"
+        ]
+
+        let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, _, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        #expect(completedAtTime == TimeOfDay(hour: 9, minute: 30))
+    }
+
+    /// An old server, a missing key and a malformed value all mean "no time". The app can ship
+    /// before the server change.
+    @Test(arguments: [nil, "9:30", "24:00", "09:30:00", "yesterday 09:30"] as [String?])
+    func aMissingOrMalformedCompletedAtTimeMeansNoTime(value: String?) throws {
+        let fixture = try makeFixture()
+        let sut = FirebaseTaskAssistantCloudInterpreter()
+        var response: [String: Any] = [
+            "match": "confirmed",
+            "command": "complete",
+            "taskId": fixture.feedLuna.id.uuidString,
+            "completedForDate": "yesterday"
+        ]
+        response["completedAtTime"] = value
+
+        let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, _, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        #expect(completedAtTime == nil)
+    }
+
+    /// A time belongs to a named day: with no day, the client ignores it too.
+    @Test
+    func aCompletedAtTimeWithNoNamedDayIsIgnored() throws {
+        let fixture = try makeFixture()
+        let sut = FirebaseTaskAssistantCloudInterpreter()
+        let response: [String: Any] = [
+            "match": "confirmed",
+            "command": "complete",
+            "taskId": fixture.feedLuna.id.uuidString,
+            "completedAtTime": "09:30"
+        ]
+
+        let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        #expect(completedForDate == nil)
+        #expect(completedAtTime == nil)
     }
 
     @Test
@@ -82,7 +152,7 @@ struct TaskAssistantCloudInterpreterTests {
             let result = try sut.interpretation(from: response, tasks: [fixture.feedLuna], referenceDate: Date())
 
             guard case .confirmation(let confirmation) = result,
-                  case .complete(_, let completedForDate, _, _) = confirmation.action else {
+                  case .complete(_, let completedForDate, _, _, _) = confirmation.action else {
                 Issue.record("Expected a completion confirmation.")
                 return
             }

@@ -12,7 +12,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "complete Feed Luna", tasks: fixture.tasks)
 
         assertConfirmation(result, expectedTitle: "Feed Luna") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -27,7 +27,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "I fed Luna", tasks: fixture.tasks)
 
         assertConfirmation(result, expectedTitle: "Feed Luna") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -42,7 +42,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "kedilerin kumunu değiştirdim", tasks: fixture.tasks)
 
         assertConfirmation(result, expectedTitle: "kum değiş") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -57,7 +57,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "kedilerin su kabını yıkadım", tasks: fixture.tasks)
 
         assertConfirmation(result, expectedTitle: "su kabı yıka") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -140,7 +140,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "I fed the cats", tasks: tasks)
 
         assertConfirmation(result, expectedTitle: "Feed Luna") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -156,7 +156,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "kedileri besledim", tasks: tasks)
 
         assertConfirmation(result, expectedTitle: "Feed Luna") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -171,7 +171,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "I gave food to Mochi", tasks: fixture.tasks)
 
         assertConfirmation(result, expectedTitle: "Feed Mochi") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -214,7 +214,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: text, tasks: fixture.tasks + [grooming])
 
         assertConfirmation(result, expectedTitle: grooming.title) { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -231,7 +231,7 @@ struct TaskAssistantInterpreterTests {
         let result = fixture.interpreter.interpret(text: "Fırçalama tamamla", tasks: fixture.tasks + [grooming])
 
         assertConfirmation(result, expectedTitle: "Fırçalama") { action in
-            guard case .complete(let task, _, _, _) = action else {
+            guard case .complete(let task, _, _, _, _) = action else {
                 Issue.record("Expected a completion action.")
                 return
             }
@@ -296,7 +296,7 @@ struct TaskAssistantInterpreterTests {
         )
 
         guard case .confirmation(let confirmation) = result,
-              case .complete(let task, _, _, _) = confirmation.action else {
+              case .complete(let task, _, _, _, _) = confirmation.action else {
             Issue.record("Expected a completion confirmation, got \(result).")
             return
         }
@@ -371,7 +371,7 @@ struct TaskAssistantInterpreterTests {
         )
 
         guard case .confirmation(let confirmation) = result,
-              case .complete(let task, _, _, _) = confirmation.action else {
+              case .complete(let task, _, _, _, _) = confirmation.action else {
             Issue.record("Expected a completion confirmation, got \(result).")
             return
         }
@@ -466,12 +466,74 @@ struct TaskAssistantInterpreterTests {
             return
         }
 
-        guard case .complete(let task, _, _, _) = confirmation.action else {
+        guard case .complete(let task, _, _, _, _) = confirmation.action else {
             Issue.record("Expected a completion action.")
             return
         }
 
         #expect(task.title == "Feed Luna")
+    }
+
+    // MARK: - A stated completion time (#163)
+
+    /// "yesterday at 9" and "dün saat 9'da" name a time the care was done. They are a completion at
+    /// 09:00 yesterday, never a postpone ("saat" is also the Turkish word for an hour-long postpone).
+    @Test(arguments: [
+        (text: "I fed Luna yesterday at 9", hour: 9, minute: 0),
+        (text: "I fed Luna yesterday at 9:30", hour: 9, minute: 30),
+        (text: "I fed Luna yesterday at 9:30 pm", hour: 21, minute: 30),
+        (text: "I fed Luna yesterday at 9 pm", hour: 21, minute: 0),
+        (text: "I fed Luna yesterday at 12 am", hour: 0, minute: 0),
+        (text: "dün saat 9'da Luna'yı besledim", hour: 9, minute: 0),
+        (text: "dün saat 21.30'da Luna'yı besledim", hour: 21, minute: 30),
+        (text: "dün 21:30'da Luna'yı besledim", hour: 21, minute: 30)
+    ])
+    func aStatedTimeWithANamedDayIsACompletionTimeNotAPostpone(text: String, hour: Int, minute: Int) throws {
+        let fixture = try makeFixture()
+        let referenceDate = Date()
+
+        let result = fixture.interpreter.interpret(text: text, tasks: fixture.tasks, referenceDate: referenceDate)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(let task, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation for \"\(text)\", got \(result).")
+            return
+        }
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: referenceDate)
+        #expect(task.title == "Feed Luna")
+        #expect(completedForDate == yesterday)
+        #expect(completedAtTime == TimeOfDay(hour: hour, minute: minute))
+    }
+
+    @Test
+    func aNamedDayWithNoTimeHasNoCompletionTime() throws {
+        let fixture = try makeFixture()
+
+        let result = fixture.interpreter.interpret(text: "I fed Luna yesterday", tasks: fixture.tasks)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        #expect(completedForDate != nil)
+        #expect(completedAtTime == nil)
+    }
+
+    /// A time with no named day is not read as a completion time: a plain tap is the real time.
+    @Test
+    func aTimeWithNoNamedDayIsIgnored() throws {
+        let fixture = try makeFixture()
+
+        let result = fixture.interpreter.interpret(text: "I fed Luna at 9", tasks: fixture.tasks)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation.")
+            return
+        }
+        #expect(completedForDate == nil)
+        #expect(completedAtTime == nil)
     }
 
     private func makeFixture() throws -> (

@@ -173,6 +173,7 @@ final class TaskAssistantViewModel {
             task: choice.task,
             selectedCats: choice.selectedCats,
             completedForDate: disambiguation.completedForDate,
+            completedAtTime: disambiguation.completedAtTime,
             notes: disambiguation.notes
         )
         pendingIntentSelection = selection
@@ -203,6 +204,7 @@ final class TaskAssistantViewModel {
             action = .complete(
                 task: selection.task,
                 completedForDate: selection.completedForDate,
+                completedAtTime: selection.completedAtTime,
                 notes: selection.notes,
                 cats: selection.selectedCats
             )
@@ -489,6 +491,7 @@ final class TaskAssistantViewModel {
                     message: pendingTaskDisambiguation.message,
                     choices: validChoices,
                     completedForDate: pendingTaskDisambiguation.completedForDate,
+                    completedAtTime: pendingTaskDisambiguation.completedAtTime,
                     notes: pendingTaskDisambiguation.notes
                 )
             }
@@ -514,13 +517,14 @@ final class TaskAssistantViewModel {
         defer { isProcessing = false }
 
         switch pendingConfirmation.action {
-        case .complete(let task, let completedForDate, let notes, let cats):
+        case .complete(let task, let completedForDate, let completedAtTime, let notes, let cats):
             let selectedCats = cats.isEmpty ? task.assignedCats : cats
 
             if requiresDetailedCompletion(for: task, selectedCats: selectedCats) {
                 taskCompletionRequest = TaskAssistantCompletionRequest(
                     task: task,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     initialNotes: notes,
                     initialSelectedCats: selectedCats,
                     expectedOccurrence: completedForDate == nil ? pendingConfirmation.openOccurrence : nil
@@ -540,6 +544,7 @@ final class TaskAssistantViewModel {
                 with: CareTaskCompletionInput(
                     cats: selectedCats,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     notes: notes,
                     // The day the card was made for, when it names no day: a task completed
                     // elsewhere meanwhile is not completed again for its next day. A named day is
@@ -590,6 +595,7 @@ final class TaskAssistantViewModel {
         notes: String?,
         photos: [UIImage]?,
         completedForDate: Date?,
+        completedAtTime: TimeOfDay? = nil,
         expectedOccurrence: Date? = nil,
         in context: ModelContext
     ) async throws {
@@ -609,6 +615,7 @@ final class TaskAssistantViewModel {
                     cats: selectedCats,
                     caregiver: selectedCaregiver,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     notes: notes,
                     photoURLs: savedPhotos.fileNames,
                     expectedOccurrence: expectedOccurrence
