@@ -12466,6 +12466,23 @@
         }
       }
     },
+    "task.calendar.refusal_time_not_yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That time hasn't come yet"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O saat henüz gelmedi"
+          }
+        }
+      }
+    },
     "task.calendar.tab_month" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -827,6 +827,25 @@ struct TaskActionServiceTests {
         #expect(TaskActionService.completionRefusal(of: fixture.task, on: today, now: now) == nil)
     }
 
+    /// A stated time after now has its own reason, so Whiskers and the alert can say "that time hasn't
+    /// come yet" instead of the catch-all text.
+    @Test
+    func aStatedTimeAfterNowHasItsOwnReason() throws {
+        let calendar = Calendar.current
+        let now = try fixedNow()
+        let today = calendar.startOfDay(for: now)
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: today))
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let fixture = try makeTimedFixture(frequency: .daily, openDay: today, now: now)
+        let evening = TimeOfDay(hour: 23, minute: 0)
+
+        #expect(TaskActionService.completionRefusal(of: fixture.task, on: today, at: evening, now: now) == .timeAfterNow)
+        #expect(TaskActionService.completionRefusal(of: fixture.task, on: today, at: TimeOfDay(hour: 7, minute: 30), now: now) == nil)
+        #expect(TaskActionService.completionRefusal(of: fixture.task, on: yesterday, at: evening, now: now) == nil)
+        #expect(TaskActionService.completionRefusal(of: fixture.task, on: tomorrow, at: evening, now: now) == .dayAfterToday)
+        #expect(CompletionDayRefusal.timeAfterNow.message == String(localized: .taskCalendarRefusalTimeNotYet))
+    }
+
     // MARK: - Weekday-list tasks (#163)
 
     /// Listed on two weekdays, due on the first, tapped on a day that is not listed: accepted, the real

@@ -1155,6 +1155,8 @@ struct TaskAssistantViewModelTests {
     @Test
     func aStatedTimeSurvivesTaskAndIntentSelection() throws {
         let fixture = try makeFixture()
+        // A task that has existed a while, so "yesterday" is inside its life.
+        fixture.task.createdAt = try #require(Calendar.current.date(byAdding: .day, value: -30, to: Date()))
         let yesterday = try #require(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
         let sut = TaskAssistantViewModel()
         let choice = TaskAssistantTaskChoice(task: fixture.task, selectedCats: [])
@@ -1177,6 +1179,60 @@ struct TaskAssistantViewModelTests {
         }
         #expect(completedForDate == yesterday)
         #expect(completedAtTime == TimeOfDay(hour: 9, minute: 0))
+    }
+
+    /// "Yesterday" for a task created today: Whiskers says why at once instead of offering a card whose
+    /// Confirm would fail with the generic alert.
+    @Test
+    func aNamedDayTheRulesRefuseGetsTheReasonInsteadOfAConfirmationCard() async throws {
+        let fixture = try makeDailyFixture()
+        fixture.task.createdAt = Date()
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())))
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.confirmation(
+            TaskAssistantConfirmation(
+                title: fixture.task.title,
+                message: "Complete?",
+                action: .complete(task: fixture.task, completedForDate: yesterday, notes: nil, cats: [])
+            )
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            taskWriter: fixture.writer,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(sut.pendingConfirmation == nil)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.messages.last?.text == CompletionDayRefusal.beforeTaskExisted.message)
+        #expect(fixture.task.completions.isEmpty)
+    }
+
+    /// The same check runs when the card comes from the "what to do?" step.
+    @Test
+    func theIntentStepAlsoRefusesARefusedDayWithItsReason() throws {
+        let fixture = try makeFixture()
+        fixture.task.createdAt = Date()
+        let calendar = Calendar.current
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())))
+        let sut = TaskAssistantViewModel()
+        sut.pendingIntentSelection = TaskAssistantIntentSelection(
+            task: fixture.task,
+            selectedCats: [],
+            completedForDate: tomorrow,
+            completedAtTime: nil,
+            notes: nil
+        )
+
+        sut.chooseIntent(.complete)
+
+        #expect(sut.pendingConfirmation == nil)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.messages.last?.text == CompletionDayRefusal.dayAfterToday.message)
     }
 
     /// "I fed her today" while yesterday is open: the card names today. Yesterday is then recorded

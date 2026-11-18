@@ -78,15 +78,16 @@ enum TaskActionService {
             time: input.completedAtTime,
             now: now
         )
+        let completedAt = careTime ?? now
         let completion = CareTaskCompletion(
-            completedAt: careTime ?? now,
+            completedAt: completedAt,
             completedForDate: effectiveCompletedForDate,
             notes: input.notes,
             photoURLs: input.photoURLs,
             wasOnTime: isOnTime(
                 day: effectiveCompletedForDate,
                 schedule: activeSchedule,
-                completedAt: careTime ?? now,
+                completedAt: completedAt,
                 now: now
             )
         )
@@ -152,14 +153,8 @@ enum TaskActionService {
 
         guard let namedDay = input.completedForDate else { return }
 
-        if completionRefusal(of: task, on: namedDay, now: now) != nil {
+        if completionRefusal(of: task, on: namedDay, at: input.completedAtTime, now: now) != nil {
             throw TaskActionError.occurrenceNotOpen
-        }
-        if let time = input.completedAtTime {
-            guard let statedInstant = time.date(on: calendar.startOfDay(for: namedDay), calendar: calendar),
-                  statedInstant <= now else {
-                throw TaskActionError.occurrenceNotOpen
-            }
         }
     }
 
@@ -170,12 +165,18 @@ enum TaskActionService {
         completionRefusal(of: task, on: day, now: now) == nil
     }
 
-    /// Why `task` cannot be completed for the named `day`, or `nil` when it can. Any day from the
-    /// task's first day up to today is accepted while it has no completion. The first day is the
-    /// earlier of the day the task was created (`CareTask.createdAt`; not the schedule's, which is
-    /// remade at every completion) and its open occurrence day, so a task created with a past start
-    /// date keeps its own first day. An earlier open (missed) day does not block a later one.
-    static func completionRefusal(of task: CareTask, on day: Date, now: Date = Date()) -> CompletionDayRefusal? {
+    /// Why `task` cannot be completed for the named `day` (at the stated `time`, when there is one),
+    /// or `nil` when it can. Any day from the task's first day up to today is accepted while it has no
+    /// completion. The first day is the earlier of the day the task was created (`CareTask.createdAt`;
+    /// not the schedule's, which is remade at every completion) and its open occurrence day, so a task
+    /// created with a past start date keeps its own first day. An earlier open (missed) day does not
+    /// block a later one. A stated time after `now` is refused.
+    static func completionRefusal(
+        of task: CareTask,
+        on day: Date,
+        at time: TimeOfDay? = nil,
+        now: Date = Date()
+    ) -> CompletionDayRefusal? {
         let calendar = Calendar.current
         let day = calendar.startOfDay(for: day)
 
@@ -189,6 +190,9 @@ enum TaskActionService {
         let firstDay = openOccurrence(of: task).map { min($0, createdDay) } ?? createdDay
         if day < firstDay {
             return .beforeTaskExisted
+        }
+        if let statedInstant = time?.date(on: day, calendar: calendar), statedInstant > now {
+            return .timeAfterNow
         }
         return nil
     }
@@ -239,8 +243,8 @@ enum TaskActionService {
             return now
         }
         guard let dueTime = task.activeSchedule?.scheduledTime else { return nil }
-        let timeOfDay = calendar.dateComponents([.hour, .minute], from: dueTime)
-        return calendar.date(bySettingHour: timeOfDay.hour ?? 0, minute: timeOfDay.minute ?? 0, second: 0, of: day)
+        // A due time that does not exist on `day` (a spring-forward gap) resolves to the next valid time.
+        return TimeOfDay(of: dueTime, calendar: calendar).date(on: day, calendar: calendar)
     }
 
     private static func completionDate(for task: CareTask, explicit completedForDate: Date?, now: Date) -> Date {

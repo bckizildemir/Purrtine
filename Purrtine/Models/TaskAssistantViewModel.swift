@@ -111,6 +111,9 @@ final class TaskAssistantViewModel {
     private func apply(_ interpretation: TaskAssistantInterpreter.Interpretation, isAIGenerated: Bool) {
         switch interpretation {
         case .confirmation(let confirmation):
+            if declinesRefusedCompletion(confirmation.action, isAIGenerated: isAIGenerated) {
+                return
+            }
             pendingConfirmation = confirmation
             messages.append(
                 TaskAssistantMessage(role: .assistant, text: confirmation.message, isAIGenerated: isAIGenerated)
@@ -153,6 +156,10 @@ final class TaskAssistantViewModel {
 
     func chooseSuggestion(_ suggestion: TaskAssistantSuggestion) {
         pendingClarification = nil
+        if declinesRefusedCompletion(suggestion.action) {
+            scrollToBottomToken += 1
+            return
+        }
         let message = confirmationMessage(for: suggestion.action)
         pendingConfirmation = TaskAssistantConfirmation(
             title: suggestion.title,
@@ -214,6 +221,10 @@ final class TaskAssistantViewModel {
             commandKind = .postpone
         }
 
+        if declinesRefusedCompletion(action) {
+            scrollToBottomToken += 1
+            return
+        }
         let message = confirmationMessage(for: action)
         pendingConfirmation = TaskAssistantConfirmation(
             title: TaskAssistantResponseFormatting.confirmationTitle(for: commandKind),
@@ -746,6 +757,19 @@ final class TaskAssistantViewModel {
         }
 
         return false
+    }
+
+    /// A completion that names a day or time the rules refuse gets no confirm card (Confirm would only
+    /// fail with a generic alert): the chat says why instead. Returns whether it did.
+    private func declinesRefusedCompletion(_ action: TaskAssistantAction, isAIGenerated: Bool = false) -> Bool {
+        guard case .complete(let task, let namedDay?, let time, _, _) = action,
+              let refusal = TaskActionService.completionRefusal(of: task, on: namedDay, at: time) else {
+            return false
+        }
+        messages.append(
+            TaskAssistantMessage(role: .assistant, text: refusal.message, style: .failure, isAIGenerated: isAIGenerated)
+        )
+        return true
     }
 
     private func confirmationMessage(for action: TaskAssistantAction) -> String {
