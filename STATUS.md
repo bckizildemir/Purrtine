@@ -89,7 +89,8 @@ Last session:
 - 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
   Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
   a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
-  Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
+  Home routine status and Settings weekly count used a "performed" day (`performedAt`; #163 replaced it: every
+  "when" read is `CareTaskCompletion.completedAt`, and `isFillIn()` is `completedAt == completedForDate`).
   Simulator proofs PASS (runs `2026-11-16-121258-4944`, `2026-11-16-125755-713c`); CI green incl. UI tests.
   `interpretTaskAssistantRequest` deployed after the merge (owner's yes): revision `00006-dol`, ready. It adds
   the cloud interpreter's `"today"` day.
