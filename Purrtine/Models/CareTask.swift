@@ -354,23 +354,22 @@ extension CareTask {
         activeDueDate
     }
     
-    /// The completion that was done last, by `performedAt`: a day filled in late does not outrank
-    /// a completion done after that day.
+    /// The completion that was done last, by `completedAt`: a fill-in's is the start of its own day,
+    /// so it does not outrank a completion done after that day.
     var lastCompletion: CareTaskCompletion? {
         completions.max { first, second in
-            first.performedAt() < second.performedAt()
+            first.completedAt < second.completedAt
         }
     }
 
     var lastCompletionDate: Date? {
-        lastCompletion?.performedAt()
+        lastCompletion?.completedAt
     }
 
     /// The one "completed today" rule: some completion is FOR `referenceDate`'s day (or a later
     /// one). It reads the day a completion counts for, not when it was recorded, so filling in an
     /// older day today does not make today's still-open occurrence look done (the Whiskers assistant
-    /// uses it). The "Last done" labels and Home recency follow the same idea through
-    /// `performedAt`: they show the day the care was done, not when it was typed in.
+    /// uses it). The "Last done" labels and Home recency read `completedAt`: when the care was done.
     func isCompletedToday(referenceDate: Date = Date(), calendar: Calendar = .current) -> Bool {
         completions.contains { completion in
             Self.isCompletionToday(completion.completedForDate, referenceDate: referenceDate, calendar: calendar)
@@ -429,7 +428,7 @@ extension CareTask {
 
         let calendar = Calendar.current
 
-        let completedAt = lastCompletion.performedAt()
+        let completedAt = lastCompletion.completedAt
         let completedDay = calendar.startOfDay(for: completedAt)
         let today = calendar.startOfDay(for: referenceDate)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
@@ -783,26 +782,24 @@ extension CareTaskCompletion {
         completedAt.formatted(date: .omitted, time: .shortened)
     }
 
-    /// True when the care was done on an earlier day than the day it was recorded: a day filled in
-    /// late (Whiskers "yesterday", a past day picked in the calendar). `completedForDate` names the
-    /// day the care counts for, `completedAt` is only when it was typed in.
-    func isFillIn(calendar: Calendar = .current) -> Bool {
-        calendar.startOfDay(for: completedForDate) < calendar.startOfDay(for: completedAt)
+    /// True for a day filled in with no real time of care (Whiskers "yesterday" on a task with no
+    /// time of its own, a past day picked in the calendar): the writer stores the same start-of-day
+    /// instant in `completedAt` and `completedForDate`. A plain late tap is not one: it keeps its
+    /// real `completedAt` and counts for the open day in `completedForDate`.
+    ///
+    /// It compares the two stored values and recomputes no start of day, so travel (a start of day
+    /// written in Istanbul and read in London) and zones with no midnight cannot change the answer.
+    /// Accepted edge: a task timed 00:00, or a stated "at 00:00", also reads as a fill-in and shows
+    /// no time.
+    func isFillIn() -> Bool {
+        completedAt == completedForDate
     }
 
-    /// When the care was done, the one date every "when" read uses (History, "Last done", Home
-    /// recency, the weekly count). A same-day completion keeps its real time. A fill-in has no real
-    /// time of care: it is the start of the day it was for, so it neither jumps to the day it was
-    /// typed in nor sorts above that day's real completions. Screens show only the day of a fill-in
-    /// (`isFillIn`), never that invented midnight.
-    func performedAt(calendar: Calendar = .current) -> Date {
-        isFillIn(calendar: calendar) ? calendar.startOfDay(for: completedForDate) : completedAt
-    }
-
-    /// Matches completions with `performedAt >= startOfDay` for a day-start `startOfDay`, in a form
-    /// a store query can run: a fill-in counts by its care day, any other completion by its time.
+    /// Matches completions done on or after `startOfDay`, in a form a store query can run. Every
+    /// "when" read uses `completedAt`: a fill-in's is its own day's start, a plain late tap's is the
+    /// real time it was done.
     static func performed(onOrAfter startOfDay: Date) -> Predicate<CareTaskCompletion> {
-        #Predicate { $0.completedAt >= startOfDay && $0.completedForDate >= startOfDay }
+        #Predicate { $0.completedAt >= startOfDay }
     }
 
     // MARK: - Hashable Conformance

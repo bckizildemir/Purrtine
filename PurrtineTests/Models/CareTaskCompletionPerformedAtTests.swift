@@ -3,8 +3,9 @@ import SwiftData
 import Testing
 @testable import Purrtine
 
-/// A completion filled in late (typed in today for an earlier day) counts for the day the care was
-/// done, not the day it was recorded: History, "Last done", Home recency and the weekly count.
+/// A completion keeps two facts apart: `completedAt` is when the care was done, `completedForDate`
+/// is the day it counts for. A plain late tap (due Monday, tapped Wednesday) is a real Wednesday
+/// time that counts for Monday. A fill-in has no real time: `completedAt == completedForDate`.
 @Suite
 @MainActor
 struct CareTaskCompletionPerformedAtTests {
@@ -21,65 +22,81 @@ struct CareTaskCompletionPerformedAtTests {
         return calendar.date(byAdding: .hour, value: hour, to: day) ?? day
     }
 
+    /// A completion done at `recordedAt` that counts for `forDay`: a plain late tap when they differ.
     private func completion(recordedAt: Date, forDay: Date) -> CareTaskCompletion {
         CareTaskCompletion(completedAt: recordedAt, completedForDate: forDay)
     }
 
-    @Test
-    func aSameDayCompletionKeepsItsRealTime() {
-        let done = completion(recordedAt: day(0, hour: 8), forDay: day(0))
-
-        #expect(done.isFillIn() == false)
-        #expect(done.performedAt() == day(0, hour: 8))
+    /// A day filled in with no real time: both stored dates are the same start-of-day instant.
+    private func fillIn(forDay: Date) -> CareTaskCompletion {
+        let fillIn = CareTaskCompletion(completedForDate: forDay)
+        fillIn.completedAt = fillIn.completedForDate
+        return fillIn
     }
 
     @Test
-    func aFillInIsPlacedAtTheStartOfItsOwnDay() {
-        let fillIn = completion(recordedAt: day(0, hour: 11), forDay: day(-1))
+    func aSameDayCompletionKeepsItsRealTimeAndIsNotAFillIn() {
+        let done = completion(recordedAt: day(0, hour: 8), forDay: day(0))
 
-        #expect(fillIn.isFillIn())
-        #expect(fillIn.performedAt() == day(-1))
+        #expect(done.isFillIn() == false)
+        #expect(done.completedAt == day(0, hour: 8))
+    }
+
+    @Test
+    func aPlainLateTapKeepsItsRealTimeAndIsNotAFillIn() {
+        // Due Monday (-2), tapped Wednesday at 11:00.
+        let late = completion(recordedAt: day(0, hour: 11), forDay: day(-2))
+
+        #expect(late.isFillIn() == false)
+        #expect(late.completedAt == day(0, hour: 11))
+        #expect(late.completedForDate == day(-2))
+    }
+
+    @Test
+    func aFillInIsMarkedByTheTwoStoredDatesBeingEqual() {
+        let marked = fillIn(forDay: day(-1))
+
+        #expect(marked.isFillIn())
+        #expect(marked.completedAt == marked.completedForDate)
     }
 
     @Test
     func wasOnTimeIsLeftAlone() {
-        let fillIn = CareTaskCompletion(
+        let late = CareTaskCompletion(
             completedAt: day(0, hour: 11),
             completedForDate: day(-1),
             wasOnTime: false
         )
 
-        #expect(fillIn.wasOnTime == false)
+        #expect(late.wasOnTime == false)
     }
 
     @Test
-    func historyListsAYesterdayFillInUnderYesterdayBelowTodaysRealCompletion() {
-        let todays = completion(recordedAt: day(0, hour: 8), forDay: day(0))
-        // Recorded AFTER today's completion, but for yesterday.
-        let fillIn = completion(recordedAt: day(0, hour: 11), forDay: day(-1))
-
-        let sorted = HistoryPresentation.sortedNewestFirst([fillIn, todays])
-
-        #expect(sorted.map(\.id) == [todays.id, fillIn.id])
-        #expect(calendar.isDate(sorted[1].performedAt(), inSameDayAs: day(-1)))
-        #expect(calendar.isDate(sorted[0].performedAt(), inSameDayAs: day(0)))
-    }
-
-    @Test
-    func lastCompletionIsTheOneDoneLastNotTheOneRecordedLast() {
+    func lastCompletionIsTheOneWithTheLatestCompletedAt() {
         let task = CareTask(title: "Brush Coat")
         let todays = completion(recordedAt: day(0, hour: 8), forDay: day(0))
-        let fillIn = completion(recordedAt: day(0, hour: 11), forDay: day(-1))
-        task.completions = [fillIn, todays]
+        // Done after today's completion, for an earlier day: still the last one done.
+        let lateTap = completion(recordedAt: day(0, hour: 11), forDay: day(-1))
+        task.completions = [todays, lateTap]
+
+        #expect(task.lastCompletion?.id == lateTap.id)
+        #expect(task.lastCompletionDate == day(0, hour: 11))
+    }
+
+    @Test
+    func aFillInDoesNotOutrankARealCompletionDoneAfterIt() {
+        let task = CareTask(title: "Brush Coat")
+        let todays = completion(recordedAt: day(0, hour: 8), forDay: day(0))
+        task.completions = [fillIn(forDay: day(-1)), todays]
 
         #expect(task.lastCompletion?.id == todays.id)
         #expect(task.lastCompletionDate == day(0, hour: 8))
     }
 
     @Test
-    func aLoneFillInMakesTheLastDoneLabelAnEarlierDay() {
+    func aLoneFillInMakesTheLastDoneLabelAnEarlierDayWithoutATime() {
         let task = CareTask(title: "Brush Coat")
-        task.completions = [completion(recordedAt: day(0, hour: 11), forDay: day(-3))]
+        task.completions = [fillIn(forDay: day(-3))]
 
         #expect(task.lastCompletionDate == day(-3))
         let label = task.lastCompletionDisplayText(relativeTo: now)
@@ -90,7 +107,7 @@ struct CareTaskCompletionPerformedAtTests {
     @Test
     func aYesterdayFillInLabelSaysYesterdayWithoutATime() {
         let task = CareTask(title: "Brush Coat")
-        task.completions = [completion(recordedAt: day(0, hour: 11), forDay: day(-1))]
+        task.completions = [fillIn(forDay: day(-1))]
 
         #expect(task.lastCompletionDisplayText(relativeTo: now) == String(localized: .tasksRowLastCompletedDay(
             String(localized: .timeYesterday)
@@ -98,28 +115,43 @@ struct CareTaskCompletionPerformedAtTests {
     }
 
     @Test
-    func theWeeklyCountReadsTheDayTheCareWasDone() throws {
+    func aPlainLateTapLabelShowsTheDayAndTimeItWasDone() {
+        let task = CareTask(title: "Brush Coat")
+        // Due two days ago, tapped today at 11:00.
+        task.completions = [completion(recordedAt: day(0, hour: 11), forDay: day(-2))]
+
+        let label = task.lastCompletionDisplayText(relativeTo: now)
+
+        #expect(label == String(localized: .tasksRowLastCompleted(
+            String(localized: .generalToday),
+            day(0, hour: 11).formatted(date: .omitted, time: .shortened)
+        )))
+    }
+
+    @Test
+    func theWeeklyCountReadsWhenTheCareWasDone() throws {
         // Keep the container alive: a context does not own it.
         let container = try TestModelContainerFactory.makeInMemoryContainer()
         let context = container.mainContext
         let startOfWeek = day(-2)
         let inWeek = completion(recordedAt: day(0, hour: 8), forDay: day(0))
-        let fillInInWeek = completion(recordedAt: day(0, hour: 9), forDay: day(-1))
-        // Typed in this week, but the care was done the week before.
-        let fillInBeforeWeek = completion(recordedAt: day(0, hour: 10), forDay: day(-5))
+        let fillInInWeek = fillIn(forDay: day(-1))
+        // Tapped this week for last week's open day: it was done this week, so it counts.
+        let lateTapThisWeek = completion(recordedAt: day(0, hour: 10), forDay: day(-5))
+        // A fill-in for a day before the week stays out.
+        let fillInBeforeWeek = fillIn(forDay: day(-5))
         let oldCompletion = completion(recordedAt: day(-6, hour: 8), forDay: day(-6))
-        for item in [inWeek, fillInInWeek, fillInBeforeWeek, oldCompletion] {
+        for item in [inWeek, fillInInWeek, lateTapThisWeek, fillInBeforeWeek, oldCompletion] {
             context.insert(item)
         }
         try context.save()
 
-        let count = try context.fetchCount(
+        let counted = try context.fetch(
             FetchDescriptor<CareTaskCompletion>(
                 predicate: CareTaskCompletion.performed(onOrAfter: startOfWeek)
             )
         )
 
-        // The real completion and the fill-in for a day inside the week; not the other two.
-        #expect(count == 2)
+        #expect(Set(counted.map(\.id)) == [inWeek.id, fillInInWeek.id, lateTapThisWeek.id])
     }
 }

@@ -49,8 +49,8 @@ struct HomeRoutineStatusPresentation {
                 return DecoratedTask(
                     task: task,
                     activeDueDate: dueDate,
-                    lastCompletionDate: lastCompletion.performedAt(calendar: calendar),
-                    lastCompletionIsFillIn: lastCompletion.isFillIn(calendar: calendar),
+                    lastCompletionDate: lastCompletion.completedAt,
+                    lastCompletionIsFillIn: lastCompletion.isFillIn(),
                     sortPriority: sortPriority(dueDate: dueDate, referenceDate: referenceDate, calendar: calendar)
                 )
             }

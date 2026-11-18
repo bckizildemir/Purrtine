@@ -45,6 +45,8 @@ const VALID_CATEGORIES = new Set([
 ]);
 const VALID_COMMANDS = new Set(["complete", "postpone", "open"]);
 const VALID_COMPLETED_FOR_DATES = new Set(["yesterday", "today"]);
+// Wall-clock "HH:mm", 24 h. Never an instant: the server does not know the user's time zone.
+const COMPLETED_AT_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const VALID_MATCHES = new Set(["confirmed", "clarify", "none"]);
 
 async function interpretTaskAssistantRequest(options) {
@@ -146,10 +148,11 @@ Rules:
 - catIds: only include cat ids explicitly mentioned or clearly implied by name; omit or leave empty to mean "all cats assigned to the task".
 - postponeMinutes: parse an explicit duration (e.g. "30 dk" → 30, "1 hour" → 60); if postponing with no duration given, use ${DEFAULT_POSTPONE_MINUTES}.
 - completedForDate: set to "yesterday" only if the user explicitly says yesterday/dün, or "today" only if the user explicitly says today/bugün; otherwise omit.
+- completedAtTime: only when the user states a clock time the care was done together with a day (e.g. "yesterday at 9" → "09:00", "dün saat 21.30'da" → "21:30"); 24-hour "HH:mm" wall-clock text, never a date or an instant; otherwise omit. A stated time is not a postpone duration.
 - notes: only include free text the user explicitly wants attached as a note (e.g. after "note:"/"because"/"çünkü"); otherwise omit.
 
 Respond with ONLY this JSON object, no other text:
-{"match":"confirmed|clarify|none","command":"complete|postpone|open|null","taskId":"string|null","candidateTaskIds":["string"]|null,"catIds":["string"]|null,"postponeMinutes":number|null,"completedForDate":"yesterday|today|null","notes":"string|null"}`;
+{"match":"confirmed|clarify|none","command":"complete|postpone|open|null","taskId":"string|null","candidateTaskIds":["string"]|null,"catIds":["string"]|null,"postponeMinutes":number|null,"completedForDate":"yesterday|today|null","completedAtTime":"HH:mm|null","notes":"string|null"}`;
 
   const user = JSON.stringify({
     referenceDate,
@@ -227,9 +230,16 @@ function validatedResult(parsed, tasks) {
     ? parsed.completedForDate
     : null;
 
+  // A time of day belongs to a named day: with no completedForDate it is dropped.
+  const completedAtTime = completedForDate !== null
+    && typeof parsed.completedAtTime === "string"
+    && COMPLETED_AT_TIME_PATTERN.test(parsed.completedAtTime)
+    ? parsed.completedAtTime
+    : null;
+
   const notes = normalizedNotes(parsed.notes);
 
-  return { match: "confirmed", command, taskId, catIds, postponeMinutes, completedForDate, notes };
+  return { match: "confirmed", command, taskId, catIds, postponeMinutes, completedForDate, completedAtTime, notes };
 }
 
 function dedupe(items) {

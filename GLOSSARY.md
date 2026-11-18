@@ -37,8 +37,11 @@ next day from the day it was done has no missed occurrences; it is only overdue.
 _Avoid_: skipped (a skip is chosen on purpose), late
 
 **Fill-in**:
-A completion recorded for an earlier day when the time of care is not known ("I did it yesterday").
-It counts for that day and shows no time of day.
+A completion recorded for a past day with no known time of care ("I did it yesterday" on a task with no
+time of its own). It counts for that day and shows no time of day. In the store a fill-in is
+`completedAt == completedForDate`, both the start of that day. A named past day on a task that has a time
+stores that task's time and is not a fill-in; neither is a stated time ("yesterday at 9") or a plain late
+tap (due Monday, tapped Wednesday: the real Wednesday time, counted for Monday).
 _Avoid_: backfill, late completion (a late completion has a real time)
 
 **Overdue**:

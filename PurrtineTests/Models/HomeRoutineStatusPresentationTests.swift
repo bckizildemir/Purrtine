@@ -55,12 +55,8 @@ struct HomeRoutineStatusPresentationTests {
             dueDate: makeDate(year: 2026, month: 11, day: 17, hour: 9),
             completionDates: [makeDate(year: 2026, month: 11, day: 16, hour: 8)]
         )
-        // Typed in at 11:00 today for yesterday: it must not replace today's real completion.
-        addCompletion(
-            to: task,
-            recordedAt: makeDate(year: 2026, month: 11, day: 16, hour: 11),
-            careDay: makeDate(year: 2026, month: 11, day: 15, hour: 0)
-        )
+        // A day filled in for yesterday: it must not replace today's real completion.
+        addFillIn(to: task, careDay: makeDate(year: 2026, month: 11, day: 15, hour: 0))
 
         let row = HomeRoutineStatusPresentation.rows(
             from: [task], referenceDate: now, locale: locale, calendar: makeCalendar()
@@ -80,11 +76,7 @@ struct HomeRoutineStatusPresentationTests {
             dueDate: makeDate(year: 2026, month: 11, day: 17, hour: 9),
             completionDates: []
         )
-        addCompletion(
-            to: task,
-            recordedAt: makeDate(year: 2026, month: 11, day: 16, hour: 11),
-            careDay: makeDate(year: 2026, month: 11, day: 13, hour: 0)
-        )
+        addFillIn(to: task, careDay: makeDate(year: 2026, month: 11, day: 13, hour: 0))
 
         let row = HomeRoutineStatusPresentation.rows(
             from: [task], referenceDate: now, locale: locale, calendar: makeCalendar()
@@ -95,6 +87,34 @@ struct HomeRoutineStatusPresentationTests {
             String(localized: .homeRoutineStatusDaysAgo(3))
         )))
         #expect(row?.secondaryTimestampText == "Nov 13, 2026")
+    }
+
+    @Test
+    func aPlainLateTapMakesRecencyTodayWithItsRealTime() {
+        let now = makeDate(year: 2026, month: 11, day: 16, hour: 12)
+        let task = makeTask(
+            title: "Brush Coat",
+            dueDate: makeDate(year: 2026, month: 11, day: 17, hour: 9),
+            completionDates: []
+        )
+        // Due three days ago, tapped today at 11:00: done today, with its time.
+        addCompletion(
+            to: task,
+            recordedAt: makeDate(year: 2026, month: 11, day: 16, hour: 11),
+            careDay: makeDate(year: 2026, month: 11, day: 13, hour: 0)
+        )
+
+        let row = HomeRoutineStatusPresentation.rows(
+            from: [task], referenceDate: now, locale: locale, calendar: makeCalendar()
+        ).first
+
+        #expect(row?.lastCompletionDate == makeDate(year: 2026, month: 11, day: 16, hour: 11))
+        #expect(row?.primaryRecencyText == String(localized: .homeRoutineStatusLastDone(
+            String(localized: .homeRoutineStatusToday)
+        )))
+        // Not the day-only text a fill-in gets: the real time is part of it.
+        #expect(row?.secondaryTimestampText != "Nov 16, 2026")
+        #expect(row?.secondaryTimestampText.hasPrefix("Nov 16, 2026") == true)
     }
 
     @Test
@@ -218,10 +238,21 @@ struct HomeRoutineStatusPresentationTests {
         return task
     }
 
-    /// A completion recorded at `recordedAt` for the earlier or same day `careDay`.
+    /// A completion done at `recordedAt` that counts for the earlier or same day `careDay`: a plain
+    /// late tap, with its real time.
     private func addCompletion(to task: CareTask, recordedAt: Date, careDay: Date) {
         let completion = CareTaskCompletion(completedAt: recordedAt, completedForDate: careDay)
         completion.completedForDate = makeCalendar().startOfDay(for: careDay)
+        completion.task = task
+        task.completions.append(completion)
+    }
+
+    /// A day filled in with no real time: `completedAt` holds the same start-of-day instant as
+    /// `completedForDate`, which the fixture pins to the suite's calendar.
+    private func addFillIn(to task: CareTask, careDay: Date) {
+        let completion = CareTaskCompletion(completedForDate: careDay)
+        completion.completedForDate = makeCalendar().startOfDay(for: careDay)
+        completion.completedAt = completion.completedForDate
         completion.task = task
         task.completions.append(completion)
     }

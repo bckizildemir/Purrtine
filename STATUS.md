@@ -10,9 +10,13 @@ Items, in this order:
 - #142 (reminder snoozes outlive completion and deletes, ignore Reminders off): done, #155 merged 2026-11-18;
   two narrow gaps left in #173 (failed cat delete keeps snoozes; "Remind me" on a finished day)
 - CI quick pack: done, #171 merged 2026-11-18 (TriQ #192 too)
-- #149 (build number 14): done, merged 2026-11-18; the TestFlight upload waits for the owner
-- #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
-  #1, #164, #165 (see "Next step" 5)
+- #149 (build number 14): merged, but build 14 is NOT uploaded (owner, 2026-11-18): it has #156 without #163,
+  and #163's "no migration" holds only if no build with #156 ships before it. Build 15 (PR on `chore/build-15`)
+  is the next upload.
+- #163 (a completion records when the care was done and which day it counts for): done, #192 merged and
+  `interpretTaskAssistantRequest` deployed 2026-11-18. Follow-ups in #193 (Turkish "akşam 9", VoiceOver double
+  read, race message, calendar due label, TR "beslendi" unproved, 00:00 edge).
+- Next: the recurrence chain #1, #164, #165 (see "Next step" 5), then #173 and #193.
 
 Then Stage 2 polish (animation and look) resumes, plan `docs/stage2-polish-decisions.md` (the animation audit and
 decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
@@ -29,6 +33,13 @@ decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now
 2026-11-18
 
 Last session:
+- 2026-11-18 (later): #188 and TriQ #214/#218 merged: Dependabot version-updates only Firebase (and Nuke in TriQ)
+  among Swift packages; majors come as one grouped PR, not ignored, so security updates are never blocked
+  (owner: "güvenlikleri atlamayalım"). #187 deployed. #163 via `/implement`: `swift-writer` TDD, two reviews
+  (standards, spec), a fix round, two `verify-purrtine` passes EN+TR (`~/verify-evidence/purrtine/2026-11-18-114806-2ba7`,
+  `-114913-516b`), CI green 50/50 UI; merged as #192 and deployed. Build 14 held; build 15 archived. TestFlight
+  upload is blocked: App Store Connect says an agreement is unsigned or expired (owner must accept at
+  https://appstoreconnect.apple.com/agreements).
 - 2026-11-18 (resumed; the owner said "merge when they're ready, UI test should be green"):
   - Docs PRs #172 and TriQ #193 merged. TriQ #192 (CI quick pack) merged.
   - #155 (#142 snoozes): a `swift-reviewer` pass found the main merge lost nothing. Its one low-medium finding was
@@ -89,7 +100,8 @@ Last session:
 - 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
   Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
   a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
-  Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
+  Home routine status and Settings weekly count used a "performed" day (`performedAt`; #163 replaced it: every
+  "when" read is `CareTaskCompletion.completedAt`, and `isFillIn()` is `completedAt == completedForDate`).
   Simulator proofs PASS (runs `2026-11-16-121258-4944`, `2026-11-16-125755-713c`); CI green incl. UI tests.
   `interpretTaskAssistantRequest` deployed after the merge (owner's yes): revision `00006-dol`, ready. It adds
   the cloud interpreter's `"today"` day.
@@ -181,9 +193,8 @@ Last session:
 
 ## Waits for the owner
 
-- Merge PR #188 (Dependabot: minor and patch only, Swift only `firebase-ios-sdk`).
-- Deploy #187 (fast-xml-parser security update, lockfile only) to `interpretTaskAssistantRequest`.
-- A TestFlight upload of build 14 (#149).
+- Accept the App Store Connect agreement (https://appstoreconnect.apple.com/agreements); then an agent uploads
+  build 15 and sends it to the external testers (owner's yes 2026-11-18).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).
