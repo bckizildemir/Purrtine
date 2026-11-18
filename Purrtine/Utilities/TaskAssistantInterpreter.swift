@@ -30,6 +30,9 @@ struct TaskAssistantInterpreter {
         let significantTokens: [String]
         let expandedTokens: Set<String>
         let phrases: Set<String>
+        /// A clock time stated in the text ("at 9", "9:30 pm", "saat 21.30'da"), read from the raw text
+        /// because normalizing drops the ":" and ".". Used only together with a named day.
+        let completionTime: TimeOfDay?
     }
 
     private struct RankedTask {
@@ -52,6 +55,8 @@ struct TaskAssistantInterpreter {
         let analysis = analyze(trimmedText)
         let explicitCommand = detectExplicitCommand(in: analysis)
         let completedForDate = detectCompletionDate(in: analysis, referenceDate: referenceDate)
+        // A time of day belongs to a named day: "yesterday at 9" is a completion time, "at 9" alone is not.
+        let completedAtTime = completedForDate == nil ? nil : analysis.completionTime
         let extractedNotes = notes(in: trimmedText)
 
         // No recognizable action verb anywhere in the text (no open/postpone keyword, no
@@ -64,6 +69,7 @@ struct TaskAssistantInterpreter {
                 tasks: tasks,
                 referenceDate: referenceDate,
                 completedForDate: completedForDate,
+                completedAtTime: completedAtTime,
                 notes: extractedNotes
             )
         }
@@ -104,6 +110,7 @@ struct TaskAssistantInterpreter {
                         for: command,
                         task: onlyOpen.task,
                         completedForDate: completedForDate,
+                        completedAtTime: completedAtTime,
                         notes: extractedNotes,
                         selectedCats: onlyOpen.selectedCats
                     )
@@ -129,6 +136,7 @@ struct TaskAssistantInterpreter {
                         message: String(localized: .taskAssistantTaskDisambiguation),
                         choices: choices,
                         completedForDate: completedForDate,
+                        completedAtTime: completedAtTime,
                         notes: extractedNotes
                     )
                 )
@@ -142,6 +150,7 @@ struct TaskAssistantInterpreter {
                         for: command,
                         task: candidate.task,
                         completedForDate: completedForDate,
+                        completedAtTime: completedAtTime,
                         notes: extractedNotes,
                         selectedCats: candidate.selectedCats
                     )
@@ -164,6 +173,7 @@ struct TaskAssistantInterpreter {
             for: command,
             task: bestCandidate.task,
             completedForDate: completedForDate,
+            completedAtTime: completedAtTime,
             notes: extractedNotes,
             selectedCats: bestCandidate.selectedCats
         )
@@ -186,6 +196,7 @@ struct TaskAssistantInterpreter {
         tasks: [CareTask],
         referenceDate: Date,
         completedForDate: Date?,
+        completedAtTime: TimeOfDay?,
         notes: String?
     ) -> Interpretation {
         let candidates = rankedTasks(
@@ -215,6 +226,7 @@ struct TaskAssistantInterpreter {
                     message: String(localized: .taskAssistantTaskDisambiguation),
                     choices: choices,
                     completedForDate: completedForDate,
+                    completedAtTime: completedAtTime,
                     notes: notes
                 )
             )
@@ -229,6 +241,7 @@ struct TaskAssistantInterpreter {
                 task: bestCandidate.task,
                 selectedCats: bestCandidate.selectedCats,
                 completedForDate: completedForDate,
+                completedAtTime: completedAtTime,
                 notes: notes
             )
         )
@@ -247,14 +260,58 @@ struct TaskAssistantInterpreter {
             dominantLanguage: dominantLanguage,
             significantTokens: significantTokens,
             expandedTokens: expand(tokens: significantTokens, language: dominantLanguage),
-            phrases: phrases(from: significantTokens)
+            phrases: phrases(from: significantTokens),
+            completionTime: detectCompletionTime(in: text)
         )
+    }
+
+    /// A clock time the user stated, in the raw `text`, and only with a time marker: a colon ("9:30"),
+    /// "at"/"saat" ("at 9", "saat 9", "saat 21.30"), or am/pm ("9 pm"). A bare dotted number ("21.30",
+    /// "0.25 ml") is a time only right after "at"/"saat", so a dose in the notes is not 00:25. It is a
+    /// time the care was done, not a duration: "saat 9" is nine o'clock here, while the postpone reader
+    /// takes "9 saat" as nine hours. Turkish "akşam 9" (no am/pm) is not read as 21:00.
+    private func detectCompletionTime(in text: String) -> TimeOfDay? {
+        // Hour, minute (optional) and am/pm (optional) capture groups, by pattern.
+        let patterns: [(pattern: String, hasMinute: Bool)] = [
+            ("(?<![\\d:.])(\\d{1,2}):(\\d{2})(?![\\d:.])\\s*(am|pm)?", true),
+            ("\\b(?:at|saat)\\s+(\\d{1,2})[:.](\\d{2})(?![\\d:.])\\s*(am|pm)?", true),
+            ("\\b(?:at|saat)\\s+(\\d{1,2})(?![\\d:.])\\s*(am|pm)?", false),
+            ("(?<![\\d:.])(\\d{1,2})\\s*(am|pm)\\b", false)
+        ]
+        let lowered = text.lowercased()
+        let range = NSRange(lowered.startIndex..<lowered.endIndex, in: lowered)
+
+        for (pattern, hasMinute) in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: lowered, range: range),
+                  let hourRange = Range(match.range(at: 1), in: lowered),
+                  var hour = Int(lowered[hourRange]) else { continue }
+
+            var minute = 0
+            if hasMinute {
+                guard let minuteRange = Range(match.range(at: 2), in: lowered),
+                      let value = Int(lowered[minuteRange]) else { continue }
+                minute = value
+            }
+            let meridiemGroup = hasMinute ? 3 : 2
+            if let meridiemRange = Range(match.range(at: meridiemGroup), in: lowered) {
+                let isPM = lowered[meridiemRange] == "pm"
+                guard (1...12).contains(hour) else { continue }
+                if isPM, hour < 12 { hour += 12 }
+                if isPM == false, hour == 12 { hour = 0 }
+            }
+            if let time = TimeOfDay(hour: hour, minute: minute) {
+                return time
+            }
+        }
+        return nil
     }
 
     private func action(
         for command: Command,
         task: CareTask,
         completedForDate: Date?,
+        completedAtTime: TimeOfDay?,
         notes: String?,
         selectedCats: [Cat]
     ) -> TaskAssistantAction {
@@ -263,6 +320,7 @@ struct TaskAssistantInterpreter {
             return .complete(
                 task: task,
                 completedForDate: completedForDate,
+                completedAtTime: completedAtTime,
                 notes: notes,
                 cats: selectedCats
             )

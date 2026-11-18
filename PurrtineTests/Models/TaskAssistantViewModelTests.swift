@@ -631,7 +631,7 @@ struct TaskAssistantViewModelTests {
         sut.chooseIntent(.complete)
 
         let confirmation = try #require(sut.pendingConfirmation)
-        guard case .complete(let task, _, _, _) = confirmation.action else {
+        guard case .complete(let task, _, _, _, _) = confirmation.action else {
             Issue.record("Expected a complete action.")
             return
         }
@@ -1082,6 +1082,159 @@ struct TaskAssistantViewModelTests {
         #expect(sut.messages.last?.style != .failure)
     }
 
+    /// "I fed her yesterday at 9": the stated time is what gets stored, and it is not a fill-in.
+    @Test
+    func confirmingYesterdayAtAStatedTimeRecordsThatTime() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: fixture.schedule.scheduledDate)
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: today))
+        let sut = TaskAssistantViewModel(taskWriter: fixture.writer)
+        sut.pendingConfirmation = TaskAssistantConfirmation(
+            title: fixture.task.title,
+            message: "Complete?",
+            action: .complete(
+                task: fixture.task,
+                completedForDate: yesterday,
+                completedAtTime: TimeOfDay(hour: 9, minute: 0),
+                notes: nil,
+                cats: []
+            )
+        )
+
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.completedAt == calendar.date(bySettingHour: 9, minute: 0, second: 0, of: yesterday))
+        #expect(completion.completedForDate == yesterday)
+        #expect(completion.isFillIn() == false)
+        #expect(sut.messages.last?.style != .failure)
+    }
+
+    /// The time the cloud interpreter returns travels in the action to the stored completion.
+    @Test
+    func aTimeFromTheCloudInterpreterIsStoredOnTheCompletion() async throws {
+        let fixture = try makeDailyFixture()
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())))
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.confirmation(
+            TaskAssistantConfirmation(
+                title: fixture.task.title,
+                message: "Complete?",
+                action: .complete(
+                    task: fixture.task,
+                    completedForDate: yesterday,
+                    completedAtTime: TimeOfDay(hour: 21, minute: 30),
+                    notes: nil,
+                    cats: []
+                )
+            )
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            taskWriter: fixture.writer,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+        let confirmation = try #require(sut.pendingConfirmation)
+        guard case .complete(_, _, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion action from the cloud tier.")
+            return
+        }
+        #expect(completedAtTime == TimeOfDay(hour: 21, minute: 30))
+        _ = await sut.confirmPendingAction(in: fixture.context)
+
+        let completion = try #require(fixture.task.completions.first)
+        #expect(completion.completedAt == calendar.date(bySettingHour: 21, minute: 30, second: 0, of: yesterday))
+    }
+
+    /// A time stated before the task was chosen survives the "which task?" and "what to do?" steps.
+    @Test
+    func aStatedTimeSurvivesTaskAndIntentSelection() throws {
+        let fixture = try makeFixture()
+        // A task that has existed a while, so "yesterday" is inside its life.
+        fixture.task.createdAt = try #require(Calendar.current.date(byAdding: .day, value: -30, to: Date()))
+        let yesterday = try #require(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        let sut = TaskAssistantViewModel()
+        let choice = TaskAssistantTaskChoice(task: fixture.task, selectedCats: [])
+        sut.pendingTaskDisambiguation = TaskAssistantTaskDisambiguation(
+            message: "Which one?",
+            choices: [choice],
+            completedForDate: yesterday,
+            completedAtTime: TimeOfDay(hour: 9, minute: 0),
+            notes: nil
+        )
+
+        sut.chooseTaskChoice(choice)
+        #expect(sut.pendingIntentSelection?.completedAtTime == TimeOfDay(hour: 9, minute: 0))
+        sut.chooseIntent(.complete)
+
+        let confirmation = try #require(sut.pendingConfirmation)
+        guard case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion action.")
+            return
+        }
+        #expect(completedForDate == yesterday)
+        #expect(completedAtTime == TimeOfDay(hour: 9, minute: 0))
+    }
+
+    /// "Yesterday" for a task created today: Whiskers says why at once instead of offering a card whose
+    /// Confirm would fail with the generic alert.
+    @Test
+    func aNamedDayTheRulesRefuseGetsTheReasonInsteadOfAConfirmationCard() async throws {
+        let fixture = try makeDailyFixture()
+        fixture.task.createdAt = Date()
+        let calendar = Calendar.current
+        let yesterday = try #require(calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())))
+        let cloudInterpreter = FakeTaskAssistantCloudInterpreter()
+        cloudInterpreter.result = .success(.confirmation(
+            TaskAssistantConfirmation(
+                title: fixture.task.title,
+                message: "Complete?",
+                action: .complete(task: fixture.task, completedForDate: yesterday, notes: nil, cats: [])
+            )
+        ))
+        let sut = TaskAssistantViewModel(
+            cloudInterpreter: cloudInterpreter,
+            taskWriter: fixture.writer,
+            userDefaults: freshUserDefaults(cloudConsentGranted: true)
+        )
+        sut.draftText = "this phrase matches nothing heuristically"
+
+        await sut.sendCurrentDraft(tasks: [fixture.task])
+
+        #expect(sut.pendingConfirmation == nil)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.messages.last?.text == CompletionDayRefusal.beforeTaskExisted.message)
+        #expect(fixture.task.completions.isEmpty)
+    }
+
+    /// The same check runs when the card comes from the "what to do?" step.
+    @Test
+    func theIntentStepAlsoRefusesARefusedDayWithItsReason() throws {
+        let fixture = try makeFixture()
+        fixture.task.createdAt = Date()
+        let calendar = Calendar.current
+        let tomorrow = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())))
+        let sut = TaskAssistantViewModel()
+        sut.pendingIntentSelection = TaskAssistantIntentSelection(
+            task: fixture.task,
+            selectedCats: [],
+            completedForDate: tomorrow,
+            completedAtTime: nil,
+            notes: nil
+        )
+
+        sut.chooseIntent(.complete)
+
+        #expect(sut.pendingConfirmation == nil)
+        #expect(sut.messages.last?.style == .failure)
+        #expect(sut.messages.last?.text == CompletionDayRefusal.dayAfterToday.message)
+    }
+
     /// "I fed her today" while yesterday is open: the card names today. Yesterday is then recorded
     /// elsewhere, so today becomes the open day. Confirming is accepted: a card that names a day does
     /// not pin the open day it was made with.
@@ -1118,6 +1271,8 @@ struct TaskAssistantViewModelTests {
         let cat = Cat(name: "Luna")
         let caregiver = Caregiver(name: "Primary Caregiver", role: .primary)
         let task = CareTask(title: "Feed Luna", category: .feeding)
+        // A task that has existed a while, so "yesterday" is inside its life (#163).
+        task.createdAt = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let schedule = CareTaskSchedule(
             scheduledDate: Calendar.current.startOfDay(for: Date()),
             frequency: .daily,

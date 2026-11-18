@@ -10,9 +10,12 @@ Items, in this order:
 - #142 (reminder snoozes outlive completion and deletes, ignore Reminders off): done, #155 merged 2026-11-18;
   two narrow gaps left in #173 (failed cat delete keeps snoozes; "Remind me" on a finished day)
 - CI quick pack: done, #171 merged 2026-11-18 (TriQ #192 too)
-- #149 (build number 14): done, merged 2026-11-18; the TestFlight upload waits for the owner
-- #163 (a completion records when the care was done and which day it counts for); it starts the recurrence chain
-  #1, #164, #165 (see "Next step" 5)
+- #149 (build number 14): merged; that build 14 (with #156, without #163) was never uploaded. Build 15 (#194,
+  with #156 and #163 together) is uploaded and sent to the external testers through beta review, 2026-11-19.
+- #163 (a completion records when the care was done and which day it counts for): done, #192 merged and
+  `interpretTaskAssistantRequest` deployed 2026-11-18. Follow-ups in #193 (Turkish "akşam 9", VoiceOver double
+  read, race message, calendar due label, TR "beslendi" unproved, 00:00 edge).
+- Next: the recurrence chain #1, #164, #165 (see "Next step" 5), then #173 and #193.
 
 Then Stage 2 polish (animation and look) resumes, plan `docs/stage2-polish-decisions.md` (the animation audit and
 decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now merged):
@@ -26,9 +29,22 @@ decisions, #131, are done). Done 1/7. Items (#125 and #127 depended on #124, now
 
 ## Last updated
 
-2026-11-18
+2026-11-19
 
 Last session:
+- 2026-11-19: #194 (build 15 + STATUS) and #190 (GitHub Actions majors: checkout, cache, setup-node,
+  upload-artifact) merged, #190 after an update-branch and a green CI (UI tests 34 min). The owner accepted the
+  App Store Connect agreement; API writes came back about 30 minutes after reads did. Build 15 uploaded (`VALID`,
+  build id `fa438490-5764-4679-896a-642666623160`) and submitted to beta review for the External Testers group
+  (`"betaReviewSubmitted":true`); external testers had build 14 from 2026-11-12 (Whiskers fix). #191
+  (firebase-admin 13 → 14 in `functions`) waits for the owner's yes to merge and deploy; the deploy also ships #187.
+- 2026-11-18 (later): #188 and TriQ #214/#218 merged: Dependabot version-updates only Firebase (and Nuke in TriQ)
+  among Swift packages; majors come as one grouped PR, not ignored, so security updates are never blocked
+  (owner: "güvenlikleri atlamayalım"). #187 deployed. #163 via `/implement`: `swift-writer` TDD, two reviews
+  (standards, spec), a fix round, two `verify-purrtine` passes EN+TR (`~/verify-evidence/purrtine/2026-11-18-114806-2ba7`,
+  `-114913-516b`), CI green 50/50 UI; merged as #192 and deployed. Build 14 held; build 15 archived. TestFlight
+  upload is blocked: App Store Connect says an agreement is unsigned or expired (owner must accept at
+  https://appstoreconnect.apple.com/agreements).
 - 2026-11-18 (resumed; the owner said "merge when they're ready, UI test should be green"):
   - Docs PRs #172 and TriQ #193 merged. TriQ #192 (CI quick pack) merged.
   - #155 (#142 snoozes): a `swift-reviewer` pass found the main merge lost nothing. Its one low-medium finding was
@@ -89,7 +105,8 @@ Last session:
 - 2026-11-16 (earlier): #156 (repeating-task day fix, closes #141) merged (squash, owner's yes) as `77ef65b`.
   Owner decision 2 = allow any day up to today with no completion; future and already-done days are refused;
   a fill-in of an earlier day only records that day. Review fixes: on-time judged on the recorded day, History,
-  Home routine status and Settings weekly count use the performed day (`CareTaskCompletion.performedAt`).
+  Home routine status and Settings weekly count used a "performed" day (`performedAt`; #163 replaced it: every
+  "when" read is `CareTaskCompletion.completedAt`, and `isFillIn()` is `completedAt == completedForDate`).
   Simulator proofs PASS (runs `2026-11-16-121258-4944`, `2026-11-16-125755-713c`); CI green incl. UI tests.
   `interpretTaskAssistantRequest` deployed after the merge (owner's yes): revision `00006-dol`, ready. It adds
   the cloud interpreter's `"today"` day.
@@ -143,7 +160,7 @@ Last session:
 1. Stage 2 polish (after the robustness items in Focus): #124 is done (#158), so #125 (Home cards without glass) and #127 (onboarding
    fades) can start; #126, #128, #129 and #130 can start any time. The plan is in `docs/stage2-polish-decisions.md`.
 2. The formal-check fixes are landed: #140 (#154), #141 (#156), #142 (#155). Follow-up: #173 (two narrow snooze
-   gaps from the #155 review). A TestFlight upload of build 14 (#149) needs the owner's yes.
+   gaps from the #155 review). Build 15 (with #156 and #163) is in beta review for external testers (2026-11-19).
 3. Postponed by the owner 2026-11-16 (a later task, no issue yet): after #156, a missed earlier day of a repeating
    task can be filled in from a reminder or Whiskers, but the calendar shows that day as "No tasks". Show a missed
    day in the calendar as missed and let the user complete it there. Waits because the owner said "yes, but as a later
@@ -175,15 +192,13 @@ Last session:
    - Move `npm audit` out of the required job (weekly schedule or warning only): a new advisory would block every PR.
    - Try a DerivedData cache (measure first).
    - Done 2026-11-18: "UI tests" is a required check; Dependabot security updates are on.
-   - Major dependency upgrades, now planned tasks instead of Dependabot PRs: Firebase iOS SDK 11 → 13; the
-     GitHub actions on Node 20 (checkout, cache, setup-node, upload-artifact; CI warns that Node 20 is
-     deprecated); firebase-admin 13 → 14 in `functions`.
+   - Major dependency upgrades: Firebase iOS SDK 11 → 13 (a planned task). The GitHub actions on Node 20 are done
+     (#190, 2026-11-19). firebase-admin 13 → 14 in `functions` is PR #191, waiting for the owner.
 
 ## Waits for the owner
 
-- Merge PR #188 (Dependabot: minor and patch only, Swift only `firebase-ios-sdk`).
-- Deploy #187 (fast-xml-parser security update, lockfile only) to `interpretTaskAssistantRequest`.
-- A TestFlight upload of build 14 (#149).
+- #191 (firebase-admin 13 → 14): a yes to merge, then a yes to deploy `interpretTaskAssistantRequest`
+  (europe-west1), which also ships #187 (fast-xml-parser security fix, merged but not deployed).
 
 - #12 (App Store readiness): the Groq retention window and the App Store ID.
 - Issues marked `ready-for-human`: #1-#5 (deepen modules), #36 (camera photo memory, sRGB vs Display P3).

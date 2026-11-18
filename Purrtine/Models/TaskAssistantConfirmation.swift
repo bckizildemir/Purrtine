@@ -12,7 +12,7 @@ struct TaskAssistantConfirmation {
         self.title = title
         self.message = message
         self.action = action
-        if case .complete(let task, _, _, _) = action {
+        if case .complete(let task, _, _, _, _) = action {
             openOccurrence = TaskActionService.openOccurrence(of: task)
         } else {
             openOccurrence = nil

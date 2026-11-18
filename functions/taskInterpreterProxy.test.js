@@ -115,6 +115,7 @@ test("confirmed match sends json-mode request and returns validated result", asy
     catIds: ["cat-luna"],
     postponeMinutes: null,
     completedForDate: null,
+    completedAtTime: null,
     notes: null,
   });
 });
@@ -159,6 +160,53 @@ test("completedForDate passes yesterday and today through and drops anything els
   assert.equal(await run("tomorrow"), null);
   assert.equal(await run(null), null);
   assert.equal(await run("today", "open"), null);
+});
+
+test("completedAtTime passes wall-clock HH:mm with a named day and drops anything else", async () => {
+  const run = async (completedAtTime, { completedForDate = "yesterday", command = "complete" } = {}) => {
+    const result = await interpretTaskAssistantRequest({
+      ...baseOptions,
+      data: { text: "I fed Luna yesterday at 9", tasks: [feedLuna] },
+      fetchImpl: successFetch(
+        JSON.stringify({ match: "confirmed", command, taskId: "task-luna", completedForDate, completedAtTime })
+      ),
+    });
+    return result.completedAtTime;
+  };
+
+  assert.equal(await run("09:00"), "09:00");
+  assert.equal(await run("00:00"), "00:00");
+  assert.equal(await run("23:59"), "23:59");
+  // Not 24-hour wall-clock "HH:mm" text.
+  assert.equal(await run("9:00"), null);
+  assert.equal(await run("24:00"), null);
+  assert.equal(await run("12:60"), null);
+  assert.equal(await run("09:00:00"), null);
+  assert.equal(await run("9 am"), null);
+  // An instant carries a zone the server cannot know: never accepted.
+  assert.equal(await run("2026-11-17T09:00:00Z"), null);
+  assert.equal(await run(900), null);
+  assert.equal(await run(null), null);
+  // RegExp.test coerces an array to its text, so a one-item array would pass without a type check.
+  assert.equal(await run(["09:00"]), null);
+  // A time belongs to a named day, and only a complete command has one.
+  assert.equal(await run("09:00", { completedForDate: null }), null);
+  assert.equal(await run("09:00", { command: "open" }), null);
+});
+
+test("the prompt asks for completedAtTime as 24-hour HH:mm text", async () => {
+  await interpretTaskAssistantRequest({
+    ...baseOptions,
+    data: { text: "I fed Luna yesterday at 9", tasks: [feedLuna] },
+    fetchImpl: successFetch(
+      JSON.stringify({ match: "none" }),
+      (url, options) => {
+        const system = JSON.parse(options.body).messages[0].content;
+        assert.match(system, /completedAtTime/);
+        assert.match(system, /"completedAtTime":"HH:mm\|null"/);
+      }
+    ),
+  });
 });
 
 test("the prompt tells the model it may answer today", async () => {

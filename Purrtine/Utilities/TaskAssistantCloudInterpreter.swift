@@ -169,9 +169,21 @@ struct FirebaseTaskAssistantCloudInterpreter: TaskAssistantCloudInterpreting {
             case "today": referenceDate
             default: nil
             }
+            // The server returns a stated time as wall-clock "HH:mm", read with the device calendar on
+            // the named day. No key (an old server) or a malformed one means no time; a time with no
+            // named day is ignored.
+            let completedAtTime: TimeOfDay? = completedForDate == nil
+                ? nil
+                : (response["completedAtTime"] as? String).flatMap { TimeOfDay(text: $0) }
             let notes = response["notes"] as? String
 
-            return .complete(task: task, completedForDate: completedForDate, notes: notes, cats: selectedCats)
+            return .complete(
+                task: task,
+                completedForDate: completedForDate,
+                completedAtTime: completedAtTime,
+                notes: notes,
+                cats: selectedCats
+            )
 
         case .postpone:
             let minutes = (response["postponeMinutes"] as? Int) ?? 30

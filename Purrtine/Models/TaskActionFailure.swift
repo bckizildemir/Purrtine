@@ -12,6 +12,10 @@ enum TaskActionFailure: Equatable {
     /// the same day fails again.
     case occurrenceNotOpen
 
+    /// A complete for a named day was refused and the rules know why (the calendar's race: the row was
+    /// shown, then the day became refused). The alert says that reason instead of the catch-all.
+    case dayRefused(CompletionDayRefusal)
+
     /// A delete commit failed. The delete stays staged and lands on the next successful save, so the
     /// row stays removed and the message must not say the task was kept.
     case deletePending
@@ -20,7 +24,7 @@ enum TaskActionFailure: Equatable {
         switch self {
         case .completionNotSaved:
             String(localized: .errorDataSave)
-        case .occurrenceNotOpen:
+        case .occurrenceNotOpen, .dayRefused:
             String(localized: .errorTaskActionOccurrenceNotOpenTitle)
         case .deletePending:
             String(localized: .tasksDeletePendingTitle)
@@ -33,6 +37,8 @@ enum TaskActionFailure: Equatable {
             String(localized: .errorDataSaveMessage)
         case .occurrenceNotOpen:
             String(localized: .errorTaskActionOccurrenceNotOpen)
+        case .dayRefused(let refusal):
+            refusal.message
         case .deletePending:
             String(localized: .tasksDeletePendingMessage)
         }
