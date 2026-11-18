@@ -71,13 +71,29 @@ enum TaskActionService {
 
         let activeSchedule = task.activeSchedule
         let effectiveCompletedForDate = completionDate(for: task, explicit: input.completedForDate, now: now)
+        // `nil`: no real time of care, so this is a fill-in.
+        let careTime = realTimeOfCare(
+            for: task,
+            namedDay: input.completedForDate,
+            time: input.completedAtTime,
+            now: now
+        )
         let completion = CareTaskCompletion(
-            completedAt: now,
+            completedAt: careTime ?? now,
             completedForDate: effectiveCompletedForDate,
             notes: input.notes,
             photoURLs: input.photoURLs,
-            wasOnTime: isOnTime(day: effectiveCompletedForDate, schedule: activeSchedule, now: now)
+            wasOnTime: isOnTime(
+                day: effectiveCompletedForDate,
+                schedule: activeSchedule,
+                completedAt: careTime ?? now,
+                now: now
+            )
         )
+        if careTime == nil {
+            // The marker `CareTaskCompletion.isFillIn` reads: both stored dates are one start-of-day instant.
+            completion.completedAt = completion.completedForDate
+        }
         completion.task = task
         completion.caregiver = caregiver
         completion.cats = input.cats.isEmpty ? task.assignedCats : input.cats
@@ -116,9 +132,10 @@ enum TaskActionService {
     // MARK: - Helpers
 
     /// The one check every completion path shares, run before anything is recorded. A completion
-    /// that names no day completes the open occurrence. One that names a day (a day picked in the
-    /// calendar, or "yesterday" said to Whiskers) is accepted for any day up to today that has no
-    /// completion yet, and refused for a day after today or a day already done. A caller that was
+    /// that names no day completes the open occurrence, today or later. One that names a day (a day
+    /// picked in the calendar, or "yesterday" said to Whiskers) is accepted for any day from the
+    /// task's first day up to today that has no completion yet (`completionRefusal`), and refused
+    /// otherwise. A time stated for that day is refused when it is after `now`. A caller that was
     /// shown the open day and names no day of its own (a reminder's Complete, a stale card) passes
     /// that day as `expectedOccurrence`, so it completes that day or nothing.
     private static func validateOccurrence(
@@ -126,13 +143,23 @@ enum TaskActionService {
         for input: CareTaskCompletionInput,
         now: Date
     ) throws {
-        guard isOccurrenceAccepted(
-            of: task,
-            expected: input.expectedOccurrence,
-            completedForDate: input.completedForDate,
-            now: now
-        ) else {
+        let calendar = Calendar.current
+
+        if let expected = input.expectedOccurrence,
+           openOccurrence(of: task) != calendar.startOfDay(for: expected) {
             throw TaskActionError.occurrenceNotOpen
+        }
+
+        guard let namedDay = input.completedForDate else { return }
+
+        if completionRefusal(of: task, on: namedDay, now: now) != nil {
+            throw TaskActionError.occurrenceNotOpen
+        }
+        if let time = input.completedAtTime {
+            guard let statedInstant = time.date(on: calendar.startOfDay(for: namedDay), calendar: calendar),
+                  statedInstant <= now else {
+                throw TaskActionError.occurrenceNotOpen
+            }
         }
     }
 
@@ -140,35 +167,30 @@ enum TaskActionService {
     /// before it opens a sheet for a day, so it refuses at once instead of on submit. It runs the
     /// same rules as `validateOccurrence`, so the two cannot drift.
     static func canComplete(_ task: CareTask, on day: Date, now: Date = Date()) -> Bool {
-        isOccurrenceAccepted(of: task, expected: nil, completedForDate: day, now: now)
+        completionRefusal(of: task, on: day, now: now) == nil
     }
 
-    /// The rules behind `validateOccurrence` and `canComplete`.
-    private static func isOccurrenceAccepted(
-        of task: CareTask,
-        expected: Date?,
-        completedForDate explicit: Date?,
-        now: Date
-    ) -> Bool {
+    /// Why `task` cannot be completed for the named `day`, or `nil` when it can. Any day from the
+    /// task's first day up to today is accepted while it has no completion. The first day is the
+    /// earlier of the day the task was created (`CareTask.createdAt`; not the schedule's, which is
+    /// remade at every completion) and its open occurrence day, so a task created with a past start
+    /// date keeps its own first day. An earlier open (missed) day does not block a later one.
+    static func completionRefusal(of task: CareTask, on day: Date, now: Date = Date()) -> CompletionDayRefusal? {
         let calendar = Calendar.current
-        let openDay = openOccurrence(of: task)
+        let day = calendar.startOfDay(for: day)
 
-        if let expected, openDay != calendar.startOfDay(for: expected) {
-            return false
+        if day > calendar.startOfDay(for: now) {
+            return .dayAfterToday
         }
-
-        if let explicit {
-            let day = calendar.startOfDay(for: explicit)
-            // Any day up to and including today with no completion yet. An earlier open (missed)
-            // day does not block a later one; only days after today are refused.
-            if day > calendar.startOfDay(for: now) {
-                return false
-            }
-            if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
-                return false
-            }
+        if TaskCalendarDerivation.hasCompletion(for: task, on: day, calendar: calendar) {
+            return .alreadyDone
         }
-        return true
+        let createdDay = calendar.startOfDay(for: task.createdAt)
+        let firstDay = openOccurrence(of: task).map { min($0, createdDay) } ?? createdDay
+        if day < firstDay {
+            return .beforeTaskExisted
+        }
+        return nil
     }
 
     private static func resolveCaregiver(
@@ -194,6 +216,33 @@ enum TaskActionService {
         return caregivers.first
     }
 
+    /// When the care was really done, or `nil` for a fill-in with no real time.
+    /// - A plain tap (no day named) is `now`.
+    /// - A named day with a stated time is that time on the day.
+    /// - Today named with no time is `now`.
+    /// - A past day named with no time is the task's own time that day, or `nil` when the task has
+    ///   none (the one fill-in case).
+    private static func realTimeOfCare(
+        for task: CareTask,
+        namedDay: Date?,
+        time: TimeOfDay?,
+        now: Date
+    ) -> Date? {
+        let calendar = Calendar.current
+        guard let namedDay else { return now }
+        let day = calendar.startOfDay(for: namedDay)
+
+        if let time {
+            return time.date(on: day, calendar: calendar)
+        }
+        if day == calendar.startOfDay(for: now) {
+            return now
+        }
+        guard let dueTime = task.activeSchedule?.scheduledTime else { return nil }
+        let timeOfDay = calendar.dateComponents([.hour, .minute], from: dueTime)
+        return calendar.date(bySettingHour: timeOfDay.hour ?? 0, minute: timeOfDay.minute ?? 0, second: 0, of: day)
+    }
+
     private static func completionDate(for task: CareTask, explicit completedForDate: Date?, now: Date) -> Date {
         let calendar = Calendar.current
 
@@ -208,12 +257,12 @@ enum TaskActionService {
         return calendar.startOfDay(for: now)
     }
 
-    /// On time is measured against the day recorded: that day's due time versus the completion
-    /// instant. A day before today is never on time.
-    private static func isOnTime(day: Date, schedule: CareTaskSchedule?, now: Date) -> Bool {
+    /// On time is measured against the day recorded: that day's due time versus when the care was
+    /// done. A day before today is never on time, whatever time was stated for it.
+    private static func isOnTime(day: Date, schedule: CareTaskSchedule?, completedAt: Date, now: Date) -> Bool {
         if day < Calendar.current.startOfDay(for: now) { return false }
         guard let schedule else { return true }
-        return schedule.dueDate(on: day) >= now
+        return schedule.dueDate(on: day) >= completedAt
     }
 
     private static func handleRecurringCompletion(

@@ -1118,6 +1118,8 @@ struct TaskAssistantViewModelTests {
         let cat = Cat(name: "Luna")
         let caregiver = Caregiver(name: "Primary Caregiver", role: .primary)
         let task = CareTask(title: "Feed Luna", category: .feeding)
+        // A task that has existed a while, so "yesterday" is inside its life (#163).
+        task.createdAt = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let schedule = CareTaskSchedule(
             scheduledDate: Calendar.current.startOfDay(for: Date()),
             frequency: .daily,
