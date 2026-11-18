@@ -520,6 +520,47 @@ struct TaskAssistantInterpreterTests {
         #expect(completedAtTime == nil)
     }
 
+    /// A number with no time marker is not a time: a dose in the notes ("0.25 ml") is not 00:25. A
+    /// dotted number counts only right after "at"/"saat"; a colon time counts anywhere.
+    @Test(arguments: [
+        "dün Luna'yı 0.25 ml besledim",
+        "I fed Luna yesterday 0.25 ml",
+        "I fed Luna yesterday, 2.5 cups",
+        "dün 9'da Luna'yı besledim",
+        "I fed Luna yesterday 21.30"
+    ])
+    func aNumberWithNoTimeMarkerIsNotACompletionTime(text: String) throws {
+        let fixture = try makeFixture()
+
+        let result = fixture.interpreter.interpret(text: text, tasks: fixture.tasks)
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, let completedForDate, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation for \"\(text)\", got \(result).")
+            return
+        }
+        #expect(completedForDate != nil)
+        #expect(completedAtTime == nil)
+    }
+
+    /// The dose does not hide the real time next to it.
+    @Test
+    func aStatedTimeStillCountsNextToADoseInTheNotes() throws {
+        let fixture = try makeFixture()
+
+        let result = fixture.interpreter.interpret(
+            text: "dün saat 9'da Luna'yı 0.25 ml besledim",
+            tasks: fixture.tasks
+        )
+
+        guard case .confirmation(let confirmation) = result,
+              case .complete(_, _, let completedAtTime, _, _) = confirmation.action else {
+            Issue.record("Expected a completion confirmation, got \(result).")
+            return
+        }
+        #expect(completedAtTime == TimeOfDay(hour: 9, minute: 0))
+    }
+
     /// A time with no named day is not read as a completion time: a plain tap is the real time.
     @Test
     func aTimeWithNoNamedDayIsIgnored() throws {

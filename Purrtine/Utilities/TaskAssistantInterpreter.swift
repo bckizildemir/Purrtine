@@ -265,13 +265,16 @@ struct TaskAssistantInterpreter {
         )
     }
 
-    /// A clock time the user stated, in the raw `text`: "9:30", "21.30", "at 9", "saat 9", "9 pm",
-    /// "9:30 am". It is a time the care was done, not a duration: "saat 9" is nine o'clock here, while
-    /// the postpone reader takes "9 saat" as nine hours. Turkish "akşam 9" (no am/pm) is not read as 21:00.
+    /// A clock time the user stated, in the raw `text`, and only with a time marker: a colon ("9:30"),
+    /// "at"/"saat" ("at 9", "saat 9", "saat 21.30"), or am/pm ("9 pm"). A bare dotted number ("21.30",
+    /// "0.25 ml") is a time only right after "at"/"saat", so a dose in the notes is not 00:25. It is a
+    /// time the care was done, not a duration: "saat 9" is nine o'clock here, while the postpone reader
+    /// takes "9 saat" as nine hours. Turkish "akşam 9" (no am/pm) is not read as 21:00.
     private func detectCompletionTime(in text: String) -> TimeOfDay? {
         // Hour, minute (optional) and am/pm (optional) capture groups, by pattern.
         let patterns: [(pattern: String, hasMinute: Bool)] = [
-            ("(?<![\\d:.])(\\d{1,2})[:.](\\d{2})(?![\\d:.])\\s*(am|pm)?", true),
+            ("(?<![\\d:.])(\\d{1,2}):(\\d{2})(?![\\d:.])\\s*(am|pm)?", true),
+            ("\\b(?:at|saat)\\s+(\\d{1,2})[:.](\\d{2})(?![\\d:.])\\s*(am|pm)?", true),
             ("\\b(?:at|saat)\\s+(\\d{1,2})(?![\\d:.])\\s*(am|pm)?", false),
             ("(?<![\\d:.])(\\d{1,2})\\s*(am|pm)\\b", false)
         ]

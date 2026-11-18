@@ -231,7 +231,9 @@ function validatedResult(parsed, tasks) {
     : null;
 
   // A time of day belongs to a named day: with no completedForDate it is dropped.
-  const completedAtTime = completedForDate !== null && COMPLETED_AT_TIME_PATTERN.test(parsed.completedAtTime)
+  const completedAtTime = completedForDate !== null
+    && typeof parsed.completedAtTime === "string"
+    && COMPLETED_AT_TIME_PATTERN.test(parsed.completedAtTime)
     ? parsed.completedAtTime
     : null;
 

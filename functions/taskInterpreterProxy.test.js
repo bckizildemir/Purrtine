@@ -187,6 +187,8 @@ test("completedAtTime passes wall-clock HH:mm with a named day and drops anythin
   assert.equal(await run("2026-11-17T09:00:00Z"), null);
   assert.equal(await run(900), null);
   assert.equal(await run(null), null);
+  // RegExp.test coerces an array to its text, so a one-item array would pass without a type check.
+  assert.equal(await run(["09:00"]), null);
   // A time belongs to a named day, and only a complete command has one.
   assert.equal(await run("09:00", { completedForDate: null }), null);
   assert.equal(await run("09:00", { command: "open" }), null);
