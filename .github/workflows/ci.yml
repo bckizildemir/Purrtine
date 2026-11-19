@@ -22,6 +22,10 @@ name: CI
 # (#152). Each shard's run step prints a retry summary: which tests passed only on retry, and which failed
 # without recovering (#97). The retry flags work; a test suite whose runner exits after a failure
 # defeats them (an `async` tearDown did, #152).
+# After each test run, `Scripts/ci_test_summary.py` reads the result bundle and writes a report to the
+# run's Summary page (counts, failed tests with file:line, 10 slowest tests, coverage per target in
+# `app`), and marks each failed test's line in the PR diff with an `::error` annotation. It never fails
+# a job; the test step's exit status is the gate.
 on:
   push:
     branches: [main]
@@ -158,6 +162,12 @@ jobs:
             > test.log 2>&1 || { grep -E 'error:|failed|Failing tests' test.log | head -80; exit 1; }
           grep -E 'Executed|Test run with|TEST SUCCEEDED' test.log | tail -n 5
 
+      - name: Test report
+        if: ${{ !cancelled() }}
+        run: |
+          python3 -I Scripts/ci_test_summary.py --self-test
+          python3 -I Scripts/ci_test_summary.py --title "Unit tests" --coverage TestResults/Purrtine.xcresult
+
       - name: Enforce app coverage floor
         run: |
           bash Scripts/check_coverage.sh \
@@ -189,6 +199,7 @@ jobs:
             TestResults/Purrtine.xcresult
             test.log
             release.log
+          retention-days: 14
           if-no-files-found: ignore
 
   ui-test-shard:
@@ -288,6 +299,14 @@ jobs:
           fi
           grep -E 'Executed|TEST SUCCEEDED' ui-test.log | tail -n 5 || true
           exit "$status"
+
+      - name: Test report
+        if: ${{ !cancelled() }}
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python3 -I Scripts/ci_test_summary.py --self-test
+          python3 -I Scripts/ci_test_summary.py --title "UI tests, shard $SHARD of 3" TestResults/PurrtineUITests.xcresult
 
       - name: Upload UI test results and log
         if: always()
